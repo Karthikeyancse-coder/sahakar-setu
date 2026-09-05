@@ -240,3 +240,15 @@ export interface TimetableEntry {
   facultyName: string;
   venue: string;
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  isRead: boolean;
+  type: 'certificate' | 'job' | 'course' | 'attendance' | 'system';
+  linkView?: string;
+  linkParams?: any;
+}
+

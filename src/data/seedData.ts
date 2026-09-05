@@ -11,6 +11,7 @@ import {
   TimetableEntry,
   Nomination,
   AttendanceRecord,
+  AppNotification,
 } from '../types';
 
 export const SEED_INSTITUTES: Institute[] = [
@@ -285,7 +286,7 @@ export const SEED_USERS: User[] = [
     email: 'rameshwar.pacs@gmail.com',
     phone: '+91 98234 11223',
     role: 'trainee',
-    languagePreference: 'hi',
+    languagePreference: 'en',
     instituteId: 'inst-vamnicom',
     cooperativeAffiliation: 'Shri Datta PACS, Niphad, Nashik',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
@@ -1154,3 +1155,43 @@ export const SEED_TIMETABLE: TimetableEntry[] = [
   { id: 'tt-5', programmeId: 'prog-pacs-2026-01', day: 'Tuesday', timeSlot: '02:00 PM - 05:00 PM', subject: 'Common Service Centre (CSC) Digital Services Live Demo', facultyName: 'Shri Anand Tripathi', venue: 'Auditorium Hall B' },
   { id: 'tt-6', programmeId: 'prog-pacs-2026-01', day: 'Wednesday', timeSlot: '10:00 AM - 01:00 PM', subject: 'Statutory Audit Trail & NABARD Compliance Reporting', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Lecture Hall 1' },
 ];
+
+export const SEED_NOTIFICATIONS: AppNotification[] = [
+  {
+    id: 'notif-1',
+    title: 'Verified Certificate Issued',
+    message: 'Your official certificate for PACS Computerization & ERP Operations is ready to view and download.',
+    timestamp: '10 minutes ago',
+    isRead: false,
+    type: 'certificate',
+    linkView: 'certificates',
+  },
+  {
+    id: 'notif-2',
+    title: 'New Matching Job Opportunity',
+    message: 'GCMMF (AMUL) posted "PACS Business Development Associate" in Anand / Pune.',
+    timestamp: '2 hours ago',
+    isRead: false,
+    type: 'job',
+    linkView: 'jobs',
+  },
+  {
+    id: 'notif-3',
+    title: 'Upcoming Session Reminder',
+    message: 'Lab Session: Live Day-Open & KCC Posting starts tomorrow at 10:00 AM in Smart Lab 2.',
+    timestamp: '1 day ago',
+    isRead: true,
+    type: 'attendance',
+    linkView: 'attendance_kiosk',
+  },
+  {
+    id: 'notif-4',
+    title: 'Aadhaar e-KYC Complete',
+    message: 'Your biometric simulated e-KYC profile verification was completed successfully.',
+    timestamp: '3 days ago',
+    isRead: true,
+    type: 'system',
+    linkView: 'profile',
+  },
+];
+

@@ -14,6 +14,7 @@ import {
   HostelBed,
   TimetableEntry,
   Nomination,
+  AppNotification,
 } from '../types';
 import {
   SEED_INSTITUTES,
@@ -28,6 +29,7 @@ import {
   SEED_JOBS,
   SEED_HOSTEL_BEDS,
   SEED_TIMETABLE,
+  SEED_NOTIFICATIONS,
 } from '../data/seedData';
 import { getTranslation } from '../locales';
 
@@ -48,6 +50,8 @@ interface AppContextType {
   jobInterests: JobInterest[];
   hostelBeds: HostelBed[];
   timetable: TimetableEntry[];
+  notifications: AppNotification[];
+  unreadNotificationsCount: number;
   isOffline: boolean;
   offlineQueueCount: number;
   activeView: string;
@@ -70,6 +74,10 @@ interface AppContextType {
   verifyEkyc: (aadhaarNumber: string) => void;
   toggleOfflineMode: () => void;
   addNewCourse: (course: Course) => void;
+  markAllNotificationsAsRead: () => void;
+  markNotificationAsRead: (id: string) => void;
+  clearReadNotifications: () => void;
+  updateUserProfile: (updates: Partial<User>) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -104,7 +112,7 @@ const resolveRoute = (isAuth: boolean) => {
         return { view: 'login', params: null };
       }
     }
-    // Clean up any other hash (e.g. #/login, #) to root '/'
+    // Clean up any other hash to root '/'
     window.history.replaceState({}, '', '/');
     return { view: 'login', params: null };
   }
@@ -123,22 +131,70 @@ const resolveRoute = (isAuth: boolean) => {
   if (path === '/forgot-password') {
     return { view: 'forgot_password', params: null };
   }
-  if (path === '/dashboard') {
-    if (isAuth) {
-      return { view: 'home', params: null };
-    } else {
-      // Protected dashboard: redirect unauthenticated user to root '/'
+
+  // Protected route gate
+  if (!isAuth) {
+    if (path !== '/' && path !== '/login') {
       window.history.replaceState({}, '', '/');
-      return { view: 'login', params: null };
     }
-  }
-  if (path === '/login') {
-    window.history.replaceState({}, '', '/');
     return { view: 'login', params: null };
   }
 
+  // Authenticated routes
+  if (path === '/dashboard' || path === '/home' || path === '/') {
+    return { view: 'home', params: null };
+  }
+  if (path === '/courses' || path === '/catalog' || path === '/dashboard/courses') {
+    return { view: 'courses', params: null };
+  }
+  if (path === '/my-courses' || path === '/dashboard/my-courses') {
+    return { view: 'my_courses', params: null };
+  }
+
+  const courseLearnMatch = path.match(/^\/courses\/([^/]+)\/learn/);
+  if (courseLearnMatch) {
+    return { view: 'course_player', params: { courseId: courseLearnMatch[1] } };
+  }
+  const courseQuizMatch = path.match(/^\/courses\/([^/]+)\/quiz(?:\/([^/]+))?/);
+  if (courseQuizMatch) {
+    return { view: 'quiz', params: { courseId: courseQuizMatch[1], moduleId: courseQuizMatch[2] } };
+  }
+  const courseDetailMatch = path.match(/^\/courses\/([^/]+)$/);
+  if (courseDetailMatch) {
+    return { view: 'course_detail', params: { courseId: courseDetailMatch[1] } };
+  }
+
+  if (path === '/certificates' || path === '/dashboard/certificates') {
+    return { view: 'certificates', params: null };
+  }
+  if (path === '/jobs' || path === '/dashboard/jobs') {
+    return { view: 'jobs', params: null };
+  }
+  const jobDetailMatch = path.match(/^\/jobs\/([^/]+)$/);
+  if (jobDetailMatch) {
+    return { view: 'job_detail', params: { jobId: jobDetailMatch[1] } };
+  }
+  if (path === '/my-applications' || path === '/dashboard/my-applications') {
+    return { view: 'my_applications', params: null };
+  }
+  if (path === '/career-chat' || path === '/dashboard/career-chat') {
+    return { view: 'career_chat', params: null };
+  }
+  if (path === '/attendance' || path === '/dashboard/attendance') {
+    return { view: 'attendance_kiosk', params: null };
+  }
+  if (path === '/profile' || path === '/dashboard/profile') {
+    return { view: 'profile', params: null };
+  }
+  if (path === '/settings' || path === '/dashboard/settings') {
+    return { view: 'settings', params: null };
+  }
+  if (path === '/help' || path === '/dashboard/help') {
+    return { view: 'help', params: null };
+  }
+
   // Root '/' and default fallback
-  return { view: 'login', params: null };
+  return { view: 'home', params: null };
 };
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -177,6 +233,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [jobInterests, setJobInterests] = useState<JobInterest[]>([]);
   const [hostelBeds, setHostelBeds] = useState<HostelBed[]>(SEED_HOSTEL_BEDS);
   const [timetable, setTimetable] = useState<TimetableEntry[]>(SEED_TIMETABLE);
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('ss_notifs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return SEED_NOTIFICATIONS;
+  });
+
+  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, isRead: true }));
+      localStorage.setItem('ss_notifs', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const markNotificationAsRead = (id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, isRead: true } : n);
+      localStorage.setItem('ss_notifs', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const clearReadNotifications = () => {
+    setNotifications(prev => {
+      const updated = prev.filter(n => !n.isRead);
+      localStorage.setItem('ss_notifs', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const updateUserProfile = (updates: Partial<User>) => {
+    const updated = { ...currentUser, ...updates };
+    setCurrentUser(updated);
+    localStorage.setItem('ss_user', JSON.stringify(updated));
+    if (updates.languagePreference && updates.languagePreference !== currentLanguage) {
+      setLanguage(updates.languagePreference);
+    }
+  };
 
   const [isOffline, setIsOffline] = useState<boolean>(!navigator.onLine);
   const [offlineQueueCount, setOfflineQueueCount] = useState<number>(0);
@@ -253,48 +351,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return;
     }
 
-    if (view === 'signup' || view === 'register' || view === '/register' || view === '/signup') {
-      setActiveView('signup');
-      setActiveViewParams(null);
-      if (window.location.pathname !== '/register') {
-        window.history.pushState({}, '', '/register');
-      }
-    } else if (view === 'forgot_password' || view === '/forgot-password') {
-      setActiveView('forgot_password');
-      setActiveViewParams(null);
-      if (window.location.pathname !== '/forgot-password') {
-        window.history.pushState({}, '', '/forgot-password');
-      }
+    let targetPath = '/dashboard';
+    if (view === 'signup' || view === 'register') {
+      targetPath = '/register';
+    } else if (view === 'forgot_password') {
+      targetPath = '/forgot-password';
     } else if (view === 'verify_public') {
       const certId = params?.certId || 'NCCT-CERT-2026-VAM-0089';
-      setActiveView('verify_public');
-      setActiveViewParams({ certId });
-      if (window.location.pathname !== `/verify/${certId}`) {
-        window.history.pushState({}, '', `/verify/${certId}`);
-      }
-    } else if (view === 'home' || view === 'dashboard' || view === '/dashboard') {
-      const isAuth = localStorage.getItem('ss_auth') === 'true' || isAuthenticated;
-      if (!isAuth) {
-        logout();
-        return;
-      }
-      setActiveView('home');
-      setActiveViewParams(params || null);
-      if (window.location.pathname !== '/dashboard') {
-        window.history.pushState({}, '', '/dashboard');
-      }
+      targetPath = `/verify/${certId}`;
+    } else if (view === 'home' || view === 'dashboard') {
+      targetPath = '/dashboard';
+    } else if (view === 'courses') {
+      targetPath = '/courses';
+    } else if (view === 'course_detail') {
+      targetPath = `/courses/${params?.courseId || ''}`;
+    } else if (view === 'course_player' || view === 'course_view') {
+      targetPath = `/courses/${params?.courseId || ''}/learn`;
+    } else if (view === 'quiz') {
+      targetPath = `/courses/${params?.courseId || ''}/quiz/${params?.moduleId || ''}`;
+    } else if (view === 'my_courses') {
+      targetPath = '/my-courses';
+    } else if (view === 'certificates') {
+      targetPath = '/certificates';
+    } else if (view === 'jobs') {
+      targetPath = '/jobs';
+    } else if (view === 'job_detail') {
+      targetPath = `/jobs/${params?.jobId || ''}`;
+    } else if (view === 'my_applications') {
+      targetPath = '/my-applications';
+    } else if (view === 'career_chat' || view === 'career_bot') {
+      targetPath = '/career-chat';
+    } else if (view === 'attendance_kiosk') {
+      targetPath = '/attendance';
+    } else if (view === 'profile') {
+      targetPath = '/profile';
+    } else if (view === 'settings') {
+      targetPath = '/settings';
+    } else if (view === 'help') {
+      targetPath = '/help';
     } else {
-      // Sub-views inside the authenticated dashboard (e.g. 'courses', 'course_view', 'certificates', etc.)
-      const isAuth = localStorage.getItem('ss_auth') === 'true' || isAuthenticated;
-      if (!isAuth) {
-        logout();
-        return;
-      }
-      setActiveView(view);
-      setActiveViewParams(params || null);
-      if (window.location.pathname !== '/dashboard') {
-        window.history.pushState({}, '', '/dashboard');
-      }
+      targetPath = `/dashboard`;
+    }
+
+    const isAuth = localStorage.getItem('ss_auth') === 'true' || isAuthenticated;
+    if (!isAuth && view !== 'signup' && view !== 'forgot_password' && view !== 'verify_public') {
+      logout();
+      return;
+    }
+
+    setActiveView(view);
+    setActiveViewParams(params || null);
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -534,6 +642,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         jobInterests,
         hostelBeds,
         timetable,
+        notifications,
+        unreadNotificationsCount,
         isOffline,
         offlineQueueCount,
         activeView,
@@ -554,6 +664,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifyEkyc,
         toggleOfflineMode,
         addNewCourse,
+        markAllNotificationsAsRead,
+        markNotificationAsRead,
+        clearReadNotifications,
+        updateUserProfile,
       }}
     >
       {children}

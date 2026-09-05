@@ -16,9 +16,40 @@ interface MobileDrawerProps {
 }
 
 export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) => {
-  const { currentUser, activeView, navigate, logout } = useApp();
+  const { currentUser, currentLanguage, activeView, navigate, logout, t } = useApp();
 
   const sections = NAVIGATION_BY_ROLE[currentUser.role] || NAVIGATION_BY_ROLE.trainee;
+
+  const getLocalizedLabel = (item: { id: string; label: string }) => {
+    switch (item.id) {
+      case 'home':
+        return t.nav?.home || 'Dashboard';
+      case 'courses':
+        return t.catalog?.title || t.nav?.courses || 'Course Catalog';
+      case 'my_courses':
+        return t.myCourses?.title || 'My Courses';
+      case 'certificates':
+        return t.nav?.certificates || 'Certificates';
+      case 'jobs':
+        return t.nav?.jobs || 'Job Opportunities';
+      case 'my_applications':
+        return t.myApplications?.title || 'My Applications';
+      case 'attendance':
+      case 'attendance_kiosk':
+        return t.nav?.attendance || 'Attendance';
+      case 'career_chat':
+      case 'career_bot':
+        return t.nav?.careerBot || 'Career Sahayak AI';
+      case 'profile':
+        return t.profile?.title || 'My Profile';
+      case 'settings':
+        return t.settings?.title || 'Settings';
+      case 'help':
+        return t.help?.title || 'Help & Support';
+      default:
+        return item.label;
+    }
+  };
 
   // Close drawer on Escape key
   useEffect(() => {
@@ -45,7 +76,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
   };
 
   return (
-    <div className="lg:hidden fixed inset-0 z-50 flex">
+    <div className="md:hidden fixed inset-0 z-50 flex">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fadeIn"
@@ -57,13 +88,13 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
       <div className="relative w-[85%] max-w-[320px] bg-white h-full shadow-2xl flex flex-col justify-between z-10 animate-slideRight">
         {/* Top Header */}
         <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-govBg/50">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => handleNav('home')}>
             <div className="w-9 h-9 rounded-xl bg-govTeal-700 flex items-center justify-center text-white shadow-sm">
               <Building2 className="w-5 h-5 text-saffron-300" />
             </div>
             <div>
-              <h2 className="font-extrabold text-sm text-govTeal-900 font-devanagari leading-none">
-                सहकार सेतु
+              <h2 className={`font-extrabold text-sm text-govTeal-900 leading-none ${currentLanguage !== 'en' ? 'font-devanagari' : ''}`}>
+                {currentLanguage === 'en' ? 'SAHAKAR SETU' : 'सहकार सेतु'}
               </h2>
               <p className="text-[10px] text-govText-secondary mt-0.5">
                 NCCT Training Platform
@@ -80,9 +111,14 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
           </button>
         </div>
 
-        {/* User Profile Card */}
+        {/* User Profile Card - Clickable to open Profile */}
         <div className="p-3.5 border-b border-gray-100 bg-[#FBFDFB]">
-          <div className="bg-white rounded-xl p-2.5 border border-gray-200/80 shadow-xs flex items-center gap-2.5">
+          <div
+            onClick={() => handleNav('profile')}
+            className="bg-white rounded-xl p-2.5 border border-gray-200/80 shadow-xs flex items-center gap-2.5 cursor-pointer hover:border-govTeal-500 hover:shadow-sm transition-all"
+            role="button"
+            title="View full profile"
+          >
             <img
               src={currentUser.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
               alt={currentUser.name}
@@ -112,21 +148,26 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
 
               {section.items.map(item => {
                 const Icon = item.icon;
-                const isActive = activeView === item.id;
+                const isParentActive =
+                  (item.id === 'courses' && (activeView === 'courses' || activeView === 'course_detail' || activeView === 'course_player' || activeView === 'quiz')) ||
+                  (item.id === 'my_courses' && activeView === 'my_courses') ||
+                  (item.id === 'jobs' && (activeView === 'jobs' || activeView === 'job_detail')) ||
+                  (item.id === 'career_chat' && activeView === 'career_chat') ||
+                  activeView === item.id;
 
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleNav(item.id)}
                     className={`w-full min-h-[48px] flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
-                      isActive
+                      isParentActive
                         ? 'bg-govTeal-600 text-white shadow'
                         : 'text-govText-primary hover:bg-govTeal-50'
                     }`}
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
-                      <Icon className={`w-5 h-5 flex-shrink-0 ${isActive ? 'text-saffron-300' : 'text-govTeal-600'}`} />
-                      <span className="truncate">{item.label}</span>
+                      <Icon className={`w-5 h-5 flex-shrink-0 ${isParentActive ? 'text-saffron-300' : 'text-govTeal-600'}`} />
+                      <span className="truncate">{getLocalizedLabel(item)}</span>
                     </div>
 
                     {item.badge ? (
@@ -134,7 +175,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
                         {item.badge}
                       </span>
                     ) : (
-                      <ChevronRight className={`w-4 h-4 opacity-40 ${isActive ? 'text-white opacity-80' : ''}`} />
+                      <ChevronRight className={`w-4 h-4 opacity-40 ${isParentActive ? 'text-white opacity-80' : ''}`} />
                     )}
                   </button>
                 );

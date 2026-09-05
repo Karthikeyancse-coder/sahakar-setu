@@ -22,7 +22,10 @@ import {
   FileSpreadsheet,
   Cpu,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  User,
+  Compass,
+  Send,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -47,17 +50,17 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       title: 'MAIN',
       items: [
         { id: 'home', label: 'Dashboard', route: '/dashboard', icon: LayoutDashboard },
-        { id: 'courses', label: 'My Courses', route: '/dashboard/courses', icon: BookOpen },
-        { id: 'certificates', label: 'Certificates', route: '/dashboard/certificates', icon: Award },
-        { id: 'jobs', label: 'Job Opportunities', route: '/dashboard/jobs', icon: Briefcase },
-        { id: 'attendance_kiosk', label: 'Attendance', route: '/dashboard/attendance', icon: QrCode },
+        { id: 'my_courses', label: 'My Courses', route: '/my-courses', icon: BookOpen },
+        { id: 'certificates', label: 'Certificates', route: '/certificates', icon: Award },
+        { id: 'jobs', label: 'Job Opportunities', route: '/jobs', icon: Briefcase },
+        { id: 'attendance_kiosk', label: 'Attendance', route: '/attendance', icon: QrCode },
       ],
     },
     {
       title: 'SYSTEM',
       items: [
-        { id: 'help', label: 'Help & Support', route: '/dashboard/help', icon: HelpCircle },
-        { id: 'settings', label: 'Settings', route: '/dashboard/settings', icon: Settings },
+        { id: 'help', label: 'Help & Support', route: '/help', icon: HelpCircle },
+        { id: 'settings', label: 'Settings', route: '/settings', icon: Settings },
       ],
     },
   ],

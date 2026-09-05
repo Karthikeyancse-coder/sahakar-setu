@@ -11,9 +11,20 @@ import { CertificateVerify } from './views/Public/CertificateVerify';
 // Authenticated Views (Rendered inside DashboardLayout)
 import { TraineeHome } from './views/Trainee/TraineeHome';
 import { CourseViewer } from './views/Trainee/CourseViewer';
+import { CourseCatalog } from './views/Trainee/CourseCatalog';
+import { CourseDetail } from './views/Trainee/CourseDetail';
+import { MyCourses } from './views/Trainee/MyCourses';
+import { CoursePlayer } from './views/Trainee/CoursePlayer';
+import { QuizView } from './views/Trainee/QuizView';
 import { MyCertificates } from './views/Trainee/MyCertificates';
 import { JobOpportunities } from './views/Trainee/JobOpportunities';
+import { JobDetail } from './views/Trainee/JobDetail';
+import { MyApplications } from './views/Trainee/MyApplications';
 import { CareerChatbot } from './views/Trainee/CareerChatbot';
+import { CareerChatView } from './views/Trainee/CareerChatView';
+import { ProfileView } from './views/Trainee/ProfileView';
+import { SettingsView } from './views/Trainee/SettingsView';
+import { HelpSupportView } from './views/Trainee/HelpSupportView';
 
 import { AdminDashboard } from './views/InstituteAdmin/AdminDashboard';
 import { ProgrammesManagement } from './views/InstituteAdmin/ProgrammesManagement';
@@ -64,10 +75,20 @@ export const AppContent: React.FC = () => {
         return <TraineeHome />;
 
       case 'courses':
-        return <TraineeHome />;
+        return <CourseCatalog />;
 
+      case 'course_detail':
+        return <CourseDetail />;
+
+      case 'my_courses':
+        return <MyCourses />;
+
+      case 'course_player':
       case 'course_view':
-        return <CourseViewer />;
+        return <CoursePlayer />;
+
+      case 'quiz':
+        return <QuizView />;
 
       case 'certificates':
         return <MyCertificates />;
@@ -75,11 +96,28 @@ export const AppContent: React.FC = () => {
       case 'jobs':
         return currentUser.role === 'employer' ? <EmployerPortal /> : <JobOpportunities />;
 
-      case 'career_bot':
-        return <CareerChatbot />;
+      case 'job_detail':
+        return <JobDetail />;
 
+      case 'my_applications':
+        return <MyApplications />;
+
+      case 'career_chat':
+      case 'career_bot':
+        return <CareerChatView />;
+
+      case 'attendance':
       case 'attendance_kiosk':
         return <AttendanceKiosk />;
+
+      case 'profile':
+        return <ProfileView />;
+
+      case 'settings':
+        return <SettingsView />;
+
+      case 'help':
+        return <HelpSupportView />;
 
       case 'programmes_erp':
         return <ProgrammesManagement />;

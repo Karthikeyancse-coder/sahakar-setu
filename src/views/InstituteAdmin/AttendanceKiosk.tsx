@@ -180,30 +180,30 @@ export const AttendanceKiosk: React.FC = () => {
     <PageContainer>
       
       {/* Header Banner */}
-      <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
-              Hardware Track Showcase
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div className="space-y-2">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-xs font-extrabold text-govTeal-700 uppercase tracking-wider">
+              HARDWARE TRACK SHOWCASE
             </span>
             <SimulatedBadge text="Raspberry Pi + Camera Kiosk Prototype" />
           </div>
-          <h2 className="text-2xl font-extrabold text-govText-primary">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary leading-tight">
             {t.attendance.title}
           </h2>
-          <p className="text-xs text-govText-secondary mt-1">
+          <p className="text-xs text-govText-secondary leading-relaxed max-w-xl">
             {t.attendance.subtitle}
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="flex bg-govBg p-1.5 rounded-xl border border-govTeal-100">
+        {/* Tab Switcher: Full width stacked on mobile/tablet (< lg), horizontal on desktop */}
+        <div className="flex flex-col sm:flex-col lg:flex-row w-full lg:w-auto bg-govBg p-1.5 rounded-xl border border-govTeal-100 gap-2 lg:gap-1.5">
           <button
             onClick={() => setActiveTab('qr')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
               activeTab === 'qr'
                 ? 'bg-govTeal-600 text-white shadow'
-                : 'text-govText-secondary hover:text-govText-primary'
+                : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
             }`}
           >
             <QrCode className="w-4 h-4" />
@@ -211,10 +211,10 @@ export const AttendanceKiosk: React.FC = () => {
           </button>
           <button
             onClick={() => setActiveTab('face')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
               activeTab === 'face'
                 ? 'bg-saffron-500 text-white shadow'
-                : 'text-govText-secondary hover:text-govText-primary'
+                : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
             }`}
           >
             <Cpu className="w-4 h-4" />
@@ -224,14 +224,16 @@ export const AttendanceKiosk: React.FC = () => {
       </div>
 
       {/* Session Selector Bar */}
-      <div className="bg-govBg p-4 rounded-xl border border-govTeal-100 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Clock className="w-4 h-4 text-govTeal-600" />
-          <span className="text-xs font-bold text-govText-primary">Select Session:</span>
+      <div className="bg-govBg p-4 rounded-xl border border-govTeal-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+        <div className="flex flex-col gap-1.5 w-full lg:w-auto min-w-0">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-govTeal-600 flex-shrink-0" />
+            <span className="text-xs font-bold text-govText-primary">Select Session:</span>
+          </div>
           <select
             value={selectedSessionId}
             onChange={(e) => setSelectedSessionId(e.target.value)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-govText-border bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-600"
+            className="w-full max-w-full text-xs font-semibold px-3 py-2.5 rounded-lg border border-govText-border bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-600 min-h-[44px] truncate"
           >
             {sessions.map(s => (
               <option key={s.id} value={s.id}>
@@ -241,7 +243,7 @@ export const AttendanceKiosk: React.FC = () => {
           </select>
         </div>
 
-        <div className="text-xs font-semibold text-govTeal-800 bg-white px-3 py-1 rounded-lg border border-gray-200">
+        <div className="text-xs font-semibold text-govTeal-800 bg-white px-3 py-2 rounded-lg border border-gray-200 self-start lg:self-auto shadow-xs">
           {sessionAttendance.length} Trainees Checked In
         </div>
       </div>
@@ -251,12 +253,12 @@ export const AttendanceKiosk: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
           {/* QR Display Card (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 border border-govText-border shadow-sm flex flex-col items-center text-center space-y-6">
-            <div className="space-y-1">
+          <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-8 border border-govText-border shadow-sm flex flex-col items-center text-center space-y-6 w-full">
+            <div className="space-y-1 w-full">
               <span className="text-xs font-bold text-saffron-600 uppercase tracking-wider">
                 Live Dynamic Token
               </span>
-              <h3 className="text-xl font-bold text-govText-primary">
+              <h3 className="text-lg sm:text-xl font-bold text-govText-primary">
                 {selectedSession?.title}
               </h3>
               <p className="text-xs text-govText-secondary max-w-md mx-auto">
@@ -264,19 +266,23 @@ export const AttendanceKiosk: React.FC = () => {
               </p>
             </div>
 
-            {/* Render High-Contrast Civic QR Code */}
-            <div className="p-5 bg-white rounded-2xl border-4 border-govTeal-600 shadow-xl relative group">
+            {/* Render High-Contrast Civic QR Code: width min(280px, 70vw) */}
+            <div
+              style={{ width: 'min(280px, 70vw)', height: 'auto' }}
+              className="p-4 sm:p-5 bg-white rounded-2xl border-4 border-govTeal-600 shadow-xl relative group mx-auto flex items-center justify-center aspect-square"
+            >
               <QRCodeSVG
                 value={`https://sahakarsetu.gov.in/checkin?token=${selectedSession?.qrToken}`}
                 size={220}
                 level="H"
                 fgColor="#0B6E4F"
+                className="w-full h-full object-contain"
               />
               <div className="absolute inset-0 bg-govTeal-900/5 backdrop-blur-[0.5px] rounded-xl pointer-events-none" />
             </div>
 
-            <div className="bg-govBg px-4 py-2 rounded-xl border border-gray-200 text-xs font-mono text-govText-secondary">
-              Session Token: <strong className="text-govTeal-800">{selectedSession?.qrToken}</strong>
+            <div className="bg-govBg px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-govText-secondary break-all max-w-full text-center">
+              Session Token: <strong className="text-govTeal-800 break-all">{selectedSession?.qrToken}</strong>
             </div>
           </div>
 
@@ -450,8 +456,8 @@ export const AttendanceKiosk: React.FC = () => {
       )}
 
       {/* Live Biometric & QR Attendance Audit Log Table */}
-      <div className="bg-white rounded-2xl p-6 border border-govText-border shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-govText-border shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
           <div>
             <h3 className="font-bold text-base text-govText-primary">
               {t.attendance.recentLogs}
@@ -463,7 +469,7 @@ export const AttendanceKiosk: React.FC = () => {
 
           <button
             onClick={exportCsv}
-            className="px-3.5 py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center gap-1.5 transition-colors"
+            className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center justify-center gap-1.5 transition-colors min-h-[44px] sm:min-h-0"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Export CSV Audit Log</span>

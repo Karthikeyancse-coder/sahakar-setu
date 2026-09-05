@@ -78,12 +78,12 @@ export const MyCertificates: React.FC = () => {
               <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-govTeal-600 via-saffron-500 to-emerald-600" />
 
               {/* Certificate Header */}
-              <div className="flex items-start justify-between gap-4 pt-1">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-govTeal-700 uppercase tracking-wider bg-govTeal-50 px-2 py-0.5 rounded border border-govTeal-200">
+              <div className="flex items-start justify-between gap-3 pt-1">
+                <div className="min-w-0 flex-1 space-y-1">
+                  <span className="text-[10px] font-bold text-govTeal-700 uppercase tracking-wider bg-govTeal-50 px-2 py-0.5 rounded border border-govTeal-200 inline-block">
                     National NCCT Registry
                   </span>
-                  <h3 className="font-bold text-lg text-govText-primary">
+                  <h3 className="font-bold text-base sm:text-lg text-govText-primary leading-snug">
                     {cert.courseTitle}
                   </h3>
                   <p className="text-xs text-govText-secondary">
@@ -101,31 +101,31 @@ export const MyCertificates: React.FC = () => {
                 </div>
               </div>
 
-              {/* Metadata Box */}
-              <div className="bg-govBg rounded-xl p-3.5 border border-gray-200 text-xs space-y-1.5 font-mono">
-                <div className="flex justify-between">
-                  <span className="text-govText-muted">Cert ID:</span>
-                  <span className="font-bold text-govText-primary">{cert.id}</span>
+              {/* Metadata Box with word wrap guarantee */}
+              <div className="bg-govBg rounded-xl p-3.5 border border-gray-200 text-xs space-y-2 font-mono">
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
+                  <span className="text-govText-muted flex-shrink-0">Cert ID:</span>
+                  <span className="font-bold text-govText-primary break-all [overflow-wrap:anywhere]">{cert.id}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-govText-muted">Candidate:</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
+                  <span className="text-govText-muted flex-shrink-0">Candidate:</span>
                   <span className="font-bold text-govText-primary">{cert.userName}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-govText-muted">Issue Date:</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
+                  <span className="text-govText-muted flex-shrink-0">Issue Date:</span>
                   <span>{cert.issuedDate}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-govText-muted">Crypto Hash:</span>
-                  <span className="text-[10px] text-govTeal-700 truncate max-w-[180px]">{cert.certificateHash}</span>
+                <div className="flex flex-col sm:flex-row sm:justify-between gap-0.5 sm:gap-2">
+                  <span className="text-govText-muted flex-shrink-0">Crypto Hash:</span>
+                  <span className="text-[10px] text-govTeal-800 break-all [overflow-wrap:anywhere] [word-break:break-word]">{cert.certificateHash}</span>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              {/* Action Buttons (Stacked on mobile) */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-2">
                 <button
                   onClick={() => downloadCertificatePdf(cert)}
-                  className="flex-1 py-2.5 bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2"
+                  className="w-full sm:flex-1 py-3 min-h-[44px] bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>{t.certificate.downloadPdf}</span>
@@ -133,7 +133,7 @@ export const MyCertificates: React.FC = () => {
 
                 <button
                   onClick={() => navigate('verify_public', { certId: cert.id })}
-                  className="px-4 py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5"
+                  className="w-full sm:w-auto px-5 py-3 min-h-[44px] bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Public Verification</span>

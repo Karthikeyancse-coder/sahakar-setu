@@ -47,8 +47,8 @@ export const TraineeHome: React.FC = () => {
   return (
     <PageContainer>
       
-      {/* 1. Hero Welcome Banner (Target height: ~220px desktop, clean and restrained) */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-govTeal-700 via-govTeal-800 to-govTeal-900 text-white p-6 sm:p-7 shadow-md border border-govTeal-600/50">
+      {/* 1. Hero Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-govTeal-700 via-govTeal-800 to-govTeal-900 text-white p-5 sm:p-7 shadow-md border border-govTeal-600/50">
         <div className="relative z-10 max-w-3xl space-y-3">
           
           <div className="flex flex-wrap items-center gap-2">
@@ -59,7 +59,7 @@ export const TraineeHome: React.FC = () => {
           </div>
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight font-devanagari">
+            <h1 className={`text-xl sm:text-3xl font-extrabold tracking-tight leading-tight ${currentLanguage !== 'en' ? 'font-devanagari' : ''}`}>
               {currentLanguage === 'hi'
                 ? `नमस्ते, ${currentUser.name}`
                 : currentLanguage === 'mr'
@@ -71,8 +71,8 @@ export const TraineeHome: React.FC = () => {
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <div className="flex items-center gap-2 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/10 rounded-lg text-saffron-200 font-bold">
                 <BookOpen className="w-3.5 h-3.5" />
                 <span>{userEnrollments.length} Active Courses</span>
@@ -83,17 +83,17 @@ export const TraineeHome: React.FC = () => {
               </span>
             </div>
 
-            <div className="flex items-center gap-2 pt-1 sm:pt-0">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 sm:pt-0">
               <button
-                onClick={() => navigate('course_view', { courseId: activeCourse.id })}
-                className="px-4 py-2 bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-xs shadow transition-all flex items-center gap-1.5"
+                onClick={() => navigate('course_player', { courseId: activeCourse.id })}
+                className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-xs shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Continue Learning</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
               <button
-                onClick={() => window.dispatchEvent(new CustomEvent('open-career-bot'))}
-                className="px-3.5 py-2 bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-xs backdrop-blur-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                onClick={() => navigate('career_chat')}
+                className="w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-white/15 hover:bg-white/25 text-white font-semibold rounded-xl text-xs backdrop-blur-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <Bot className="w-3.5 h-3.5 text-saffron-300" />
                 <span>Ask Career Sahayak</span>
@@ -152,7 +152,7 @@ export const TraineeHome: React.FC = () => {
 
                 <button
                   onClick={() => navigate('attendance_kiosk')}
-                  className="px-3.5 py-2 bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow transition-all"
+                  className="w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
                 >
                   <QrCode className="w-3.5 h-3.5 text-saffron-300" />
                   <span>Scan QR / Face Kiosk Check-in</span>
@@ -188,17 +188,17 @@ export const TraineeHome: React.FC = () => {
               <p className="text-xs font-bold text-govText-primary truncate">
                 {userCertificates[0].courseTitle}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button
                   onClick={() => downloadCertificatePdf(userCertificates[0])}
-                  className="flex-1 py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center justify-center gap-1.5 transition-colors"
+                  className="flex-1 py-2.5 min-h-[44px] bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download PDF</span>
                 </button>
                 <button
                   onClick={() => navigate('verify_public', { certId: userCertificates[0].id })}
-                  className="px-3 py-2 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 text-xs font-bold rounded-xl border border-saffron-200"
+                  className="px-4 py-2.5 min-h-[44px] bg-saffron-50 hover:bg-saffron-100 text-saffron-900 text-xs font-bold rounded-xl border border-saffron-200 flex items-center justify-center cursor-pointer"
                 >
                   Verify
                 </button>
@@ -246,7 +246,7 @@ export const TraineeHome: React.FC = () => {
                 course={course}
                 enrollment={enrollment}
                 currentLanguage={currentLanguage}
-                onSelect={(id) => navigate('course_view', { courseId: id })}
+                onSelect={(id) => navigate('course_detail', { courseId: id })}
                 continueLabel={t.lms.continueLesson}
                 startLabel={t.lms.startLesson}
               />
@@ -320,7 +320,7 @@ export const TraineeHome: React.FC = () => {
           </div>
 
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('open-career-bot'))}
+            onClick={() => navigate('career_chat')}
             className="w-full py-2 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 text-xs font-bold rounded-xl border border-saffron-200 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <span>Chat with AI Career Advisor</span>
