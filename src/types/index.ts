@@ -29,6 +29,7 @@ export interface User {
   demoPhotoHash?: string;
   aadhaarMock?: string;
   isKycVerified?: boolean;
+  status?: 'active' | 'deactivated' | 'pending';
 }
 
 export interface Programme {

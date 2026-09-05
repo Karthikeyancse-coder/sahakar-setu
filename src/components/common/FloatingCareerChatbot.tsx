@@ -18,37 +18,42 @@ interface ChatMessage {
 }
 
 export const FloatingCareerChatbot: React.FC = () => {
-  const { currentUser, currentLanguage } = useApp();
+  const { currentUser, currentLanguage, activeView } = useApp();
+
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [ttsEnabled, setTtsEnabled] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: 'msg-welcome',
-      sender: 'bot',
-      text: currentLanguage === 'hi'
-        ? `नमस्ते ${currentUser.name}! मैं आपका सहकार सहायक (AI Career & Training Advisor) हूँ। आप मुझसे पैक्स कंप्यूटरीकरण, दुग्ध सहकारी संघ, स्वयं सहायता समूह (SHG) या एनसीसीटी प्रमाणन से जुड़े रोजगार के बारे में कोई भी प्रश्न पूछ सकते हैं।`
-        : currentLanguage === 'mr'
-        ? `नमस्कार ${currentUser.name}! मी तुमचा सहकार सहायक (AI करिअर सल्लागार) आहे. तुम्ही मला पॅक्स संगणकीकरण, दुग्ध सहकारी संस्था किंवा एनसीसीटी प्रमाणपत्राच्या आधारे मिळणाऱ्या नोकऱ्यांबद्दल विचारू शकता.`
-        : `Namaste ${currentUser.name}! I am your Sahakar Sahayak (AI Cooperative Career & Scheme Advisor). Ask me anything about PACS modernization roles, Dairy AMCS qualifications, SHG governance, or NCCT certificate career pathways.`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
-
-  // Prevent background scrolling when chatbot is open on mobile
+  // Automatically close chatbot if user navigates to another page
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+    setIsOpen(false);
+  }, [activeView]);
+
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const isInstituteAdmin = currentUser.role === 'institute_admin';
+    const welcomeText = isInstituteAdmin
+      ? currentLanguage === 'hi'
+        ? `नमस्ते ${currentUser.name}! मैं आपका सहकार सहायक (AI Advisor) हूँ। आप मुझसे पैक्स प्रशिक्षण पाठ्यक्रम, अभ्यर्थी नामांकन, छात्रावास क्षमता, समय-सारिणी या एनसीसीटी दिशानिर्देशों के बारे में पूछ सकते हैं।`
+        : currentLanguage === 'mr'
+        ? `नमस्कार ${currentUser.name}! मी तुमचा सहकार सहायक (AI सल्लागार) आहे. तुम्ही मला प्रशिक्षण अभ्यासक्रम, उमेदवार नामांकन, वसतिगृह क्षमता किंवा वेळापत्रकाबद्दल विचारू शकता.`
+        : `Namaste ${currentUser.name}! I am your Sahakar Sahayak AI Advisor. Ask me anything about PACS training curriculum, candidate nominations, hostel capacity, timetable scheduling, or NCCT guidelines.`
+      : currentLanguage === 'hi'
+      ? `नमस्ते ${currentUser.name}! मैं आपका सहकार सहायक (AI Career & Training Advisor) हूँ। आप मुझसे पैक्स कंप्यूटरीकरण, दुग्ध सहकारी संघ, स्वयं सहायता समूह (SHG) या एनसीसीटी प्रमाणन से जुड़े रोजगार के बारे में कोई भी प्रश्न पूछ सकते हैं।`
+      : currentLanguage === 'mr'
+      ? `नमस्कार ${currentUser.name}! मी तुमचा सहकार सहायक (AI करिअर सल्लागार) आहे. तुम्ही मला पॅक्स संगणकीकरण, दुग्ध सहकारी संस्था किंवा एनसीसीटी प्रमाणपत्राच्या आधारे मिळणाऱ्या नोकऱ्यांबद्दल विचारू शकता.`
+      : `Namaste ${currentUser.name}! I am your Sahakar Sahayak (AI Cooperative Career & Scheme Advisor). Ask me anything about PACS modernization roles, Dairy AMCS qualifications, SHG governance, or NCCT certificate career pathways.`;
+
+    return [
+      {
+        id: 'msg-welcome',
+        sender: 'bot',
+        text: welcomeText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ];
+  });
 
   // Listen for custom event or navigation to open bot
   useEffect(() => {
@@ -78,6 +83,27 @@ export const FloatingCareerChatbot: React.FC = () => {
   const generateBotResponse = (userQuery: string): string => {
     const query = userQuery.toLowerCase();
 
+    // Institute Admin specific queries
+    if (currentUser.role === 'institute_admin') {
+      if (query.includes('nomination') || query.includes('approve') || query.includes('नामांकन')) {
+        return currentLanguage === 'hi'
+          ? `अभ्यर्थी नामांकन प्रक्रिया:\n1. 'Nominations' टैब में जाकर लंबित अभ्यर्थियों की सूची देखें।\n2. अभ्यर्थी के पैक्स/सहकारी संस्था का विवरण और आधार ई-केवाईसी सत्यापित करें।\n3. 'Approve' बटन दबाकर छात्रावास एवं बैच में स्थान आवंटित करें।\n\nस्वीकृत अभ्यर्थियों को एसएमएस द्वारा सूचना भेजी जाती है।`
+          : `Nomination Review Protocol:\n1. Navigate to the 'Nominations' tab to inspect pending trainees.\n2. Verify the sponsoring PACS credentials and Aadhaar e-KYC status.\n3. Tap 'Approve' to allocate batch seat & hostel accommodation. Approved candidates immediately receive SMS joining circulars.`;
+      }
+      if (query.includes('hostel') || query.includes('room') || query.includes('bed') || query.includes('छात्रावास')) {
+        return currentLanguage === 'hi'
+          ? `छात्रावास आवंटन दिशानिर्देश:\n- वाम्निकॉम परिसर में 8 ब्लॉक और 450 आवासीय बिस्तर उपलब्ध हैं।\n- 'Hostel & Rooms' में जाकर रिक्त कमरों की जांच करें और एक क्लिक में बिस्तर असाइन करें।`
+          : `Hostel Allocation Guide:\n- VAMNICOM campus features 8 residential blocks with 450 bed capacity.\n- Go to 'Hostel & Rooms' to monitor real-time block occupancy and assign beds to approved residential trainees.`;
+      }
+      if (query.includes('timetable') || query.includes('lab') || query.includes('समय') || query.includes('वेळापत्रक')) {
+        return `Academic Timetable Schedule:\n- Manage weekly schedules for Smart Computer Lab 2, Auditorium B, and Lecture Hall 1.\n- On mobile screens, use the single-day view with Next/Previous buttons to view daily sessions.`;
+      }
+      if (query.includes('kiosk') || query.includes('attendance') || query.includes('बायोमेट्रिक')) {
+        return `Attendance Kiosk Operations:\n- The optical fingerprint and QR check-in kiosk runs under 'Sessions & Kiosk'.\n- Data syncs in real-time to the NCCT Central Cloud Hub with offline buffering support.`;
+      }
+    }
+
+    // Trainee / Common queries
     if (query.includes('pacs') || query.includes('पैक्स') || query.includes('पॅक्स') || query.includes('manager')) {
       if (currentLanguage === 'hi') {
         return `पैक्स (PACS) प्रबंधक या ई-आरपी ऑपरेटर बनने के लिए मुख्य योग्यताएं:\n1. **एनसीसीटी राष्ट्रीय पैक्स ई-आरपी प्रमाणपत्र** (Module 1 & 2 उत्तीर्ण)।\n2. दैनिक रोकड़ बही (Cash Book) एवं केसीसी ऋण खाता संधारण का व्यावहारिक ज्ञान।\n3. सीएससी (CSC) ग्रामीण नागरिक सेवाएं प्रदान करने की दक्षता।\n\nइफको (IFFCO) एवं जिला सहकारी बैंकों में वर्तमान में पैक्स बिजनेस एसोसिएट के कई पद उपलब्ध हैं।`;
@@ -158,25 +184,31 @@ export const FloatingCareerChatbot: React.FC = () => {
     }, 500);
   };
 
-  // Compact quick question chips as requested in Requirement 10
-  const quickChips = [
-    { label: 'PACS Jobs', query: 'What skills do I need for PACS Jobs?' },
-    { label: 'Dairy Careers', query: 'Tell me about Dairy Cooperative Careers' },
-    { label: 'Certificates', query: 'Explain NCCT certificate validity' },
-    { label: 'SHG Governance', query: 'How does SHG credit linkage work?' },
-    { label: 'Courses', query: 'What NCCT courses are available?' },
-  ];
+  const quickChips = currentUser.role === 'institute_admin'
+    ? [
+        { label: 'Nominations SOP', query: 'How to review and approve candidate nominations?' },
+        { label: 'Hostel Allocation', query: 'How does hostel bed allocation work?' },
+        { label: 'PACS Syllabus', query: 'What modules are covered under PACS ERP?' },
+        { label: 'Kiosk Attendance', query: 'How does biometric attendance kiosk sync?' },
+      ]
+    : [
+        { label: 'PACS Jobs', query: 'What skills do I need for PACS Jobs?' },
+        { label: 'Dairy Careers', query: 'Tell me about Dairy Cooperative Careers' },
+        { label: 'Certificates', query: 'Explain NCCT certificate validity' },
+        { label: 'SHG Governance', query: 'How does SHG credit linkage work?' },
+        { label: 'Courses', query: 'What NCCT courses are available?' },
+      ];
 
   return (
     <>
-      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 54px diameter, above bottom nav on mobile) */}
+      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 52-54px diameter, above bottom nav on mobile) */}
       {!isOpen && (
-        <div className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-[950] select-none">
+        <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom,0px))] right-4 sm:right-6 lg:bottom-6 lg:right-6 z-[850] select-none">
           <button
             onClick={() => setIsOpen(true)}
-            className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer bg-[#0B6E4F] hover:bg-[#085A40] text-white"
-            aria-label="Open Career Sahayak AI Assistant"
-            title="Ask Career Sahayak (AI Advisor)"
+            className="relative w-[52px] h-[52px] sm:w-[54px] sm:h-[54px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer bg-[#0B6E4F] hover:bg-[#085A40] text-white"
+            aria-label="Open AI Assistant"
+            title="Ask Sahakar Sahayak (AI Advisor)"
           >
             <div className="relative flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-white" />
@@ -187,27 +219,27 @@ export const FloatingCareerChatbot: React.FC = () => {
         </div>
       )}
 
-      {/* 2. Semi-transparent Backdrop Overlay (z-1000) */}
+      {/* 2. Semi-transparent Backdrop Overlay (z-[880], leaves bottom navigation bar uncovered & clickable on mobile) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[1000] transition-opacity animate-fadeIn"
+          className="fixed inset-x-0 top-0 bottom-[calc(76px+env(safe-area-inset-bottom,0px))] lg:inset-0 bg-black/40 backdrop-blur-[1px] z-[880] transition-opacity animate-fadeIn"
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* 3. Floating AI Chat Panel (z-1001, full mobile bottom-sheet, desktop corner popup) */}
+      {/* 3. Floating AI Chat Panel (z-[890], sits above bottom nav on mobile, desktop corner popup) */}
       {isOpen && (
         <div
-          className="fixed z-[1001] bottom-0 left-0 right-0 w-full h-[85vh] max-h-[90vh] rounded-t-[24px] rounded-b-none border-t border-[#D8E3DC] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-48px)] lg:rounded-[24px] lg:border lg:shadow-[0_20px_50px_rgba(7,61,50,0.28)] bg-white flex flex-col overflow-hidden animate-slideUp lg:animate-fadeIn select-none"
+          className="fixed z-[890] bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-2 right-2 sm:left-4 sm:right-4 h-[72vh] max-h-[calc(100vh-96px-env(safe-area-inset-bottom,0px))] rounded-2xl border border-[#D8E3DC] shadow-[0_10px_35px_rgba(0,0,0,0.2)] lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-48px)] lg:rounded-[24px] lg:border lg:shadow-[0_20px_50px_rgba(7,61,50,0.28)] bg-white flex flex-col overflow-hidden animate-slideUp lg:animate-fadeIn select-none"
           role="dialog"
           aria-modal="true"
-          aria-label="Sahakar Sahayak AI Career Advisor"
+          aria-label="Sahakar Sahayak AI Advisor"
         >
           {/* Compact Header (approx 64px) */}
-          <div className="bg-[#0B6E4F] text-white px-4 py-3 flex items-center justify-between shadow-sm h-[64px] flex-shrink-0">
+          <div className="bg-[#0B6E4F] text-white px-4 py-3 flex items-center justify-between shadow-xs h-[64px] flex-shrink-0">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 shadow-xs flex-shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 shadow-2xs flex-shrink-0">
                 <Bot className="w-5 h-5 text-amber-300" />
               </div>
               <div className="min-w-0">
@@ -257,7 +289,7 @@ export const FloatingCareerChatbot: React.FC = () => {
                   className={`flex gap-2 max-w-[88%] ${isBot ? 'mr-auto' : 'ml-auto flex-row-reverse'}`}
                 >
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-white shadow-xs text-xs ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 text-white shadow-2xs text-xs ${
                       isBot ? 'bg-[#0B6E4F]' : 'bg-[#E68A2E]'
                     }`}
                   >
@@ -320,13 +352,17 @@ export const FloatingCareerChatbot: React.FC = () => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="p-2.5 sm:p-3 bg-white border-t border-gray-200 flex items-center gap-2 flex-shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+            className="p-2.5 sm:p-3 bg-white border-t border-gray-200 flex items-center gap-2 flex-shrink-0"
           >
             <input
               type="text"
               value={inputText}
               onChange={e => setInputText(e.target.value)}
-              placeholder="Ask about PACS, Dairy, SHGs, Jobs..."
+              placeholder={
+                currentUser.role === 'institute_admin'
+                  ? 'Ask about Nominations, Hostels, Timetable, Kiosk...'
+                  : 'Ask about PACS, Dairy, SHGs, Jobs...'
+              }
               className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#0B6E4F] bg-[#FBFDFB]"
             />
             <button

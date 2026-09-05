@@ -32,8 +32,12 @@ import { NominationsManagement } from './views/InstituteAdmin/NominationsManagem
 import { AttendanceKiosk } from './views/InstituteAdmin/AttendanceKiosk';
 import { HostelTimetable } from './views/InstituteAdmin/HostelTimetable';
 import { AcademicTimetable } from './views/InstituteAdmin/AcademicTimetable';
+import { AdminProfileView } from './views/InstituteAdmin/AdminProfileView';
 
 import { SuperAdminDashboard } from './views/SuperAdmin/SuperAdminDashboard';
+import { SuperAdminAnalytics } from './views/SuperAdmin/SuperAdminAnalytics';
+import { InstituteDetailView } from './views/SuperAdmin/InstituteDetailView';
+import { UserManagementView } from './views/SuperAdmin/UserManagementView';
 import { CourseBuilder } from './views/Faculty/CourseBuilder';
 import { EmployerPortal } from './views/Employer/EmployerPortal';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
@@ -99,6 +103,8 @@ export const AppContent: React.FC = () => {
         return <AdminDashboard />;
       case 'settings':
         return <SettingsView />;
+      case 'profile':
+        return <AdminProfileView />;
       default:
         return <AdminDashboard />;
     }
@@ -147,10 +153,15 @@ export const AppContent: React.FC = () => {
   const renderSuperAdminView = () => {
     switch (activeView) {
       case 'home':
-      case 'analytics':
         return <SuperAdminDashboard />;
+      case 'analytics':
+        return <SuperAdminAnalytics />;
       case 'institutes_directory':
         return <InstitutesDirectory />;
+      case 'institute_detail':
+        return <InstituteDetailView />;
+      case 'users':
+        return <UserManagementView />;
       case 'settings':
         return <SettingsView />;
       default:

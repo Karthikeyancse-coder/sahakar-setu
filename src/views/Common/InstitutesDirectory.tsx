@@ -15,9 +15,19 @@ import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
 
 export const InstitutesDirectory: React.FC = () => {
-  const { institutes } = useApp();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
+  const { institutes, navigate } = useApp();
+  const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ss_inst_search') || '');
+  const [selectedType, setSelectedType] = useState<string>(() => sessionStorage.getItem('ss_inst_type') || 'all');
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    sessionStorage.setItem('ss_inst_search', val);
+  };
+
+  const handleTypeChange = (val: string) => {
+    setSelectedType(val);
+    sessionStorage.setItem('ss_inst_type', val);
+  };
 
   const filteredInstitutes = institutes.filter(inst => {
     const matchesSearch =
@@ -63,7 +73,7 @@ export const InstitutesDirectory: React.FC = () => {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search institute name, city, state, or director..."
             className="w-full px-3.5 py-2 pl-9 rounded-lg border border-govText-border text-xs focus:outline-none focus:ring-2 focus:ring-govTeal-600 bg-govBg"
           />
@@ -77,8 +87,8 @@ export const InstitutesDirectory: React.FC = () => {
             {['all', 'VAMNICOM', 'RICM', 'ICM'].map(t => (
               <button
                 key={t}
-                onClick={() => setSelectedType(t)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                onClick={() => handleTypeChange(t)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   selectedType === t
                     ? 'bg-govTeal-600 text-white shadow-sm'
                     : 'bg-govBg hover:bg-gray-100 text-govText-secondary'
@@ -96,7 +106,8 @@ export const InstitutesDirectory: React.FC = () => {
         {filteredInstitutes.map(inst => (
           <div
             key={inst.id}
-            className="bg-white rounded-2xl border border-govText-border shadow-sm hover:shadow-md transition-all p-6 flex flex-col justify-between space-y-4"
+            onClick={() => navigate(`/super-admin/institutes/${inst.id}`)}
+            className="bg-white rounded-2xl border border-govText-border shadow-sm hover:shadow-md hover:border-govTeal-500 transition-all p-6 flex flex-col justify-between space-y-4 cursor-pointer group"
           >
             <div className="space-y-3">
               <div className="flex items-start justify-between gap-2">
@@ -146,7 +157,9 @@ export const InstitutesDirectory: React.FC = () => {
 
             <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-govText-muted">
               <span>Sanctioned Capacity: <strong className="text-govText-primary">{inst.capacity}</strong></span>
-              <span className="text-emerald-700 font-semibold font-mono">NODE ACTIVE</span>
+              <span className="text-govTeal-700 font-bold inline-flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                View Institute <ExternalLink className="w-3.5 h-3.5" />
+              </span>
             </div>
 
           </div>

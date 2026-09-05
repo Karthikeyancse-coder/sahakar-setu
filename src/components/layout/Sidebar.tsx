@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
       {/* 2. User Profile Card (Below Sahakar Setu logo - clickable to Profile) */}
       <div className="p-2 md:p-2.5 lg:p-3 border-b border-gray-100 bg-[#FBFDFB]">
         <div
-          onClick={() => navigate(currentUser.role === 'trainee' ? '/trainee/profile' : `/${getRolePrefix(currentUser.role)}/settings`)}
+          onClick={() => navigate(currentUser.role === 'trainee' ? '/trainee/profile' : currentUser.role === 'institute_admin' ? '/institute-admin/profile' : `/${getRolePrefix(currentUser.role)}/settings`)}
           className="bg-white hover:bg-govTeal-50/50 cursor-pointer transition-colors rounded-xl p-1.5 md:p-1.5 lg:p-2.5 border border-gray-200/80 shadow-xs flex items-center md:justify-center lg:justify-start gap-2.5 group"
           title={`${currentUser.name} (${currentUser.role})`}
         >
@@ -120,7 +120,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
 
           {/* Profile Info (Desktop Only) */}
           <div className="min-w-0 flex-1 hidden lg:block">
-            <h3 className="text-xs font-bold text-gray-900 group-hover:text-govTeal-700 transition-colors truncate leading-tight">
+            <h3
+              className="text-xs font-bold text-gray-900 group-hover:text-govTeal-700 transition-colors leading-snug line-clamp-2 break-words"
+              title={currentUser.name}
+            >
               {currentUser.name}
             </h3>
             <p className="text-[10px] font-semibold text-emerald-800 capitalize leading-tight mt-0.5">
@@ -128,7 +131,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
                 ? currentLanguage === 'hi' ? 'प्रशिक्षु' : currentLanguage === 'mr' ? 'प्रशिक्षणार्थी' : 'Trainee'
                 : currentUser.role.replace('_', ' ')}
             </p>
-            <p className="text-[9.5px] text-gray-500 leading-tight mt-0.5 truncate">
+            <p
+              className="text-[9.5px] text-gray-500 leading-tight mt-0.5 line-clamp-2 break-words"
+              title={getAffiliationText()}
+            >
               {getAffiliationText()}
             </p>
           </div>

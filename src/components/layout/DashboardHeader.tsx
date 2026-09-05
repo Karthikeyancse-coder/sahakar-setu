@@ -17,7 +17,7 @@ import {
   Clock,
   CheckCheck
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, getRolePrefix } from '../../context/AppContext';
 import { Language, AppNotification } from '../../types';
 import { EkycModal } from '../common/EkycModal';
 
@@ -93,13 +93,13 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
       {/* Fixed / Sticky Header Container: Keeps Civic Top Bar + Main Header pinned at top */}
       <div className="sticky top-0 z-40 w-full bg-white shadow-xs flex-shrink-0">
         {/* 1. Subtle Government Civic Top Bar */}
-        <div className="bg-govTeal-950 text-govTeal-100 text-[10px] sm:text-[11px] py-1 px-3 sm:px-4 border-b border-govTeal-900 select-none">
+        <div className="bg-govTeal-950 text-govTeal-100 text-[10px] sm:text-[11px] py-1 px-2.5 sm:px-4 border-b border-govTeal-900 select-none">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1.5 sm:gap-2 font-medium truncate">
+            <div className="flex items-center gap-1.5 sm:gap-2 font-medium truncate min-w-0">
               {currentLanguage !== 'en' ? (
                 <>
                   <span className="font-devanagari truncate">{currentLanguage === 'mr' ? 'महाराष्ट्र / भारत सरकार' : 'भारत सरकार'}</span>
-                  <span className="opacity-40">|</span>
+                  <span className="opacity-40 hidden min-[360px]:inline">|</span>
                   <span className="hidden min-[360px]:inline truncate">Govt. of India</span>
                   <span className="text-govTeal-400 hidden sm:inline">•</span>
                   <span className="text-saffron-300 hidden sm:inline truncate">
@@ -115,7 +115,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
               <span className="hidden md:inline opacity-75">
                 {currentLanguage === 'en'
                   ? 'National Council for Cooperative Training (NCCT)'
@@ -140,10 +140,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
 
               {/* Left: Brand Logo & Title on mobile/tablet, Global Search on desktop */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                {/* Mobile/Tablet Brand indicator (when sidebar is hidden on < 1024px) - No hamburger */}
+                {/* Mobile/Tablet Brand indicator (when sidebar is hidden on < 1024px) - Compact mobile header */}
                 <div
                   className="lg:hidden flex items-center gap-2 cursor-pointer flex-shrink-0"
-                  onClick={() => navigate('home')}
+                  onClick={() => navigate(`/${getRolePrefix(currentUser.role)}/dashboard`)}
                   title="Sahakar Setu"
                 >
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-govTeal-700 to-govTeal-900 flex items-center justify-center text-white flex-shrink-0 shadow-xs">
@@ -168,10 +168,10 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
               {/* Right: Actions, Language, e-KYC, Notifications */}
               <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
 
-                {/* Offline Status Toggle (Hidden on narrow mobile < 640px to preserve space) */}
+                {/* Offline Status Toggle (Desktop only >= 1024px) */}
                 <button
                   onClick={toggleOfflineMode}
-                  className={`hidden sm:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-semibold items-center gap-1.5 transition-colors cursor-pointer min-h-[36px] ${isOffline
+                  className={`hidden lg:flex p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg border text-xs font-semibold items-center gap-1.5 transition-colors cursor-pointer min-h-[36px] ${isOffline
                       ? 'bg-amber-100 text-amber-900 border-amber-300'
                       : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                     }`}
@@ -190,7 +190,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
                   )}
                 </button>
 
-                {/* Language Switcher Dropdown */}
+                {/* Language Switcher Dropdown (Visible on all viewports) */}
                 <div className="relative">
                   <button
                     onClick={() => setIsLangDropdownOpen(!isLangDropdownOpen)}
@@ -224,19 +224,20 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
                   )}
                 </div>
 
-                {/* Trainee Simulated e-KYC Modal Trigger (Hidden on tiny mobile < 420px) */}
-                <button
-                  onClick={() => setIsEkycOpen(true)}
-                  className={`hidden min-[420px]:flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-lg border text-xs font-semibold shadow-xs transition-all cursor-pointer min-h-[36px] ${currentUser.isKycVerified
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                      : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                    }`}
-                  title="Aadhaar e-KYC Verification Status"
-                >
-                  <Fingerprint className="w-3.5 h-3.5 text-govTeal-600" />
-                  <span className="hidden min-[480px]:inline">{currentUser.isKycVerified ? 'e-KYC Verified' : 'Verify e-KYC'}</span>
-                  <span className={`w-2 h-2 rounded-full min-[480px]:hidden ${currentUser.isKycVerified ? 'bg-emerald-600' : 'bg-amber-500'}`} />
-                </button>
+                {/* Trainee Simulated e-KYC Modal Trigger (Desktop only >= 1024px, Trainees only) */}
+                {currentUser.role === 'trainee' && (
+                  <button
+                    onClick={() => setIsEkycOpen(true)}
+                    className={`hidden lg:flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-lg border text-xs font-semibold shadow-xs transition-all cursor-pointer min-h-[36px] ${currentUser.isKycVerified
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                        : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                      }`}
+                    title="Aadhaar e-KYC Verification Status"
+                  >
+                    <Fingerprint className="w-3.5 h-3.5 text-govTeal-600" />
+                    <span>{currentUser.isKycVerified ? 'e-KYC Verified' : 'Verify e-KYC'}</span>
+                  </button>
+                )}
 
                 {/* Interactive Notification Bell with Dropdown Panel */}
                 <div className="relative" ref={notifDropdownRef}>

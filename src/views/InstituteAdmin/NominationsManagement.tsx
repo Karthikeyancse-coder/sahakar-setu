@@ -158,7 +158,7 @@ export const NominationsManagement: React.FC = () => {
       </div>
 
       {/* 2. Top Summary KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <div className="bg-white p-4 rounded-xl border border-govText-border shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-govText-secondary">Total Received</span>
@@ -216,20 +216,20 @@ export const NominationsManagement: React.FC = () => {
 
       {/* 3. Filter Controls Bar */}
       <div className="bg-white p-4 rounded-2xl border border-govText-border shadow-sm space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Status Tabs */}
-          <div className="flex bg-govBg p-1 rounded-xl border border-gray-200 text-xs font-semibold">
+          <div className="flex bg-govBg p-1 rounded-xl border border-gray-200 text-xs font-semibold overflow-x-auto scrollbar-none">
             {(['all', 'pending', 'approved', 'rejected'] as const).map(st => (
               <button
                 key={st}
                 onClick={() => setSelectedStatus(st)}
-                className={`px-3 py-1.5 rounded-lg capitalize transition-all ${
+                className={`px-3 py-1.5 rounded-lg capitalize transition-all whitespace-nowrap ${
                   selectedStatus === st
                     ? 'bg-govTeal-600 text-white shadow-xs font-bold'
                     : 'text-govText-secondary hover:text-govText-primary'
                 }`}
               >
-                {st === 'all' ? 'All Statuses' : st}
+                {st === 'all' ? 'All' : st}
                 {st === 'pending' && pendingCount > 0 && (
                   <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[9px] bg-amber-400 text-amber-950 font-extrabold">
                     {pendingCount}
@@ -240,26 +240,26 @@ export const NominationsManagement: React.FC = () => {
           </div>
 
           {/* Search Box */}
-          <div className="relative min-w-[240px] flex-1 max-w-sm">
+          <div className="relative w-full sm:w-auto sm:min-w-[240px] sm:max-w-sm">
             <Search className="w-4 h-4 text-govText-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search candidate, email, or society..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-govBg border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-govTeal-500 focus:bg-white"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-govBg border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-govTeal-500 focus:bg-white min-h-[40px]"
             />
           </div>
         </div>
 
         {/* Dropdown Filters: Programme & Cooperative */}
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100 text-xs">
-          <div className="flex items-center gap-2">
-            <span className="text-govText-secondary font-medium">Filter Programme:</span>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 pt-2 border-t border-gray-100 text-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <span className="text-govText-secondary font-medium whitespace-nowrap">Programme:</span>
             <select
               value={selectedProgrammeId}
               onChange={e => setSelectedProgrammeId(e.target.value)}
-              className="bg-govBg border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-govText-primary font-medium focus:outline-none focus:ring-1 focus:ring-govTeal-500"
+              className="bg-govBg border border-gray-200 rounded-lg px-2.5 py-2 text-xs text-govText-primary font-medium focus:outline-none focus:ring-1 focus:ring-govTeal-500 w-full sm:w-auto max-w-full truncate min-h-[38px]"
             >
               <option value="all">All Programmes ({nominations.length})</option>
               {programmes.map(p => (
@@ -270,12 +270,12 @@ export const NominationsManagement: React.FC = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span className="text-govText-secondary font-medium">Cooperative Organization:</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
+            <span className="text-govText-secondary font-medium whitespace-nowrap">Cooperative:</span>
             <select
               value={selectedCoop}
               onChange={e => setSelectedCoop(e.target.value)}
-              className="bg-govBg border border-gray-200 rounded-lg px-2.5 py-1 text-xs text-govText-primary font-medium focus:outline-none focus:ring-1 focus:ring-govTeal-500 max-w-xs truncate"
+              className="bg-govBg border border-gray-200 rounded-lg px-2.5 py-2 text-xs text-govText-primary font-medium focus:outline-none focus:ring-1 focus:ring-govTeal-500 w-full sm:w-auto max-w-full sm:max-w-xs truncate min-h-[38px]"
             >
               <option value="all">All Cooperatives</option>
               {cooperativeOptions.map(c => (
@@ -294,7 +294,7 @@ export const NominationsManagement: React.FC = () => {
                 setSelectedCoop('all');
                 setSearchQuery('');
               }}
-              className="text-xs text-govTeal-700 hover:text-govTeal-900 font-semibold underline ml-auto"
+              className="text-xs text-govTeal-700 hover:text-govTeal-900 font-semibold underline sm:ml-auto self-start sm:self-auto py-1"
             >
               Reset Filters
             </button>
@@ -304,32 +304,32 @@ export const NominationsManagement: React.FC = () => {
 
       {/* 4. Bulk Action Bar (when rows are selected) */}
       {selectedIds.length > 0 && (
-        <div className="bg-govTeal-900 text-white p-3.5 rounded-2xl shadow-md flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
+        <div className="bg-govTeal-900 text-white p-3.5 rounded-2xl shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fadeIn">
           <div className="flex items-center gap-2.5 text-xs font-semibold">
-            <span className="w-6 h-6 rounded-full bg-saffron-400 text-govTeal-950 flex items-center justify-center font-bold text-xs">
+            <span className="w-6 h-6 rounded-full bg-saffron-400 text-govTeal-950 flex items-center justify-center font-bold text-xs flex-shrink-0">
               {selectedIds.length}
             </span>
             <span>Candidates Selected for Batch Review</span>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={handleBulkApprove}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              className="flex-1 sm:flex-initial px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 min-h-[40px] cursor-pointer"
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Bulk Approve Selected</span>
+              <span>Bulk Approve</span>
             </button>
             <button
               onClick={handleBulkReject}
-              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center gap-1.5"
+              className="flex-1 sm:flex-initial px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold shadow-xs transition-colors flex items-center justify-center gap-1.5 min-h-[40px] cursor-pointer"
             >
               <XCircle className="w-3.5 h-3.5" />
-              <span>Bulk Reject Selected</span>
+              <span>Bulk Reject</span>
             </button>
             <button
               onClick={() => setSelectedIds([])}
-              className="px-2.5 py-1.5 bg-govTeal-800 hover:bg-govTeal-700 text-govTeal-100 rounded-lg text-xs font-medium transition-colors"
+              className="px-2.5 py-2 bg-govTeal-800 hover:bg-govTeal-700 text-govTeal-100 rounded-lg text-xs font-medium transition-colors min-h-[40px] cursor-pointer"
             >
               Deselect All
             </button>
@@ -356,7 +356,8 @@ export const NominationsManagement: React.FC = () => {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-govBg text-govText-secondary uppercase font-semibold border-b border-gray-200 select-none">
@@ -452,9 +453,9 @@ export const NominationsManagement: React.FC = () => {
                       </td>
 
                       {/* Status */}
-                      <td className="p-3 whitespace-nowrap">
+                      <td className="p-3">
                         <span
-                          className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             nom.status === 'approved'
                               ? 'bg-emerald-100 text-emerald-800'
                               : nom.status === 'rejected'
@@ -502,6 +503,132 @@ export const NominationsManagement: React.FC = () => {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Candidate Card View (< 768px) */}
+        <div className="block md:hidden divide-y divide-gray-100">
+          {/* Mobile Select All Bar */}
+          {pendingFiltered.length > 0 && (
+            <div className="p-3 bg-govBg/70 border-b border-gray-100 flex items-center justify-between text-xs font-semibold">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 text-govTeal-800 min-h-[36px]"
+              >
+                {isAllPendingSelected ? (
+                  <CheckSquare className="w-4 h-4 text-govTeal-700" />
+                ) : (
+                  <Square className="w-4 h-4 text-gray-400" />
+                )}
+                <span>{isAllPendingSelected ? 'Deselect All Pending' : 'Select All Pending for Bulk Action'}</span>
+              </button>
+            </div>
+          )}
+
+          {filteredNominations.length > 0 ? (
+            filteredNominations.map(nom => {
+              const prog = programmes.find(p => p.id === nom.programmeId);
+              const isSelected = selectedIds.includes(nom.id);
+              const isPending = nom.status === 'pending';
+
+              return (
+                <div
+                  key={nom.id}
+                  className={`p-4 space-y-3 transition-colors ${
+                    isSelected ? 'bg-govTeal-50/50' : 'hover:bg-govBg/40'
+                  }`}
+                >
+                  {/* Candidate Header */}
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {isPending && (
+                        <button
+                          onClick={() => handleToggleRow(nom.id)}
+                          className="flex items-center justify-center text-govTeal-700 flex-shrink-0 p-1"
+                          aria-label={`Select ${nom.traineeName}`}
+                        >
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-govTeal-700" />
+                          ) : (
+                            <Square className="w-4 h-4 text-gray-400" />
+                          )}
+                        </button>
+                      )}
+                      <div className="w-8 h-8 rounded-full bg-govTeal-100 text-govTeal-800 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                        {nom.traineeName.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-govText-primary truncate leading-tight">
+                          {nom.traineeName}
+                        </p>
+                        <p className="text-[11px] text-govText-muted truncate mt-0.5">
+                          {nom.traineeEmail}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider flex-shrink-0 ${
+                        nom.status === 'approved'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : nom.status === 'rejected'
+                          ? 'bg-rose-100 text-rose-800'
+                          : 'bg-amber-100 text-amber-900'
+                      }`}
+                    >
+                      {nom.status}
+                    </span>
+                  </div>
+
+                  {/* Cooperative Details */}
+                  <div className="bg-govBg/80 p-2.5 rounded-xl border border-gray-100 space-y-1 text-xs">
+                    <div className="flex items-center gap-1.5 text-govText-primary font-medium">
+                      <Building2 className="w-3.5 h-3.5 text-govTeal-600 flex-shrink-0" />
+                      <span className="truncate">{nom.cooperativeName}</span>
+                    </div>
+
+                    <div className="pt-1 text-[11px] text-govText-secondary">
+                      <span className="text-govText-muted font-medium">Programme: </span>
+                      <strong className="text-govTeal-800">{prog ? prog.title : nom.programmeId}</strong>
+                    </div>
+
+                    <div className="text-[10px] text-govText-muted flex items-center gap-1 pt-0.5">
+                      <Clock className="w-3 h-3" />
+                      <span>Nominated Date: {nom.nominatedDate}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  {isPending ? (
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        onClick={() => handleRowApprove(nom.id, nom.traineeName)}
+                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer transition-colors"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => handleRowReject(nom.id, nom.traineeName)}
+                        className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer transition-colors"
+                      >
+                        <XCircle className="w-4 h-4" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-right text-[11px] text-govText-muted font-medium">
+                      {nom.status === 'approved' ? '✓ Enrolled in Programme Batch' : '✕ Nomination Archived'}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div className="p-8 text-center text-govText-muted space-y-1">
+              <p className="font-semibold text-sm">No nominations found</p>
+              <p className="text-xs">Adjust your status or cooperative filters.</p>
+            </div>
+          )}
         </div>
       </div>
     </PageContainer>

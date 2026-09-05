@@ -26,7 +26,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
           <OfflineBanner />
 
           {/* Main Content Area: 100% width on mobile/tablet with safe area bottom padding, scrollable independently on desktop */}
-          <main className="flex-1 min-w-0 w-full overflow-x-hidden lg:overflow-y-auto pb-[calc(84px+env(safe-area-inset-bottom))] lg:pb-12">
+          <main className="flex-1 min-w-0 w-full overflow-x-hidden lg:overflow-y-auto pb-[calc(110px+env(safe-area-inset-bottom,0px))] sm:pb-[calc(120px+env(safe-area-inset-bottom,0px))] lg:pb-12">
             {children}
           </main>
         </div>

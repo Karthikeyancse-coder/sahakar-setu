@@ -37,47 +37,47 @@ export const TraineeDirectory: React.FC = () => {
       <div className="space-y-6 animate-fadeIn pb-16">
       
       {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
               National Trainee Registry
             </span>
             <SimulatedBadge text="NCCT Verified Records" />
           </div>
-          <h2 className="text-2xl font-extrabold text-govText-primary">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1 leading-snug">
             Cooperative Trainee & PACS Workforce Directory
           </h2>
-          <p className="text-xs text-govText-secondary mt-1">
+          <p className="text-xs text-govText-secondary mt-1 leading-relaxed">
             Complete list of enrolled and certified trainees across 20 NCCT institutions.
           </p>
         </div>
 
-        <div className="text-xs font-bold text-govTeal-800 bg-govTeal-50 px-4 py-2 rounded-xl border border-govTeal-200">
+        <div className="text-xs font-bold text-govTeal-800 bg-govTeal-50 px-4 py-2 rounded-xl border border-govTeal-200 self-start sm:self-auto">
           {trainees.length} Registered Trainees (Seeded Demo Records)
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[240px]">
+      <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+        <div className="relative flex-1 min-w-0">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search candidate name or primary society..."
-            className="w-full px-3.5 py-2 pl-9 rounded-lg border border-govText-border text-xs focus:outline-none focus:ring-2 focus:ring-govTeal-600 bg-govBg"
+            className="w-full px-3.5 py-2 pl-9 rounded-lg border border-govText-border text-xs focus:outline-none focus:ring-2 focus:ring-govTeal-600 bg-govBg min-h-[40px]"
           />
-          <Search className="w-4 h-4 text-govText-muted absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-govText-muted absolute left-3 top-3" />
         </div>
 
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-govTeal-600" />
-          <span className="text-xs font-semibold text-govText-secondary">Institute:</span>
+          <Filter className="w-4 h-4 text-govTeal-600 flex-shrink-0" />
+          <span className="text-xs font-semibold text-govText-secondary whitespace-nowrap">Institute:</span>
           <select
             value={selectedInst}
             onChange={(e) => setSelectedInst(e.target.value)}
-            className="text-xs font-semibold px-3 py-2 rounded-lg border border-govText-border bg-govBg focus:outline-none focus:ring-2 focus:ring-govTeal-600"
+            className="text-xs font-semibold px-3 py-2 rounded-lg border border-govText-border bg-govBg focus:outline-none focus:ring-2 focus:ring-govTeal-600 w-full sm:w-auto min-h-[40px]"
           >
             <option value="all">All Institutes</option>
             {institutes.map(i => (
@@ -87,9 +87,10 @@ export const TraineeDirectory: React.FC = () => {
         </div>
       </div>
 
-      {/* Table */}
+      {/* Table & Cards Container */}
       <div className="bg-white rounded-2xl border border-govText-border shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Desktop Table (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-govBg text-govText-secondary uppercase font-semibold border-b border-gray-200">
@@ -129,7 +130,7 @@ export const TraineeDirectory: React.FC = () => {
                     </td>
                     <td className="p-4">
                       <span className="font-mono bg-emerald-50 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded font-bold text-[10px]">
-                        {t.aadhaarMock || 'VERIFIED'}
+                        {t.aadhaarMock || 'XXXX-XXXX-4589'}
                       </span>
                     </td>
                     <td className="p-4">
@@ -149,7 +150,7 @@ export const TraineeDirectory: React.FC = () => {
                       {userCerts.length > 0 && (
                         <button
                           onClick={() => navigate('verify_public', { certId: userCerts[0].id })}
-                          className="px-2.5 py-1 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto"
+                          className="px-2.5 py-1 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 rounded-lg text-xs font-bold flex items-center gap-1 ml-auto cursor-pointer"
                         >
                           <Award className="w-3.5 h-3.5" />
                           <span>Verify</span>
@@ -161,6 +162,91 @@ export const TraineeDirectory: React.FC = () => {
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards (< 768px) */}
+        <div className="block md:hidden divide-y divide-gray-100">
+          {filtered.map(t => {
+            const userCerts = certificates.filter(c => c.userId === t.id);
+            const inst = institutes.find(i => i.id === t.instituteId);
+
+            return (
+              <div key={t.id} className="p-4 space-y-3">
+                {/* Header: Avatar, Name, Email */}
+                <div className="flex items-center gap-3">
+                  <img
+                    src={t.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=50'}
+                    alt={t.name}
+                    className="w-11 h-11 rounded-full object-cover border-2 border-govTeal-600 flex-shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm text-govText-primary truncate">{t.name}</p>
+                    <p className="text-xs text-govText-muted truncate mt-0.5">{t.email}</p>
+                  </div>
+                </div>
+
+                {/* Details Breakdown */}
+                <div className="bg-govBg/70 p-3 rounded-xl border border-gray-100 space-y-2 text-xs">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-govText-muted tracking-wider block">
+                      Cooperative
+                    </span>
+                    <span className="font-semibold text-govText-primary">
+                      {t.cooperativeAffiliation || 'PACS Member'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-govText-muted tracking-wider block">
+                      Institute
+                    </span>
+                    <span className="font-semibold text-govTeal-800">
+                      {inst?.name || 'VAMNICOM'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-govText-muted tracking-wider block">
+                      E-KYC
+                    </span>
+                    <span className="font-mono bg-emerald-50 text-emerald-900 border border-emerald-300 px-2 py-0.5 rounded font-bold text-[10px] inline-block mt-0.5">
+                      {t.aadhaarMock || 'XXXX-XXXX-4589'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-govText-muted tracking-wider block">
+                      Credential
+                    </span>
+                    {userCerts.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {userCerts.map(c => (
+                          <span key={c.id} className="text-[11px] bg-govTeal-50 text-govTeal-900 px-2 py-0.5 rounded font-semibold border border-govTeal-200">
+                            {c.courseTitle}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-gray-400 italic text-xs">Enrolled candidate</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Action Button */}
+                {userCerts.length > 0 && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      onClick={() => navigate('verify_public', { certId: userCerts[0].id })}
+                      className="w-full py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 min-h-[44px] cursor-pointer transition-colors"
+                    >
+                      <Award className="w-4 h-4 text-saffron-700" />
+                      <span>Verify Certificate</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 

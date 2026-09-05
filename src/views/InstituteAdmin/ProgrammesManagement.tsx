@@ -68,26 +68,26 @@ export const ProgrammesManagement: React.FC = () => {
     <PageContainer>
       
       {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
               Training-ERP Module
             </span>
             <SimulatedBadge text="Federated Capacity Planning" />
           </div>
-          <h2 className="text-2xl font-extrabold text-govText-primary">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1 leading-snug">
             Programmes & Trainee Nominations
           </h2>
-          <p className="text-xs text-govText-secondary mt-1">
+          <p className="text-xs text-govText-secondary mt-1 leading-relaxed">
             Manage residential batches, state quotas, and institutional nominations.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <button
             onClick={() => setIsCsvModalOpen(true)}
-            className="px-4 py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center gap-1.5 transition-colors"
+            className="w-full sm:w-auto px-4 py-2.5 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center justify-center gap-1.5 transition-colors min-h-[40px] cursor-pointer"
           >
             <Upload className="w-4 h-4 text-govTeal-700" />
             <span>Bulk CSV Import</span>
@@ -95,8 +95,8 @@ export const ProgrammesManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Programmes List Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Programmes List Grid: Stacks vertically on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         {programmes.map(prog => {
           const isSelected = selectedProgrammeId === prog.id;
           const inst = institutes.find(i => i.id === prog.instituteId);
@@ -107,7 +107,7 @@ export const ProgrammesManagement: React.FC = () => {
             <div
               key={prog.id}
               onClick={() => setSelectedProgrammeId(prog.id)}
-              className={`bg-white rounded-2xl p-5 border-2 cursor-pointer transition-all space-y-4 shadow-sm hover:shadow-md ${
+              className={`bg-white rounded-2xl p-4 sm:p-5 border-2 cursor-pointer transition-all space-y-3.5 shadow-sm hover:shadow-md ${
                 isSelected
                   ? 'border-govTeal-600 ring-2 ring-govTeal-600/20'
                   : 'border-govText-border hover:border-govTeal-300'
@@ -150,23 +150,24 @@ export const ProgrammesManagement: React.FC = () => {
       </div>
 
       {/* Nominations for Selected Programme */}
-      <div className="bg-white rounded-2xl p-6 border border-govText-border shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
+      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-govText-border shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
           <div>
-            <h3 className="font-bold text-base text-govText-primary">
-              Nominations for: <span className="text-govTeal-700">{selectedProgramme?.title}</span>
+            <h3 className="font-bold text-sm sm:text-base text-govText-primary">
+              Nominations: <span className="text-govTeal-700">{selectedProgramme?.title}</span>
             </h3>
-            <p className="text-xs text-govText-secondary">
+            <p className="text-[11px] sm:text-xs text-govText-secondary">
               Review and authorize trainee nominations from primary societies
             </p>
           </div>
 
-          <span className="text-xs font-bold text-govTeal-800 bg-govBg px-3 py-1 rounded-lg border border-gray-200">
+          <span className="text-xs font-bold text-govTeal-800 bg-govBg px-3 py-1 rounded-lg border border-gray-200 self-start sm:self-auto">
             {programmeNominations.length} Candidates Nominated
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-govBg text-govText-secondary uppercase font-semibold border-b border-gray-200">
@@ -201,13 +202,13 @@ export const ProgrammesManagement: React.FC = () => {
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => updateNominationStatus(nom.id, 'approved')}
-                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors"
+                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
                         >
                           Approve
                         </button>
                         <button
                           onClick={() => updateNominationStatus(nom.id, 'rejected')}
-                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200"
+                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-xs font-bold border border-rose-200 cursor-pointer"
                         >
                           Reject
                         </button>
@@ -220,6 +221,51 @@ export const ProgrammesManagement: React.FC = () => {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Candidate Card View (< 768px) */}
+        <div className="block md:hidden divide-y divide-gray-100">
+          {programmeNominations.map(nom => (
+            <div key={nom.id} className="py-3.5 space-y-2.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-bold text-sm text-govText-primary">{nom.traineeName}</p>
+                  <p className="text-[11px] text-govText-muted font-mono">{nom.traineeEmail}</p>
+                </div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  nom.status === 'approved'
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : nom.status === 'rejected'
+                    ? 'bg-rose-100 text-rose-800'
+                    : 'bg-amber-100 text-amber-900'
+                }`}>
+                  {nom.status}
+                </span>
+              </div>
+
+              <div className="text-xs text-govText-secondary space-y-0.5">
+                <p><span className="text-govText-muted">Society: </span>{nom.cooperativeName}</p>
+                <p><span className="text-govText-muted">Date: </span>{nom.nominatedDate}</p>
+              </div>
+
+              {nom.status === 'pending' && (
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => updateNominationStatus(nom.id, 'approved')}
+                    className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold min-h-[44px] flex items-center justify-center cursor-pointer"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => updateNominationStatus(nom.id, 'rejected')}
+                    className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold min-h-[44px] flex items-center justify-center cursor-pointer"
+                  >
+                    Reject
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 

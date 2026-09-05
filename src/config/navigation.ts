@@ -113,6 +113,7 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       title: 'NETWORK MANAGEMENT',
       items: [
         { id: 'institutes_directory', label: '20 NCCT Institutes', route: '/super-admin/institutes', icon: Building2 },
+        { id: 'users', label: 'User & Role Management', route: '/super-admin/users', icon: UserCheck },
       ],
     },
     {

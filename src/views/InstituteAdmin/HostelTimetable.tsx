@@ -38,34 +38,34 @@ export const HostelTimetable: React.FC = () => {
     <PageContainer>
       
       {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
               Residential Logistics ERP
             </span>
             <SimulatedBadge text="Campus Facility Operations" />
           </div>
-          <h2 className="text-2xl font-extrabold text-govText-primary">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1 leading-snug">
             Hostel Bed Allocation & Rooms
           </h2>
-          <p className="text-xs text-govText-secondary mt-1">
+          <p className="text-xs text-govText-secondary mt-1 leading-relaxed">
             Real-time room occupancy management and candidate room allocation.
           </p>
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-govBg p-1.5 rounded-xl border border-govTeal-100">
+        <div className="flex bg-govBg p-1.5 rounded-xl border border-govTeal-100 w-full sm:w-auto">
           <button
             onClick={() => navigate('/institute-admin/hostel')}
-            className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 bg-govTeal-600 text-white shadow"
+            className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 bg-govTeal-600 text-white shadow min-h-[40px] cursor-pointer"
           >
             <BedDouble className="w-4 h-4" />
             <span>Hostel Accommodation</span>
           </button>
           <button
             onClick={() => navigate('/institute-admin/timetable')}
-            className="px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2 text-govText-secondary hover:text-govText-primary"
+            className="flex-1 sm:flex-initial px-4 py-2.5 sm:py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 text-govText-secondary hover:text-govText-primary min-h-[40px] cursor-pointer"
           >
             <Calendar className="w-4 h-4" />
             <span>Weekly Timetable Grid</span>
@@ -74,18 +74,18 @@ export const HostelTimetable: React.FC = () => {
       </div>
 
       {/* Hostel Room & Bed Allocation */}
-      <div className="space-y-6">
+      <div className="space-y-5 sm:space-y-6">
         
         {/* Filter Bar */}
-        <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-govText-secondary">Filter by Block:</span>
-            <div className="flex gap-2">
+        <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+            <span className="text-xs font-semibold text-govText-secondary whitespace-nowrap">Filter by Block:</span>
+            <div className="flex flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
               {blocks.map(b => (
                 <button
                   key={b}
                   onClick={() => setSelectedBlock(b)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-h-[36px] cursor-pointer ${
                     selectedBlock === b
                       ? 'bg-govTeal-600 text-white shadow-sm'
                       : 'bg-govBg hover:bg-gray-100 text-govText-secondary'
@@ -97,7 +97,7 @@ export const HostelTimetable: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs font-semibold">
+          <div className="flex items-center gap-2.5 text-xs font-semibold pt-1 sm:pt-0 self-end sm:self-auto">
             <span className="text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
               {hostelBeds.filter(b => b.status === 'occupied').length} Occupied
             </span>
@@ -108,14 +108,14 @@ export const HostelTimetable: React.FC = () => {
         </div>
 
         {/* Beds Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-5">
           {filteredBeds.map(bed => {
             const isOccupied = bed.status === 'occupied';
 
             return (
               <div
                 key={bed.id}
-                className={`bg-white rounded-2xl border-2 p-5 space-y-3 transition-all shadow-sm hover:shadow-md ${
+                className={`bg-white rounded-2xl border-2 p-4 sm:p-5 space-y-3 transition-all shadow-sm hover:shadow-md ${
                   isOccupied ? 'border-govTeal-300' : 'border-gray-200 opacity-90'
                 }`}
               >
@@ -143,7 +143,7 @@ export const HostelTimetable: React.FC = () => {
 
                 <button
                   onClick={() => toggleBedStatus(bed.id, bed.status)}
-                  className={`w-full py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition-colors min-h-[44px] cursor-pointer flex items-center justify-center ${
                     isOccupied
                       ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200'
                       : 'bg-govTeal-600 hover:bg-govTeal-700 text-white shadow'

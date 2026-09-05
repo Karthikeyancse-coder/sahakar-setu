@@ -8,7 +8,11 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Users,
+  BedDouble,
+  CalendarDays,
+  BarChart3
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -18,7 +22,7 @@ interface MoreBottomSheetProps {
 }
 
 export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClose }) => {
-  const { navigate, notifications, currentLanguage, t } = useApp();
+  const { currentUser, navigate, notifications, currentLanguage, t } = useApp();
 
   const unreadNotifsCount = notifications.filter(n => !n.isRead).length;
 
@@ -41,53 +45,108 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  const handleSelect = (viewId: string) => {
-    navigate(viewId);
+  const handleSelect = (destination: string) => {
+    navigate(destination);
     onClose();
   };
 
-  const moreItems = [
-    {
-      id: 'certificates',
-      label: currentLanguage === 'hi' ? 'प्रमाणपत्र' : currentLanguage === 'mr' ? 'प्रमाणपत्रे' : 'Certificates',
-      sub: 'Verifiable credentials & public audit hashes',
-      icon: Award,
-      badge: null,
-    },
-    {
-      id: 'attendance_kiosk',
-      label: currentLanguage === 'hi' ? 'उपस्थिति कियोस्क' : currentLanguage === 'mr' ? 'हजेरी कियोस्क' : 'Attendance',
-      sub: 'QR check-in & biometric kiosk logs',
-      icon: QrCode,
-      badge: 'Live',
-    },
-    {
-      id: 'help',
-      label: currentLanguage === 'hi' ? 'सहायता व संपर्क' : currentLanguage === 'mr' ? 'मदत व संपर्क' : 'Help & Support',
-      sub: 'PACS FAQs, grievances & helpline',
-      icon: HelpCircle,
-      badge: null,
-    },
-    {
-      id: 'settings',
-      label: currentLanguage === 'hi' ? 'सेटिंग्स' : currentLanguage === 'mr' ? 'सेटिंग्ज' : 'Settings',
-      sub: 'Language, rural offline cache & security',
-      icon: Settings,
-      badge: null,
-    },
-    {
-      id: 'notifications',
-      label: currentLanguage === 'hi' ? 'सूचनाएं' : currentLanguage === 'mr' ? 'सूचना' : 'Notifications',
-      sub: 'Ministry circulars & batch alerts',
-      icon: Bell,
-      badge: unreadNotifsCount > 0 ? `${unreadNotifsCount} New` : null,
-      action: () => {
-        // Navigate to home and let notification dropdown or state handle it
-        navigate('home');
-        onClose();
-      },
-    },
-  ];
+  const moreItems = currentUser.role === 'institute_admin'
+    ? [
+        {
+          id: 'trainee_directory',
+          route: '/institute-admin/trainees',
+          label: currentLanguage === 'hi' ? 'प्रशिक्षु सूची' : currentLanguage === 'mr' ? 'प्रशिक्षणार्थी यादी' : 'Trainees',
+          sub: 'Enrolled candidates & Aadhaar mock KYC records',
+          icon: Users,
+          badge: null,
+        },
+        {
+          id: 'attendance_kiosk',
+          route: '/institute-admin/sessions',
+          label: currentLanguage === 'hi' ? 'सत्र एवं कियोस्क' : currentLanguage === 'mr' ? 'सत्रे आणि कियोस्क' : 'Sessions & Kiosk',
+          sub: 'Live biometric check-in & lecture sessions',
+          icon: QrCode,
+          badge: 'Hardware',
+        },
+        {
+          id: 'hostel_timetable',
+          route: '/institute-admin/hostel',
+          label: currentLanguage === 'hi' ? 'छात्रावास एवं कमरे' : currentLanguage === 'mr' ? 'वसतिगृह आणि खोल्या' : 'Hostel & Rooms',
+          sub: 'Hostel blocks, occupancy & bed allocation',
+          icon: BedDouble,
+          badge: null,
+        },
+        {
+          id: 'timetable',
+          route: '/institute-admin/timetable',
+          label: currentLanguage === 'hi' ? 'अकादमिक समय सारिणी' : currentLanguage === 'mr' ? 'अकादमिक वेळापत्रक' : 'Academic Timetable',
+          sub: 'Weekly smart lab & classroom schedule grid',
+          icon: CalendarDays,
+          badge: null,
+        },
+        {
+          id: 'analytics',
+          route: '/institute-admin/analytics',
+          label: currentLanguage === 'hi' ? 'संस्थान विश्लेषण' : currentLanguage === 'mr' ? 'संस्था विश्लेषण' : 'Institute Analytics',
+          sub: 'Enrolment statistics, completion & metrics',
+          icon: BarChart3,
+          badge: null,
+        },
+        {
+          id: 'settings',
+          route: '/institute-admin/settings',
+          label: currentLanguage === 'hi' ? 'सेटिंग्स' : currentLanguage === 'mr' ? 'सेटिंग्ज' : 'Settings',
+          sub: 'Device configuration & security options',
+          icon: Settings,
+          badge: null,
+        },
+      ]
+    : [
+        {
+          id: 'certificates',
+          route: '/trainee/certificates',
+          label: currentLanguage === 'hi' ? 'प्रमाणपत्र' : currentLanguage === 'mr' ? 'प्रमाणपत्रे' : 'Certificates',
+          sub: 'Verifiable credentials & public audit hashes',
+          icon: Award,
+          badge: null,
+        },
+        {
+          id: 'attendance_kiosk',
+          route: '/trainee/attendance',
+          label: currentLanguage === 'hi' ? 'उपस्थिति कियोस्क' : currentLanguage === 'mr' ? 'हजेरी कियोस्क' : 'Attendance',
+          sub: 'QR check-in & biometric kiosk logs',
+          icon: QrCode,
+          badge: 'Live',
+        },
+        {
+          id: 'help',
+          route: '/trainee/help',
+          label: currentLanguage === 'hi' ? 'सहायता व संपर्क' : currentLanguage === 'mr' ? 'मदत व संपर्क' : 'Help & Support',
+          sub: 'PACS FAQs, grievances & helpline',
+          icon: HelpCircle,
+          badge: null,
+        },
+        {
+          id: 'settings',
+          route: '/trainee/settings',
+          label: currentLanguage === 'hi' ? 'सेटिंग्स' : currentLanguage === 'mr' ? 'सेटिंग्ज' : 'Settings',
+          sub: 'Language, rural offline cache & security',
+          icon: Settings,
+          badge: null,
+        },
+        {
+          id: 'notifications',
+          route: '/trainee/dashboard',
+          label: currentLanguage === 'hi' ? 'सूचनाएं' : currentLanguage === 'mr' ? 'सूचना' : 'Notifications',
+          sub: 'Ministry circulars & batch alerts',
+          icon: Bell,
+          badge: unreadNotifsCount > 0 ? `${unreadNotifsCount} New` : null,
+          action: () => {
+            navigate('home');
+            onClose();
+          },
+        },
+      ];
 
   return (
     <div className="fixed inset-0 z-[920] flex flex-col justify-end lg:hidden select-none animate-fadeIn">
@@ -115,7 +174,9 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
               {currentLanguage === 'hi' ? 'अधिक विकल्प' : currentLanguage === 'mr' ? 'अधिक पर्याय' : 'More Options'}
             </h3>
             <p className="text-[11px] text-govText-muted">
-              Sahakar Setu Trainee Services
+              {currentUser.role === 'institute_admin'
+                ? 'Sahakar Setu Institute Admin Services'
+                : 'Sahakar Setu Trainee Services'}
             </p>
           </div>
 
@@ -140,7 +201,7 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
                   if (item.action) {
                     item.action();
                   } else {
-                    handleSelect(item.id);
+                    handleSelect(item.route || item.id);
                   }
                 }}
                 className="w-full py-3.5 px-2 flex items-center justify-between hover:bg-govTeal-50/60 rounded-xl transition-colors text-left group min-h-[52px] cursor-pointer"
@@ -176,7 +237,11 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
         <div className="mt-3 p-2.5 rounded-xl bg-govBg border border-gray-200 flex items-center justify-between text-[11px] text-govText-secondary">
           <div className="flex items-center gap-1.5 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-govTeal-600" />
-            <span>NCCT National Trainee Portal</span>
+            <span>
+              {currentUser.role === 'institute_admin'
+                ? 'VAMNICOM Institute Administration • NCCT Apex'
+                : 'NCCT National Trainee Portal'}
+            </span>
           </div>
           <span className="text-[10px] font-mono text-govTeal-700 font-bold">v2.4.0</span>
         </div>

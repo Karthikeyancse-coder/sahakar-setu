@@ -80,6 +80,9 @@ interface AppContextType {
   markNotificationAsRead: (id: string) => void;
   clearReadNotifications: () => void;
   updateUserProfile: (updates: Partial<User>) => void;
+  users: User[];
+  addUser: (user: Omit<User, 'id'>) => User;
+  toggleUserStatus: (userId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -289,6 +292,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/institute-admin/settings') {
     return { view: 'settings', params: null };
   }
+  if (path === '/institute-admin/profile' || path === '/dashboard/admin/profile') {
+    if (path !== '/institute-admin/profile') window.history.replaceState({}, '', '/institute-admin/profile');
+    return { view: 'profile', params: null };
+  }
 
   // 3. SUPER ADMIN ROUTES (/super-admin/...)
   if (path === '/super-admin/dashboard' || path === '/super-admin' || path === '/dashboard/super-admin') {
@@ -299,9 +306,17 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     if (path !== '/super-admin/analytics') window.history.replaceState({}, '', '/super-admin/analytics');
     return { view: 'analytics', params: null };
   }
+  const instituteDetailMatch = path.match(/^\/super-admin\/institutes\/([^/]+)$/);
+  if (instituteDetailMatch) {
+    return { view: 'institute_detail', params: { instituteId: instituteDetailMatch[1] } };
+  }
   if (path === '/super-admin/institutes' || path === '/dashboard/super-admin/institutes') {
     if (path !== '/super-admin/institutes') window.history.replaceState({}, '', '/super-admin/institutes');
     return { view: 'institutes_directory', params: null };
+  }
+  if (path === '/super-admin/users' || path === '/dashboard/super-admin/users') {
+    if (path !== '/super-admin/users') window.history.replaceState({}, '', '/super-admin/users');
+    return { view: 'users', params: null };
   }
   if (path === '/super-admin/settings') {
     return { view: 'settings', params: null };
@@ -380,6 +395,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [jobInterests, setJobInterests] = useState<JobInterest[]>([]);
   const [hostelBeds, setHostelBeds] = useState<HostelBed[]>(SEED_HOSTEL_BEDS);
   const [timetable, setTimetable] = useState<TimetableEntry[]>(SEED_TIMETABLE);
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('ss_users_list');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { }
+    }
+    return SEED_USERS.map(u => ({ ...u, status: u.status || 'active' }));
+  });
+
+  const addUser = (newUser: Omit<User, 'id'>) => {
+    const created: User = {
+      ...newUser,
+      id: `usr-${Date.now()}`,
+      status: newUser.status || 'active',
+      isKycVerified: true,
+      avatarUrl: newUser.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    };
+    setUsers(prev => {
+      const next = [created, ...prev];
+      localStorage.setItem('ss_users_list', JSON.stringify(next));
+      return next;
+    });
+    return created;
+  };
+
+  const toggleUserStatus = (userId: string) => {
+    setUsers(prev => {
+      const next = prev.map(u => {
+        if (u.id === userId) {
+          const currentStatus = u.status || 'active';
+          return { ...u, status: (currentStatus === 'active' ? 'deactivated' : 'active') as 'active' | 'deactivated' };
+        }
+        return u;
+      });
+      localStorage.setItem('ss_users_list', JSON.stringify(next));
+      return next;
+    });
+  };
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     const saved = localStorage.getItem('ss_notifs');
     if (saved) {
@@ -582,6 +634,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'settings') {
         targetPath = '/institute-admin/settings';
         targetView = 'settings';
+      } else if (destination === 'profile') {
+        targetPath = '/institute-admin/profile';
+        targetView = 'profile';
       } else {
         targetPath = '/institute-admin/dashboard';
         targetView = 'home';
@@ -646,6 +701,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'institutes_directory' || destination === 'institutes') {
         targetPath = '/super-admin/institutes';
         targetView = 'institutes_directory';
+      } else if (destination === 'institute_detail') {
+        targetPath = `/super-admin/institutes/${params?.instituteId || ''}`;
+        targetView = 'institute_detail';
+      } else if (destination === 'users') {
+        targetPath = '/super-admin/users';
+        targetView = 'users';
       } else if (destination === 'settings') {
         targetPath = '/super-admin/settings';
         targetView = 'settings';
@@ -961,6 +1022,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotificationAsRead,
         clearReadNotifications,
         updateUserProfile,
+        users,
+        addUser,
+        toggleUserStatus,
       }}
     >
       {children}
