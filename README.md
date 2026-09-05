@@ -46,33 +46,33 @@ The platform features an **Instant Demo Switcher** in the top navbar. You can te
 ## 🏗️ Architecture Diagram
 
 ```mermaid
-graph TD
-    subgraph Client Layer [Frontend Client Layer - React 18 + Vite + Tailwind]
-        Nav[Digital India Civic Navbar & Tricolor Accent]
-        TraineeUI[Trainee Mobile-First Portal]
-        AdminUI[Institute Admin Desktop Workspace]
-        SuperUI[National Analytics Dashboard]
-        RecruiterUI[Cooperative Employer Bridge]
-        PublicVerify[Public Certificate Verifier /verify/:id]
+flowchart TD
+    subgraph ClientLayer ["Frontend Client Layer (React 18 + Vite + Tailwind)"]
+        Nav["Digital India Civic Navbar & Tricolor Accent"]
+        TraineeUI["Trainee Mobile-First Portal"]
+        AdminUI["Institute Admin Desktop Workspace"]
+        SuperUI["National Analytics Dashboard"]
+        RecruiterUI["Cooperative Employer Bridge"]
+        PublicVerify["Public Certificate Verifier (/verify/:id)"]
     end
 
-    subgraph Core Engine [Sahakar Setu Core Logic & State Store]
-        I18n[Trilingual Localization Engine (EN / HI / MR)]
-        AuthKYC[Simulated Aadhaar e-KYC Verification Engine]
-        LMS[Multilingual LMS & Interactive Quiz Engine]
-        KioskEngine[WebCam Face Biometric & QR Session Engine]
-        CertEngine[jsPDF Cryptographic Certificate Generator]
-        OfflineEngine[PWA Offline Storage & Sync Queue]
+    subgraph CoreEngine ["Sahakar Setu Core Logic & State Store"]
+        I18n["Trilingual Localization Engine (EN / HI / MR)"]
+        AuthKYC["Simulated Aadhaar e-KYC Verification Engine"]
+        LMS["Multilingual LMS & Interactive Quiz Engine"]
+        KioskEngine["WebCam Face Biometric & QR Session Engine"]
+        CertEngine["jsPDF Cryptographic Certificate Generator"]
+        OfflineEngine["PWA Offline Storage & Sync Queue"]
     end
 
-    subgraph Federated Network [NCCT 20-Institute Topology]
-        VAMNICOM[VAMNICOM Pune - National Apex]
-        RICMs[5 Regional Institutes (Chandigarh, Bengaluru, Kalyani, Gandhinagar, Patna)]
-        ICMs[14 State Institutes (Bhopal, Chennai, Lucknow, Guwahati, Pune, etc.)]
+    subgraph FederatedNetwork ["NCCT 20-Institute Topology"]
+        VAMNICOM["VAMNICOM Pune - National Apex"]
+        RICMs["5 Regional Institutes (Chandigarh, Bengaluru, Kalyani, Gandhinagar, Patna)"]
+        ICMs["14 State Institutes (Bhopal, Chennai, Lucknow, Guwahati, Pune, etc.)"]
     end
 
-    Client Layer --> Core Engine
-    Core Engine --> Federated Network
+    ClientLayer --> CoreEngine
+    CoreEngine --> FederatedNetwork
 ```
 
 ---
