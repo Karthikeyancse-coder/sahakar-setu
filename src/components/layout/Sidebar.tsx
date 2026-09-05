@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
 
   return (
     <aside
-      className="hidden lg:flex flex-col lg:w-[272px] flex-shrink-0 h-[100dvh] sticky top-0 left-0 bg-white border-r border-govText-border z-30 select-none shadow-[1px_0_4px_rgba(0,0,0,0.02)] transition-all duration-200"
+      className="hidden lg:flex flex-col fixed top-0 bottom-0 left-0 w-[265px] h-screen overflow-y-auto bg-white border-r border-govText-border z-30 select-none shadow-[1px_0_4px_rgba(0,0,0,0.02)]"
     >
       {/* 1. Header: Brand Logo & Title */}
       <div

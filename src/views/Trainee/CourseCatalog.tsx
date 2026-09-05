@@ -111,11 +111,10 @@ export const CourseCatalog: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer min-h-[36px] flex items-center ${
-                  selectedCategory === cat.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer min-h-[36px] flex items-center ${selectedCategory === cat.id
                     ? 'bg-govTeal-700 text-white shadow-xs'
                     : 'bg-govBg text-govText-secondary hover:bg-gray-200 border border-gray-200'
-                }`}
+                  }`}
               >
                 {cat.label}
               </button>

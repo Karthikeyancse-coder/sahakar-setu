@@ -90,49 +90,51 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
 
   return (
     <>
-      {/* 1. Subtle Government Civic Top Bar */}
-      <div className="bg-govTeal-950 text-govTeal-100 text-[10px] sm:text-[11px] py-1 px-3 sm:px-4 border-b border-govTeal-900 select-none">
-        <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 sm:gap-2 font-medium truncate">
-            {currentLanguage !== 'en' ? (
-              <>
-                <span className="font-devanagari truncate">{currentLanguage === 'mr' ? 'महाराष्ट्र / भारत सरकार' : 'भारत सरकार'}</span>
-                <span className="opacity-40">|</span>
-                <span className="hidden min-[360px]:inline truncate">Govt. of India</span>
-                <span className="text-govTeal-400 hidden sm:inline">•</span>
-                <span className="text-saffron-300 hidden sm:inline truncate">
-                  {currentLanguage === 'mr' ? 'सहकारिता मंत्रालय' : 'सहकारिता मंत्रालय (Ministry of Cooperation)'}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="truncate">Government of India</span>
-                <span className="text-govTeal-400 hidden min-[400px]:inline">•</span>
-                <span className="text-saffron-300 hidden min-[400px]:inline truncate">Ministry of Cooperation</span>
-              </>
-            )}
-          </div>
+      {/* Fixed / Sticky Header Container: Keeps Civic Top Bar + Main Header pinned at top */}
+      <div className="sticky top-0 z-40 w-full bg-white shadow-xs flex-shrink-0">
+        {/* 1. Subtle Government Civic Top Bar */}
+        <div className="bg-govTeal-950 text-govTeal-100 text-[10px] sm:text-[11px] py-1 px-3 sm:px-4 border-b border-govTeal-900 select-none">
+          <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 font-medium truncate">
+              {currentLanguage !== 'en' ? (
+                <>
+                  <span className="font-devanagari truncate">{currentLanguage === 'mr' ? 'महाराष्ट्र / भारत सरकार' : 'भारत सरकार'}</span>
+                  <span className="opacity-40">|</span>
+                  <span className="hidden min-[360px]:inline truncate">Govt. of India</span>
+                  <span className="text-govTeal-400 hidden sm:inline">•</span>
+                  <span className="text-saffron-300 hidden sm:inline truncate">
+                    {currentLanguage === 'mr' ? 'सहकारिता मंत्रालय' : 'सहकारिता मंत्रालय (Ministry of Cooperation)'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="truncate">Government of India</span>
+                  <span className="text-govTeal-400 hidden min-[400px]:inline">•</span>
+                  <span className="text-saffron-300 hidden min-[400px]:inline truncate">Ministry of Cooperation</span>
+                </>
+              )}
+            </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
-            <span className="hidden md:inline opacity-75">
-              {currentLanguage === 'en'
-                ? 'National Council for Cooperative Training (NCCT)'
-                : 'राष्ट्रीय सहकारी प्रशिक्षण परिषद (NCCT)'}
-            </span>
-            <button
-              onClick={() => navigate('verify_public', { certId: 'NCCT-CERT-2026-VAM-0089' })}
-              className="hover:text-white underline flex items-center gap-1 text-saffron-300 font-semibold cursor-pointer"
-            >
-              <QrCode className="w-3 h-3 flex-shrink-0" />
-              <span className="hidden min-[340px]:inline">Verify Certificate</span>
-              <span className="min-[340px]:hidden">Verify</span>
-            </button>
+            <div className="flex items-center gap-3 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
+              <span className="hidden md:inline opacity-75">
+                {currentLanguage === 'en'
+                  ? 'National Council for Cooperative Training (NCCT)'
+                  : 'राष्ट्रीय सहकारी प्रशिक्षण परिषद (NCCT)'}
+              </span>
+              <button
+                onClick={() => navigate('verify_public', { certId: 'NCCT-CERT-2026-VAM-0089' })}
+                className="hover:text-white underline flex items-center gap-1 text-saffron-300 font-semibold cursor-pointer"
+              >
+                <QrCode className="w-3 h-3 flex-shrink-0" />
+                <span className="hidden min-[340px]:inline">Verify Certificate</span>
+                <span className="min-[340px]:hidden">Verify</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 2. Main Dashboard Application Header */}
-      <header className="bg-white border-b border-govText-border sticky top-0 z-40 shadow-sm">
+        {/* 2. Main Dashboard Application Header */}
+        <header className="bg-white border-b border-govText-border">
         <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
             
@@ -325,6 +327,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
           </div>
         </div>
       </header>
+      </div>
 
       {/* Simulated e-KYC Modal */}
       <EkycModal isOpen={isEkycOpen} onClose={() => setIsEkycOpen(false)} />

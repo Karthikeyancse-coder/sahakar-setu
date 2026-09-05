@@ -73,7 +73,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMore, is
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-[900] bg-white border-t border-govText-border shadow-[0_-4px_16px_rgba(0,0,0,0.06)] px-2 py-1 flex items-center justify-around select-none pb-[calc(0.5rem+env(safe-area-inset-bottom))] h-[68px]"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-[900] bg-white border-t border-govText-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-1 sm:px-2 flex items-center justify-around select-none pb-[calc(0.5rem+env(safe-area-inset-bottom))] h-[72px] sm:h-[76px]"
       aria-label="Mobile Bottom Navigation"
     >
       {navItems.map(item => {
@@ -85,25 +85,25 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMore, is
             key={item.id}
             onClick={item.action}
             aria-label={item.label}
-            className={`relative flex flex-col items-center justify-center min-w-[58px] min-h-[44px] py-1 px-1 rounded-xl transition-colors cursor-pointer ${
+            className={`relative flex-1 flex flex-col items-center justify-center min-w-0 min-h-[48px] py-1 px-0.5 rounded-xl transition-colors cursor-pointer ${
               isActive
-                ? 'text-[#0B6E4F] font-bold'
-                : 'text-gray-500 font-medium hover:text-[#0B6E4F]'
+                ? 'text-[#0B6E4F]'
+                : 'text-gray-500 hover:text-[#0B6E4F]'
             }`}
           >
             {/* Clear active indicator bar at top of button */}
             {isActive && (
-              <span className="absolute -top-1 w-8 h-1 bg-[#0B6E4F] rounded-full" />
+              <span className="absolute top-0 w-8 sm:w-10 h-1 bg-[#0B6E4F] rounded-full" />
             )}
 
             <Icon
-              className={`w-5 h-5 transition-transform ${
-                isActive ? 'text-[#0B6E4F] stroke-[2.3]' : 'text-gray-500 stroke-[1.8]'
+              className={`w-6 h-6 sm:w-[26px] sm:h-[26px] transition-transform ${
+                isActive ? 'text-[#0B6E4F] stroke-[2.2]' : 'text-gray-500 stroke-[1.8]'
               }`}
             />
             <span
-              className={`text-[10px] tracking-tight mt-1 leading-none ${
-                isActive ? 'font-bold text-[#0B6E4F]' : 'font-medium text-gray-500'
+              className={`text-[11px] sm:text-xs tracking-tight mt-1 leading-tight truncate max-w-full ${
+                isActive ? 'font-bold text-[#0B6E4F]' : 'font-semibold text-gray-500'
               }`}
             >
               {item.label}

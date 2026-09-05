@@ -169,43 +169,37 @@ export const FloatingCareerChatbot: React.FC = () => {
 
   return (
     <>
-      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 54px diameter, above bottom nav, z-950) */}
-      <div className="fixed bottom-[80px] right-4 lg:bottom-6 lg:right-6 z-[950] select-none">
-        <button
-          onClick={() => setIsOpen(prev => !prev)}
-          className={`relative w-[54px] h-[54px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer ${
-            isOpen
-              ? 'bg-[#073D32] text-white rotate-90'
-              : 'bg-[#0B6E4F] hover:bg-[#085A40] text-white'
-          }`}
-          aria-label="Toggle Career Sahayak AI Assistant"
-          title="Ask Career Sahayak (AI Advisor)"
-        >
-          {isOpen ? (
-            <X className="w-5 h-5 transition-transform" />
-          ) : (
+      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 54px diameter, above bottom nav on mobile) */}
+      {!isOpen && (
+        <div className="fixed bottom-[84px] right-4 lg:bottom-6 lg:right-6 z-[950] select-none">
+          <button
+            onClick={() => setIsOpen(true)}
+            className="relative w-[54px] h-[54px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer bg-[#0B6E4F] hover:bg-[#085A40] text-white"
+            aria-label="Open Career Sahayak AI Assistant"
+            title="Ask Career Sahayak (AI Advisor)"
+          >
             <div className="relative flex items-center justify-center">
               <MessageSquare className="w-6 h-6 text-white" />
               {/* Status pulse dot */}
               <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-[#E68A2E] border-2 border-[#0B6E4F] animate-pulse" />
             </div>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {/* 2. Semi-transparent Backdrop Overlay (z-1000) */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-black/30 backdrop-blur-[1px] z-[1000] transition-opacity animate-fadeIn"
+          className="fixed inset-0 bg-black/40 backdrop-blur-[1px] z-[1000] transition-opacity animate-fadeIn"
           onClick={() => setIsOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* 3. Floating AI Chat Panel (z-1001, compact mobile modal, max-height 70vh) */}
+      {/* 3. Floating AI Chat Panel (z-1001, full mobile bottom-sheet, desktop corner popup) */}
       {isOpen && (
         <div
-          className="fixed z-[1001] left-3 right-3 bottom-[76px] w-[calc(100%-24px)] max-w-lg mx-auto h-[min(70vh,620px)] max-h-[70vh] lg:left-auto lg:right-6 lg:bottom-24 lg:w-[410px] lg:h-[580px] lg:max-h-[calc(100vh-120px)] bg-white rounded-[22px] lg:rounded-[24px] border border-[#D8E3DC] shadow-[0_20px_50px_rgba(7,61,50,0.28)] flex flex-col overflow-hidden animate-fadeIn select-none"
+          className="fixed z-[1001] bottom-0 left-0 right-0 w-full h-[85vh] max-h-[90vh] rounded-t-[24px] rounded-b-none border-t border-[#D8E3DC] shadow-[0_-10px_40px_rgba(0,0,0,0.2)] lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-48px)] lg:rounded-[24px] lg:border lg:shadow-[0_20px_50px_rgba(7,61,50,0.28)] bg-white flex flex-col overflow-hidden animate-slideUp lg:animate-fadeIn select-none"
           role="dialog"
           aria-modal="true"
           aria-label="Sahakar Sahayak AI Career Advisor"
@@ -326,7 +320,7 @@ export const FloatingCareerChatbot: React.FC = () => {
               e.preventDefault();
               handleSendMessage();
             }}
-            className="p-2.5 sm:p-3 bg-white border-t border-gray-200 flex items-center gap-2 flex-shrink-0"
+            className="p-2.5 sm:p-3 bg-white border-t border-gray-200 flex items-center gap-2 flex-shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
           >
             <input
               type="text"
