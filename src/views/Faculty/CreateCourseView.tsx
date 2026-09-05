@@ -1,4 +1,4 @@
-import React, { useState, useId } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -35,7 +35,11 @@ interface ModuleFormItem {
 }
 
 export const CreateCourseView: React.FC = () => {
-  const { courses, addNewCourse, navigate, currentUser } = useApp();
+  const { courses, addNewCourse, navigate, currentUser, activeViewParams } = useApp();
+
+  const editCourseId = activeViewParams?.editCourseId;
+  const courseToEdit = editCourseId ? courses.find(c => c.id === editCourseId) : null;
+  const isEditMode = Boolean(courseToEdit);
 
   // Basic Information Form State
   const [title, setTitle] = useState('');
@@ -69,6 +73,28 @@ export const CreateCourseView: React.FC = () => {
     },
   ]);
 
+  // Pre-fill fields when opening in Edit Mode
+  useEffect(() => {
+    if (courseToEdit) {
+      setTitle(courseToEdit.title);
+      setCourseId(courseToEdit.id);
+      setHasManuallyEditedId(true);
+      setCategory(courseToEdit.category || 'PACS Digitalization');
+      setDifficulty(courseToEdit.level || 'Beginner');
+      setDurationHours(courseToEdit.durationHours || 30);
+      setDescription(courseToEdit.description || '');
+      if (courseToEdit.modules && courseToEdit.modules.length > 0) {
+        setModules(courseToEdit.modules.map(m => ({
+          id: m.id,
+          title: m.title,
+          description: m.lessons?.[0]?.contentByLanguage?.en?.text?.slice(0, 120) || 'Comprehensive modular syllabus.',
+          durationHours: Math.round(m.lessons?.reduce((acc, l) => acc + (l.durationMinutes || 30), 0) / 60) || 12,
+          lessons: m.lessons?.map(l => l.title) || ['Introduction & Overview']
+        })));
+      }
+    }
+  }, [courseToEdit?.id]);
+
   // Temporary input for adding a lesson inside a specific module
   const [lessonInputs, setLessonInputs] = useState<Record<string, string>>({});
 
@@ -81,7 +107,7 @@ export const CreateCourseView: React.FC = () => {
   // Auto-generate Course ID from Title if not manually edited
   const handleTitleChange = (val: string) => {
     setTitle(val);
-    if (!hasManuallyEditedId) {
+    if (!hasManuallyEditedId && !isEditMode) {
       const slug = val
         .toLowerCase()
         .replace(/[^a-z0-9\s-]/g, '')
@@ -385,11 +411,11 @@ export const CreateCourseView: React.FC = () => {
 
   return (
     <PageContainer>
-      <div className="space-y-6 animate-fadeIn pb-24">
+      <div className="space-y-6 animate-fadeIn pb-44 sm:pb-48 lg:pb-16">
         {/* 1. Header & Breadcrumbs */}
-        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-govText-border shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
+        <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => navigate('/faculty/courses')}
@@ -398,26 +424,28 @@ export const CreateCourseView: React.FC = () => {
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to My Courses</span>
               </button>
-              <span className="text-gray-300">•</span>
+              <span className="text-gray-300 hidden sm:inline">•</span>
               <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
                 Curriculum Authoring
               </span>
-              <SimulatedBadge text="Course Studio v2.4" />
+              <SimulatedBadge text={isEditMode ? "Course Studio • Edit Mode" : "Course Studio v2.4"} />
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-extrabold text-govText-primary tracking-tight">
-              Create New Course
+              {isEditMode ? 'Edit Course' : 'Create New Course'}
             </h1>
             <p className="text-xs text-govText-secondary">
-              Design a new training programme for cooperative-sector learners.
+              {isEditMode
+                ? `Update training syllabus, lesson topics, and module architecture for "${courseToEdit?.title || 'this course'}".`
+                : 'Design a new training programme for cooperative-sector learners.'}
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 w-full md:w-auto">
             <button
               type="button"
               onClick={() => setIsPreviewOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-govBg hover:bg-govTeal-50 text-govTeal-900 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[42px]"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-govBg hover:bg-govTeal-50 text-govTeal-900 border border-gray-200 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[44px]"
             >
               <Eye className="w-4 h-4 text-govTeal-700" />
               <span>Preview Course</span>
@@ -425,7 +453,7 @@ export const CreateCourseView: React.FC = () => {
             <button
               type="button"
               onClick={handleSaveDraft}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[42px]"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-bold transition-all cursor-pointer min-h-[44px]"
             >
               <Save className="w-4 h-4 text-gray-600" />
               <span>Save as Draft</span>
@@ -436,7 +464,7 @@ export const CreateCourseView: React.FC = () => {
         {/* 2. Form Wrapper */}
         <form onSubmit={handlePublish} className="space-y-6">
           {/* Section A: Basic Course Information */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-govText-border shadow-xs space-y-5">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-xs space-y-5">
             <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
               <BookOpen className="w-5 h-5 text-govTeal-600 flex-shrink-0" />
               <div>
@@ -483,12 +511,15 @@ export const CreateCourseView: React.FC = () => {
                   <input
                     type="text"
                     value={courseId}
+                    disabled={isEditMode}
                     onChange={e => handleIdChange(e.target.value)}
                     placeholder="crs-coop-mgmt-401"
-                    className={`w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border bg-[#FBFDFB] focus:bg-white focus:outline-none focus:ring-2 transition-all ${
-                      errors.courseId
-                        ? 'border-rose-400 focus:ring-rose-300'
-                        : 'border-gray-200 focus:ring-[#0B6E4F] focus:border-[#0B6E4F]'
+                    className={`w-full px-3.5 py-2.5 font-mono text-xs rounded-xl border transition-all ${
+                      isEditMode
+                        ? 'bg-gray-100 text-gray-600 cursor-not-allowed border-gray-200 opacity-80 select-none'
+                        : errors.courseId
+                        ? 'border-rose-400 focus:ring-rose-300 bg-[#FBFDFB]'
+                        : 'border-gray-200 focus:ring-[#0B6E4F] focus:border-[#0B6E4F] bg-[#FBFDFB]'
                     }`}
                   />
                 </div>
@@ -499,7 +530,9 @@ export const CreateCourseView: React.FC = () => {
                   </p>
                 ) : (
                   <p className="text-[10px] text-govText-muted mt-1">
-                    Auto-generated from title. Must be unique across all 20 NCCT institutes.
+                    {isEditMode
+                      ? 'Course Identifier is locked in edit mode to preserve LMS database relations and certificates.'
+                      : 'Auto-generated from title. Must be unique across all 20 NCCT institutes.'}
                   </p>
                 )}
               </div>
@@ -535,7 +568,7 @@ export const CreateCourseView: React.FC = () => {
                       key={lvl}
                       type="button"
                       onClick={() => setDifficulty(lvl)}
-                      className={`py-2 px-2 text-xs font-bold rounded-xl border transition-all cursor-pointer text-center ${
+                      className={`min-h-[44px] py-2 px-1.5 text-xs font-bold rounded-xl border transition-all cursor-pointer flex items-center justify-center text-center ${
                         difficulty === lvl
                           ? 'bg-govTeal-600 text-white border-govTeal-600 shadow-2xs'
                           : 'bg-govBg hover:bg-gray-100 text-govText-primary border-gray-200'
@@ -560,13 +593,13 @@ export const CreateCourseView: React.FC = () => {
                     value={durationHours}
                     onChange={e => setDurationHours(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="30"
-                    className={`w-full px-3.5 py-2.5 text-xs rounded-xl border bg-[#FBFDFB] focus:bg-white focus:outline-none focus:ring-2 transition-all ${
+                    className={`w-full px-3.5 py-2.5 min-h-[44px] text-xs rounded-xl border bg-[#FBFDFB] focus:bg-white focus:outline-none focus:ring-2 transition-all ${
                       errors.durationHours
                         ? 'border-rose-400 focus:ring-rose-300'
                         : 'border-gray-200 focus:ring-[#0B6E4F]'
                     }`}
                   />
-                  <span className="absolute right-3.5 top-2.5 text-xs text-govText-muted font-medium pointer-events-none">
+                  <span className="absolute right-3.5 top-3 text-xs text-govText-muted font-medium pointer-events-none">
                     Hours
                   </span>
                 </div>
@@ -611,25 +644,25 @@ export const CreateCourseView: React.FC = () => {
                   {learningObjectives.map((obj, idx) => (
                     <div
                       key={idx}
-                      className="flex items-center justify-between gap-2 p-2.5 bg-govBg rounded-xl border border-gray-100 text-xs"
+                      className="flex items-start justify-between gap-2.5 p-3 bg-govBg rounded-xl border border-gray-100 text-xs"
                     >
-                      <div className="flex items-start gap-2 min-w-0">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
                         <CheckCircle2 className="w-4 h-4 text-govTeal-600 flex-shrink-0 mt-0.5" />
-                        <span className="text-govText-primary">{obj}</span>
+                        <span className="text-govText-primary break-words leading-relaxed">{obj}</span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveObjective(idx)}
-                        className="p-1 text-gray-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-rose-50"
                         title="Remove objective"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
                   <input
                     type="text"
                     value={newObjectiveInput}
@@ -641,14 +674,15 @@ export const CreateCourseView: React.FC = () => {
                       }
                     }}
                     placeholder="Type an objective and tap '+ Add'..."
-                    className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-gray-200 bg-[#FBFDFB] focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
+                    className="w-full sm:flex-1 px-3.5 py-2.5 min-h-[44px] text-xs rounded-xl border border-gray-200 bg-[#FBFDFB] focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
                   />
                   <button
                     type="button"
                     onClick={handleAddObjective}
-                    className="px-3.5 py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 transition-colors cursor-pointer"
+                    className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 transition-colors cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                   >
-                    + Add Learning Objective
+                    <Plus className="w-4 h-4" />
+                    <span>Add Learning Objective</span>
                   </button>
                 </div>
               </div>
@@ -656,12 +690,12 @@ export const CreateCourseView: React.FC = () => {
           </div>
 
           {/* Section B: Module Builder (Part 3) */}
-          <div className="bg-white p-5 sm:p-6 rounded-2xl border border-govText-border shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-100 gap-2">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-100 gap-3">
               <div>
-                <h2 className="text-base font-bold text-govText-primary flex items-center gap-2">
-                  <Layers className="w-5 h-5 text-govTeal-600" />
-                  Course Modules & Curriculum Architecture
+                <h2 className="text-sm sm:text-base font-bold text-govText-primary flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-govTeal-600 shrink-0" />
+                  <span>Course Modules & Curriculum Architecture</span>
                 </h2>
                 <p className="text-xs text-govText-secondary mt-0.5">
                   Organize your course syllabus into logical modules and lesson topics.
@@ -671,7 +705,7 @@ export const CreateCourseView: React.FC = () => {
               <button
                 type="button"
                 onClick={handleAddModule}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 rounded-xl text-xs font-bold border border-govTeal-200 transition-colors cursor-pointer self-start sm:self-auto min-h-[38px]"
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 rounded-xl text-xs font-bold border border-govTeal-200 transition-colors cursor-pointer w-full sm:w-auto min-h-[44px] shrink-0"
               >
                 <Plus className="w-4 h-4 text-govTeal-700" />
                 <span>+ Add Module</span>
@@ -691,7 +725,7 @@ export const CreateCourseView: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleAddModule}
-                  className="px-4 py-2 bg-[#0B6E4F] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#085A40] transition-colors cursor-pointer inline-flex items-center gap-2"
+                  className="px-4 py-2.5 bg-[#0B6E4F] text-white text-xs font-bold rounded-xl shadow-xs hover:bg-[#085A40] transition-colors cursor-pointer inline-flex items-center justify-center gap-2 min-h-[44px]"
                 >
                   <Plus className="w-4 h-4" />
                   <span>+ Add Module</span>
@@ -706,19 +740,19 @@ export const CreateCourseView: React.FC = () => {
                   >
                     {/* Module Header Bar with Re-order & Delete */}
                     <div className="flex items-center justify-between gap-2 pb-2 border-b border-gray-100">
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded text-[10px] font-bold bg-govTeal-700 text-white uppercase">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="px-2.5 py-1 rounded text-[10px] font-bold bg-govTeal-700 text-white uppercase shrink-0">
                           Module {String(index + 1).padStart(2, '0')}
                         </span>
-                        <span className="text-xs font-mono text-govText-muted">{module.id}</span>
+                        <span className="text-xs font-mono text-govText-muted truncate">{module.id}</span>
                       </div>
 
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           disabled={index === 0}
                           onClick={() => handleMoveModule(index, 'up')}
-                          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                          className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
                           title="Move Up"
                         >
                           <ArrowUp className="w-4 h-4" />
@@ -727,7 +761,7 @@ export const CreateCourseView: React.FC = () => {
                           type="button"
                           disabled={index === modules.length - 1}
                           onClick={() => handleMoveModule(index, 'down')}
-                          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                          className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
                           title="Move Down"
                         >
                           <ArrowDown className="w-4 h-4" />
@@ -735,7 +769,7 @@ export const CreateCourseView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleDeleteModule(module.id)}
-                          className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer ml-1"
+                          className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer ml-1"
                           title="Delete Module"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -754,7 +788,7 @@ export const CreateCourseView: React.FC = () => {
                           value={module.title}
                           onChange={e => handleUpdateModule(module.id, 'title', e.target.value)}
                           placeholder="e.g. Module 01: Introduction to Cooperative Governance"
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
+                          className="w-full px-3.5 py-2.5 min-h-[42px] text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
                         />
                       </div>
                       <div>
@@ -767,7 +801,7 @@ export const CreateCourseView: React.FC = () => {
                           max="100"
                           value={module.durationHours}
                           onChange={e => handleUpdateModule(module.id, 'durationHours', Number(e.target.value))}
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
+                          className="w-full px-3.5 py-2.5 min-h-[42px] text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
                         />
                       </div>
                     </div>
@@ -781,7 +815,7 @@ export const CreateCourseView: React.FC = () => {
                         value={module.description}
                         onChange={e => handleUpdateModule(module.id, 'description', e.target.value)}
                         placeholder="Brief summary of topics covered in this module..."
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
+                        className="w-full px-3.5 py-2.5 min-h-[42px] text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
                       />
                     </div>
 
@@ -798,25 +832,25 @@ export const CreateCourseView: React.FC = () => {
                         {module.lessons.map((lesson, lIdx) => (
                           <div
                             key={lIdx}
-                            className="flex items-center justify-between p-2 rounded-lg bg-white border border-gray-100 text-xs"
+                            className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-100 text-xs shadow-2xs gap-2"
                           >
-                            <span className="font-medium text-govText-primary truncate">
+                            <span className="font-medium text-govText-primary break-words flex-1 leading-relaxed min-w-0 pr-1">
                               {lIdx + 1}. {lesson}
                             </span>
                             <button
                               type="button"
                               onClick={() => handleRemoveLesson(module.id, lIdx)}
-                              className="text-gray-400 hover:text-rose-600 p-1"
+                              className="text-gray-400 hover:text-rose-600 p-1.5 rounded-lg shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-rose-50 transition-colors"
                               title="Delete lesson"
                             >
-                              <X className="w-3 h-3" />
+                              <X className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
                       </div>
 
                       {/* Add Lesson input */}
-                      <div className="flex items-center gap-2 pt-1">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1.5">
                         <input
                           type="text"
                           value={lessonInputs[module.id] || ''}
@@ -830,14 +864,15 @@ export const CreateCourseView: React.FC = () => {
                             }
                           }}
                           placeholder="Add a lesson title (e.g. 'Role of PACS in Credit Linkage')..."
-                          className="flex-1 px-3 py-1.5 text-xs rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-[#0B6E4F]"
+                          className="w-full sm:flex-1 px-3.5 py-2.5 min-h-[40px] text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
                         />
                         <button
                           type="button"
                           onClick={() => handleAddLesson(module.id)}
-                          className="px-3 py-1.5 bg-gray-100 hover:bg-govTeal-50 text-govTeal-800 text-xs font-semibold rounded-lg border border-gray-200"
+                          className="w-full sm:w-auto px-3.5 py-2.5 min-h-[40px] bg-gray-100 hover:bg-govTeal-50 text-govTeal-800 text-xs font-semibold rounded-xl border border-gray-200 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                         >
-                          + Add Lesson
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Lesson</span>
                         </button>
                       </div>
                     </div>
@@ -848,19 +883,22 @@ export const CreateCourseView: React.FC = () => {
           </div>
 
           {/* Section C: Sticky / Fixed Action Buttons (Part 4) */}
-          <div className="p-4 sm:p-5 bg-white rounded-2xl border border-govText-border shadow-md flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sticky bottom-3 z-30">
-            <div className="flex items-center gap-2 text-xs text-govText-secondary">
+          <div className="fixed bottom-[calc(64px+env(safe-area-inset-bottom,0px))] left-0 right-0 z-35 bg-white/95 backdrop-blur-md border-t border-gray-200 shadow-lg px-3 py-2.5 sm:px-4 sm:py-3 lg:static lg:bg-white lg:rounded-2xl lg:border lg:border-govText-border lg:shadow-md lg:p-5 lg:z-auto lg:flex lg:flex-row lg:items-center lg:justify-between lg:gap-3">
+            <div className="hidden lg:flex items-center gap-2 text-xs text-govText-secondary">
               <Sparkles className="w-4 h-4 text-saffron-500 flex-shrink-0" />
               <span>
-                Publishing makes this course immediately accessible in <strong>My Authored Courses</strong> and Course Studio.
+                {isEditMode
+                  ? <>Saving updates will immediately update this course across <strong>My Authored Courses</strong> and Course Studio.</>
+                  : <>Publishing makes this course immediately accessible in <strong>My Authored Courses</strong> and Course Studio.</>
+                }
               </span>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-wrap justify-end">
+            <div className="grid grid-cols-3 gap-2 w-full lg:flex lg:w-auto lg:items-center lg:gap-2.5">
               <button
                 type="button"
                 onClick={() => navigate('/faculty/courses')}
-                className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer min-h-[44px]"
+                className="px-3 sm:px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer min-h-[44px] flex items-center justify-center text-center"
               >
                 Cancel
               </button>
@@ -868,18 +906,18 @@ export const CreateCourseView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsPreviewOpen(true)}
-                className="px-4 py-2.5 bg-govBg hover:bg-govTeal-50 text-govTeal-900 border border-gray-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center gap-1.5"
+                className="px-3 sm:px-4 py-2.5 bg-govBg hover:bg-govTeal-50 text-govTeal-900 border border-gray-300 rounded-xl text-xs font-bold transition-colors cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 text-center"
               >
-                <Eye className="w-4 h-4 text-govTeal-700" />
+                <Eye className="w-4 h-4 text-govTeal-700 shrink-0" />
                 <span>Preview</span>
               </button>
 
               <button
                 type="submit"
-                className="px-5 py-2.5 bg-[#0B6E4F] hover:bg-[#085A40] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer min-h-[44px] flex items-center gap-2 active:scale-95"
+                className="px-3 sm:px-5 py-2.5 bg-[#0B6E4F] hover:bg-[#085A40] text-white text-xs font-bold rounded-xl shadow-md transition-all cursor-pointer min-h-[44px] flex items-center justify-center gap-1.5 text-center active:scale-95"
               >
-                <CheckCircle2 className="w-4 h-4 text-saffron-300" />
-                <span>Publish Course</span>
+                <CheckCircle2 className="w-4 h-4 text-saffron-300 shrink-0" />
+                <span className="truncate">{isEditMode ? 'Save Changes' : 'Publish Course'}</span>
               </button>
             </div>
           </div>
@@ -909,10 +947,13 @@ export const CreateCourseView: React.FC = () => {
 
               <div>
                 <h3 className="text-lg font-bold text-govText-primary">
-                  Course Published Successfully!
+                  {isEditMode ? 'Course Changes Saved Successfully!' : 'Course Published Successfully!'}
                 </h3>
                 <p className="text-xs text-govText-secondary mt-1 leading-relaxed">
-                  <strong>"{publishedCourseTitle}"</strong> has been accredited and added to your authored courses catalogue.
+                  {isEditMode
+                    ? <><strong>"{publishedCourseTitle}"</strong> has been updated and your changes are now active in the national catalogue.</>
+                    : <><strong>"{publishedCourseTitle}"</strong> has been accredited and added to your authored courses catalogue.</>
+                  }
                 </p>
               </div>
 

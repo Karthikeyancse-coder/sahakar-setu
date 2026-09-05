@@ -43,6 +43,7 @@ import { FacultyDashboard } from './views/Faculty/FacultyDashboard';
 import { FacultyCoursesView } from './views/Faculty/FacultyCoursesView';
 import { CreateCourseView } from './views/Faculty/CreateCourseView';
 import { CourseBuilder } from './views/Faculty/CourseBuilder';
+import { FacultyProfileView } from './views/Faculty/FacultyProfileView';
 import { EmployerPortal } from './views/Employer/EmployerPortal';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
 import { TraineeDirectory } from './views/Common/TraineeDirectory';
@@ -187,6 +188,8 @@ export const AppContent: React.FC = () => {
         return <CourseBuilder />;
       case 'settings':
         return <SettingsView />;
+      case 'profile':
+        return <FacultyProfileView />;
       default:
         return <FacultyDashboard />;
     }

@@ -101,28 +101,28 @@ export const CourseBuilder: React.FC = () => {
 
   return (
     <PageContainer>
-      <div className="space-y-6 animate-fadeIn pb-16">
+      <div className="space-y-6 animate-fadeIn pb-24 sm:pb-28 lg:pb-12">
       
       {/* Header */}
-      <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-govText-border shadow-xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-[10px] sm:text-xs font-bold text-govTeal-700 uppercase tracking-wider px-2 py-0.5 rounded bg-govTeal-50 border border-govTeal-200">
               LMS Curriculum Studio
             </span>
             <SimulatedBadge text="Multilingual Course Authoring" />
           </div>
-          <h2 className="text-2xl font-extrabold text-govText-primary">
+          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1">
             Course, Module & Quiz Builder
           </h2>
-          <p className="text-xs text-govText-secondary mt-1">
+          <p className="text-xs text-govText-secondary mt-1 max-w-2xl leading-relaxed">
             Author national curriculum modules in English, Hindi, and Marathi with auto-grading assessments.
           </p>
         </div>
 
         <button
           onClick={() => setIsNewCourseModalOpen(true)}
-          className="px-4 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-xs shadow flex items-center gap-2"
+          className="w-full sm:w-auto px-4 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-xs shadow flex items-center justify-center gap-2 min-h-[44px] shrink-0 active:scale-95 transition-all"
         >
           <Plus className="w-4 h-4" />
           <span>Create New Course</span>
@@ -137,16 +137,16 @@ export const CourseBuilder: React.FC = () => {
       )}
 
       {/* Select active course */}
-      <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-wrap items-center gap-3">
-        <span className="text-xs font-bold text-govText-secondary">Select Active Course:</span>
-        <div className="flex flex-wrap gap-2">
+      <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-govText-border shadow-xs flex flex-col sm:flex-row sm:items-center gap-3">
+        <span className="text-xs font-bold text-govText-secondary shrink-0">Select Active Course:</span>
+        <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 sm:flex-wrap no-scrollbar">
           {courses.map(c => (
             <button
               key={c.id}
               onClick={() => setSelectedCourseId(c.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap min-h-[36px] shrink-0 ${
                 selectedCourseId === c.id
-                  ? 'bg-govTeal-600 text-white shadow-sm'
+                  ? 'bg-govTeal-600 text-white shadow-xs'
                   : 'bg-govBg hover:bg-govTeal-50 text-govText-primary'
               }`}
             >
@@ -253,7 +253,7 @@ export const CourseBuilder: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-govText-secondary mb-1">
                     Title (हिन्दी)

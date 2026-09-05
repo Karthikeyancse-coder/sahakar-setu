@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
       {/* 2. User Profile Card (Below Sahakar Setu logo - clickable to Profile) */}
       <div className="p-2 md:p-2.5 lg:p-3 border-b border-gray-100 bg-[#FBFDFB]">
         <div
-          onClick={() => navigate(currentUser.role === 'trainee' ? '/trainee/profile' : currentUser.role === 'institute_admin' ? '/institute-admin/profile' : currentUser.role === 'super_admin' ? '/super-admin/profile' : `/${getRolePrefix(currentUser.role)}/settings`)}
+          onClick={() => navigate(currentUser.role === 'trainee' ? '/trainee/profile' : currentUser.role === 'institute_admin' ? '/institute-admin/profile' : currentUser.role === 'super_admin' ? '/super-admin/profile' : currentUser.role === 'faculty' ? '/faculty/profile' : `/${getRolePrefix(currentUser.role)}/settings`)}
           className="bg-white hover:bg-govTeal-50/50 cursor-pointer transition-colors rounded-xl p-1.5 md:p-1.5 lg:p-2.5 border border-gray-200/80 shadow-xs flex items-center md:justify-center lg:justify-start gap-2.5 group"
           title={`${currentUser.name} (${currentUser.role})`}
         >

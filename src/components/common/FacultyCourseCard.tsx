@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Users,
   CheckCircle2,
   Edit3,
+  Edit2,
+  Trash2,
+  MoreVertical,
   Eye,
   Layers,
   BookOpen
@@ -17,6 +20,8 @@ export interface FacultyCourseCardProps {
   previewMode?: boolean;
   onManage?: () => void;
   onViewRoster?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
   className?: string;
 }
 
@@ -28,8 +33,27 @@ export const FacultyCourseCard: React.FC<FacultyCourseCardProps> = ({
   previewMode = false,
   onManage,
   onViewRoster,
+  onEdit,
+  onDelete,
   className = '',
 }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
+
   const totalModules = course.modules?.length || 0;
   const totalLessons =
     course.modules?.reduce((sum, m) => sum + (m.lessons?.length || 0), 0) || 0;
@@ -61,6 +85,61 @@ export const FacultyCourseCard: React.FC<FacultyCourseCardProps> = ({
               {course.level || 'Beginner'}
             </span>
           </div>
+
+          {/* Top Right: Three-dot More Menu for Edit / Delete */}
+          {!previewMode && (onEdit || onDelete) && (
+            <div className="absolute top-3 right-3 z-10" ref={menuRef}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen(!isMenuOpen);
+                }}
+                className="w-8 h-8 rounded-xl bg-black/60 hover:bg-black/85 text-white backdrop-blur-xs flex items-center justify-center transition-colors cursor-pointer shadow-xs active:scale-95"
+                title="More course options"
+                aria-label="More course options"
+                aria-expanded={isMenuOpen}
+              >
+                <MoreVertical className="w-4 h-4" />
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-20 animate-fadeIn text-xs">
+                  <div className="px-3 py-1 text-[10px] font-bold text-govText-muted uppercase tracking-wider border-b border-gray-100">
+                    Course Actions
+                  </div>
+                  {onEdit && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsMenuOpen(false);
+                        onEdit();
+                      }}
+                      className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-govTeal-50 text-govText-primary hover:text-govTeal-900 transition-colors cursor-pointer font-medium"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-govTeal-700" />
+                      <span>Edit Course</span>
+                    </button>
+                  )}
+                  {onDelete && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsMenuOpen(false);
+                        onDelete();
+                      }}
+                      className="w-full px-3 py-2 text-left flex items-center gap-2 hover:bg-rose-50 text-rose-700 hover:text-rose-800 transition-colors cursor-pointer font-medium"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Delete Course</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Duration Badge (Bottom Right) */}
           <div className="absolute bottom-3 right-3 px-2.5 py-0.5 rounded text-[10px] font-bold bg-white/90 text-govText-primary shadow-xs">
@@ -130,7 +209,7 @@ export const FacultyCourseCard: React.FC<FacultyCourseCardProps> = ({
       </div>
 
       {/* 4. Action Area */}
-      <div className="p-5 pt-0 space-y-2">
+      <div className="p-5 pt-0 space-y-2.5">
         {previewMode ? (
           <div className="w-full py-2.5 px-3 bg-govTeal-50/70 border border-govTeal-200/80 rounded-xl text-center text-xs font-bold text-govTeal-900 flex items-center justify-center gap-1.5 shadow-2xs">
             <Eye className="w-3.5 h-3.5 text-govTeal-700" />

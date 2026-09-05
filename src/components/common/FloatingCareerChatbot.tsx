@@ -199,14 +199,22 @@ export const FloatingCareerChatbot: React.FC = () => {
         { label: 'Courses', query: 'What NCCT courses are available?' },
       ];
 
+  const isCourseNew = activeView === 'course_new';
+
   return (
     <>
-      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 52-54px diameter, above bottom nav on mobile) */}
+      {/* 1. Floating AI Chatbot Circular Button (Fixed bottom-right, 56px diameter, above bottom nav / sticky bar on mobile) */}
       {!isOpen && (
-        <div className="fixed bottom-[calc(90px+env(safe-area-inset-bottom,0px))] right-4 sm:right-6 lg:bottom-6 lg:right-6 z-[850] select-none">
+        <div
+          className={`fixed ${
+            isCourseNew
+              ? 'bottom-[calc(136px+env(safe-area-inset-bottom,0px))]'
+              : 'bottom-[calc(84px+env(safe-area-inset-bottom,0px))]'
+          } right-3.5 sm:right-5 lg:bottom-6 lg:right-6 z-[850] select-none transition-all duration-300`}
+        >
           <button
             onClick={() => setIsOpen(true)}
-            className="relative w-[52px] h-[52px] sm:w-[54px] sm:h-[54px] rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer bg-[#0B6E4F] hover:bg-[#085A40] text-white"
+            className="relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_8px_24px_rgba(11,110,79,0.35)] hover:shadow-[0_12px_32px_rgba(11,110,79,0.45)] hover:scale-105 active:scale-95 cursor-pointer bg-[#0B6E4F] hover:bg-[#085A40] text-white min-w-[56px] min-h-[56px]"
             aria-label="Open AI Assistant"
             title="Ask Sahakar Sahayak (AI Advisor)"
           >
@@ -231,7 +239,7 @@ export const FloatingCareerChatbot: React.FC = () => {
       {/* 3. Floating AI Chat Panel (z-[890], sits above bottom nav on mobile, desktop corner popup) */}
       {isOpen && (
         <div
-          className="fixed z-[890] bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-2 right-2 sm:left-4 sm:right-4 h-[72vh] max-h-[calc(100vh-96px-env(safe-area-inset-bottom,0px))] rounded-2xl border border-[#D8E3DC] shadow-[0_10px_35px_rgba(0,0,0,0.2)] lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-48px)] lg:rounded-[24px] lg:border lg:shadow-[0_20px_50px_rgba(7,61,50,0.28)] bg-white flex flex-col overflow-hidden animate-slideUp lg:animate-fadeIn select-none"
+          className="fixed z-[890] bottom-[calc(76px+env(safe-area-inset-bottom,0px))] left-2 right-2 sm:left-4 sm:right-4 h-[75vh] max-h-[calc(100vh-90px-env(safe-area-inset-bottom,0px))] rounded-2xl border border-[#D8E3DC] shadow-[0_10px_35px_rgba(0,0,0,0.2)] lg:bottom-6 lg:right-6 lg:left-auto lg:w-[420px] lg:h-[600px] lg:max-h-[calc(100vh-48px)] lg:rounded-[24px] lg:border lg:shadow-[0_20px_50px_rgba(7,61,50,0.28)] bg-white flex flex-col overflow-hidden animate-slideUp lg:animate-fadeIn select-none"
           role="dialog"
           aria-modal="true"
           aria-label="Sahakar Sahayak AI Advisor"

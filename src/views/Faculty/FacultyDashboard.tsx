@@ -48,7 +48,7 @@ export const FacultyDashboard: React.FC = () => {
 
   return (
     <PageContainer>
-      <div className="space-y-6 animate-fadeIn pb-16">
+      <div className="space-y-6 animate-fadeIn pb-24 sm:pb-28 lg:pb-12">
         {/* 1. Welcome Banner (Deep Teal Government Visual Language) */}
         <div className="bg-gradient-to-r from-govTeal-900 via-govTeal-800 to-govTeal-700 text-white p-6 sm:p-8 rounded-2xl shadow-lg border border-govTeal-600 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">

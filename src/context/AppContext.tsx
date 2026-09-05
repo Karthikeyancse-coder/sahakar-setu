@@ -76,6 +76,7 @@ interface AppContextType {
   verifyEkyc: (aadhaarNumber: string) => void;
   toggleOfflineMode: () => void;
   addNewCourse: (course: Course) => void;
+  deleteCourse: (courseId: string) => void;
   markAllNotificationsAsRead: () => void;
   markNotificationAsRead: (id: string) => void;
   clearReadNotifications: () => void;
@@ -338,12 +339,19 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     if (path !== '/faculty/courses') window.history.replaceState({}, '', '/faculty/courses');
     return { view: 'courses', params: null };
   }
+  const facultyEditCourseMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit-course/);
+  if (facultyEditCourseMatch) {
+    return { view: 'course_new', params: { editCourseId: facultyEditCourseMatch[1] } };
+  }
   const facultyEditMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit/);
   if (facultyEditMatch) {
     return { view: 'course_builder', params: { courseId: facultyEditMatch[1] } };
   }
   if (path === '/faculty/settings') {
     return { view: 'settings', params: null };
+  }
+  if (path === '/faculty/profile') {
+    return { view: 'profile', params: null };
   }
 
   // 5. EMPLOYER ROUTES (/employer/...)
@@ -1015,6 +1023,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const deleteCourse = (courseId: string) => {
+    setCourses(prev => {
+      const next = prev.filter(c => c.id !== courseId);
+      try {
+        localStorage.setItem('ss_courses_list', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
   const t = getTranslation(currentLanguage);
 
   return (
@@ -1059,6 +1077,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         verifyEkyc,
         toggleOfflineMode,
         addNewCourse,
+        deleteCourse,
         markAllNotificationsAsRead,
         markNotificationAsRead,
         clearReadNotifications,
