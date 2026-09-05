@@ -321,6 +321,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/super-admin/settings') {
     return { view: 'settings', params: null };
   }
+  if (path === '/super-admin/profile' || path === '/dashboard/super-admin/profile') {
+    if (path !== '/super-admin/profile') window.history.replaceState({}, '', '/super-admin/profile');
+    return { view: 'profile', params: null };
+  }
 
   // 4. FACULTY ROUTES (/faculty/...)
   if (path === '/faculty/dashboard' || path === '/faculty' || path === '/dashboard/faculty') {
@@ -710,6 +714,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'settings') {
         targetPath = '/super-admin/settings';
         targetView = 'settings';
+      } else if (destination === 'profile') {
+        targetPath = '/super-admin/profile';
+        targetView = 'profile';
       } else {
         targetPath = '/super-admin/dashboard';
         targetView = 'home';

@@ -250,7 +250,8 @@ export const InstituteDetailView: React.FC = () => {
             </span>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-gray-200">
+          {/* Desktop Table (>= 768px) */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
             <table className="w-full text-left text-xs text-govText-primary">
               <thead className="bg-[#F8FAF8] border-b border-gray-200 text-[11px] font-bold text-govText-secondary uppercase">
                 <tr>
@@ -297,6 +298,42 @@ export const InstituteDetailView: React.FC = () => {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Mobile Card List (< 768px) */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {displayNominations.map(nom => (
+              <div key={nom.id} className="py-3 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-bold text-xs text-govText-primary truncate">{nom.traineeName}</div>
+                    <div className="text-[11px] text-govText-muted truncate">{nom.traineeEmail}</div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase flex-shrink-0 ${
+                      nom.status === 'approved'
+                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                        : nom.status === 'rejected'
+                        ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                        : 'bg-amber-50 text-amber-800 border border-amber-200'
+                    }`}
+                  >
+                    {nom.status === 'approved' && <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" />}
+                    {nom.status === 'rejected' && <XCircle className="w-2.5 h-2.5 text-rose-600" />}
+                    {nom.status === 'pending' && <Clock className="w-2.5 h-2.5 text-amber-600" />}
+                    {nom.status}
+                  </span>
+                </div>
+                <div className="text-[11px] text-govText-secondary">
+                  <span className="text-[10px] text-govText-muted block">Sponsoring Society:</span>
+                  <span className="font-medium">{nom.cooperativeName}</span>
+                </div>
+                <div className="flex items-center justify-between text-[10px] text-govText-muted pt-1">
+                  <span className="text-govTeal-800 font-semibold">PACS Computerization</span>
+                  <span>{nom.nominatedDate}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

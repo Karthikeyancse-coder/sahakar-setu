@@ -80,10 +80,12 @@ export const InstitutesDirectory: React.FC = () => {
           <Search className="w-4 h-4 text-govText-muted absolute left-3 top-2.5" />
         </div>
 
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-govTeal-600" />
-          <span className="text-xs font-semibold text-govText-secondary">Type:</span>
-          <div className="flex gap-1.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-govText-secondary">
+            <Filter className="w-4 h-4 text-govTeal-600" />
+            <span>Type:</span>
+          </div>
+          <div className="flex gap-1.5 flex-wrap">
             {['all', 'VAMNICOM', 'RICM', 'ICM'].map(t => (
               <button
                 key={t}

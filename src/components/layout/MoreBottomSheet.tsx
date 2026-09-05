@@ -50,7 +50,38 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
     onClose();
   };
 
-  const moreItems = currentUser.role === 'institute_admin'
+  const moreItems = currentUser.role === 'super_admin'
+    ? [
+        {
+          id: 'settings',
+          route: '/super-admin/settings',
+          label: currentLanguage === 'hi' ? 'सिस्टम सेटिंग्स' : currentLanguage === 'mr' ? 'सिस्टम सेटिंग्ज' : 'Settings',
+          sub: 'Central configuration, sync intervals & notifications',
+          icon: Settings,
+          badge: null,
+        },
+        {
+          id: 'audit_logs',
+          route: '/super-admin/settings',
+          label: currentLanguage === 'hi' ? 'ऑडिट एवं अनुपालन' : currentLanguage === 'mr' ? 'ऑडिट आणि अनुपालन' : 'Audit & Compliance',
+          sub: 'Security audit trails, tamper-proof logs & NIC status',
+          icon: ShieldCheck,
+          badge: 'Verified',
+        },
+        {
+          id: 'notifications',
+          route: '/super-admin/dashboard',
+          label: currentLanguage === 'hi' ? 'मंत्रालय परिपत्रक' : currentLanguage === 'mr' ? 'मंत्रालय परिपत्रके' : 'Circulars & Alerts',
+          sub: 'Ministry notifications, alerts & apex directives',
+          icon: Bell,
+          badge: unreadNotifsCount > 0 ? `${unreadNotifsCount} New` : 'Live',
+          action: () => {
+            navigate('/super-admin/dashboard');
+            onClose();
+          },
+        },
+      ]
+    : currentUser.role === 'institute_admin'
     ? [
         {
           id: 'trainee_directory',
@@ -174,7 +205,9 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
               {currentLanguage === 'hi' ? 'अधिक विकल्प' : currentLanguage === 'mr' ? 'अधिक पर्याय' : 'More Options'}
             </h3>
             <p className="text-[11px] text-govText-muted">
-              {currentUser.role === 'institute_admin'
+              {currentUser.role === 'super_admin'
+                ? 'NCCT Central Secretariat • Ministry Apex Hub'
+                : currentUser.role === 'institute_admin'
                 ? 'Sahakar Setu Institute Admin Services'
                 : 'Sahakar Setu Trainee Services'}
             </p>
@@ -238,7 +271,9 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
           <div className="flex items-center gap-1.5 font-medium">
             <ShieldCheck className="w-3.5 h-3.5 text-govTeal-600" />
             <span>
-              {currentUser.role === 'institute_admin'
+              {currentUser.role === 'super_admin'
+                ? 'NCCT Central Secretariat • Ministry Apex Hub'
+                : currentUser.role === 'institute_admin'
                 ? 'VAMNICOM Institute Administration • NCCT Apex'
                 : 'NCCT National Trainee Portal'}
             </span>

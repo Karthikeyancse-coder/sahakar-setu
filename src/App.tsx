@@ -38,6 +38,7 @@ import { SuperAdminDashboard } from './views/SuperAdmin/SuperAdminDashboard';
 import { SuperAdminAnalytics } from './views/SuperAdmin/SuperAdminAnalytics';
 import { InstituteDetailView } from './views/SuperAdmin/InstituteDetailView';
 import { UserManagementView } from './views/SuperAdmin/UserManagementView';
+import { SuperAdminProfileView } from './views/SuperAdmin/SuperAdminProfileView';
 import { CourseBuilder } from './views/Faculty/CourseBuilder';
 import { EmployerPortal } from './views/Employer/EmployerPortal';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
@@ -164,6 +165,8 @@ export const AppContent: React.FC = () => {
         return <UserManagementView />;
       case 'settings':
         return <SettingsView />;
+      case 'profile':
+        return <SuperAdminProfileView />;
       default:
         return <SuperAdminDashboard />;
     }

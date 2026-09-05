@@ -312,8 +312,8 @@ export const UserManagementView: React.FC = () => {
 
         {/* Add User Modal */}
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-gray-200 space-y-4 animate-scaleUp">
+          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 sm:p-6 shadow-xl border border-gray-200 space-y-4 animate-scaleUp">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div>
                   <h3 className="font-bold text-base text-govText-primary flex items-center gap-2">
