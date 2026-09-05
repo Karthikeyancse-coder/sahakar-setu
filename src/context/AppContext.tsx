@@ -331,6 +331,9 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     if (path !== '/faculty/dashboard') window.history.replaceState({}, '', '/faculty/dashboard');
     return { view: 'home', params: null };
   }
+  if (path === '/faculty/courses/new') {
+    return { view: 'course_new', params: null };
+  }
   if (path === '/faculty/courses' || path === '/dashboard/faculty/courses') {
     if (path !== '/faculty/courses') window.history.replaceState({}, '', '/faculty/courses');
     return { view: 'courses', params: null };
@@ -338,6 +341,9 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   const facultyEditMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit/);
   if (facultyEditMatch) {
     return { view: 'course_builder', params: { courseId: facultyEditMatch[1] } };
+  }
+  if (path === '/faculty/settings') {
+    return { view: 'settings', params: null };
   }
 
   // 5. EMPLOYER ROUTES (/employer/...)
@@ -389,7 +395,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [institutes] = useState<Institute[]>(SEED_INSTITUTES);
   const [programmes, setProgrammes] = useState<Programme[]>(SEED_PROGRAMMES);
-  const [courses, setCourses] = useState<Course[]>(SEED_COURSES);
+  const [courses, setCourses] = useState<Course[]>(() => {
+    const saved = localStorage.getItem('ss_courses_list');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return SEED_COURSES;
+  });
   const [enrollments, setEnrollments] = useState<Enrollment[]>(SEED_ENROLLMENTS);
   const [certificates, setCertificates] = useState<Certificate[]>(SEED_CERTIFICATES);
   const [sessions, setSessions] = useState<Session[]>(SEED_SESSIONS);
@@ -725,12 +740,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (destination === 'home' || destination === 'dashboard') {
         targetPath = '/faculty/dashboard';
         targetView = 'home';
+      } else if (destination === 'courses/new' || destination === 'course_new' || destination === '/faculty/courses/new') {
+        targetPath = '/faculty/courses/new';
+        targetView = 'course_new';
       } else if (destination === 'courses') {
         targetPath = '/faculty/courses';
         targetView = 'courses';
       } else if (destination === 'course_builder' || destination === 'edit') {
         targetPath = `/faculty/courses/${params?.courseId || 'crs-pacs-erp-101'}/edit`;
         targetView = 'course_builder';
+      } else if (destination === 'settings') {
+        targetPath = '/faculty/settings';
+        targetView = 'settings';
       } else {
         targetPath = '/faculty/dashboard';
         targetView = 'home';
@@ -978,7 +999,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addNewCourse = (course: Course) => {
-    setCourses(prev => [course, ...prev]);
+    setCourses(prev => {
+      const existingIdx = prev.findIndex(c => c.id === course.id);
+      let next: Course[];
+      if (existingIdx >= 0) {
+        next = [...prev];
+        next[existingIdx] = course;
+      } else {
+        next = [course, ...prev];
+      }
+      try {
+        localStorage.setItem('ss_courses_list', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
   };
 
   const t = getTranslation(currentLanguage);

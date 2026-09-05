@@ -17,8 +17,16 @@ import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
 
 export const CourseBuilder: React.FC = () => {
-  const { courses, addNewCourse, currentUser } = useApp();
-  const [selectedCourseId, setSelectedCourseId] = useState(courses[0].id);
+  const { courses, addNewCourse, currentUser, activeViewParams } = useApp();
+  const [selectedCourseId, setSelectedCourseId] = useState(
+    () => (activeViewParams?.courseId && courses.some(c => c.id === activeViewParams.courseId) ? activeViewParams.courseId : courses[0]?.id)
+  );
+
+  React.useEffect(() => {
+    if (activeViewParams?.courseId && courses.some(c => c.id === activeViewParams.courseId)) {
+      setSelectedCourseId(activeViewParams.courseId);
+    }
+  }, [activeViewParams?.courseId, courses]);
 
   const [isNewCourseModalOpen, setIsNewCourseModalOpen] = useState(false);
   const [newTitleEn, setNewTitleEn] = useState('');

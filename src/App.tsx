@@ -39,6 +39,9 @@ import { SuperAdminAnalytics } from './views/SuperAdmin/SuperAdminAnalytics';
 import { InstituteDetailView } from './views/SuperAdmin/InstituteDetailView';
 import { UserManagementView } from './views/SuperAdmin/UserManagementView';
 import { SuperAdminProfileView } from './views/SuperAdmin/SuperAdminProfileView';
+import { FacultyDashboard } from './views/Faculty/FacultyDashboard';
+import { FacultyCoursesView } from './views/Faculty/FacultyCoursesView';
+import { CreateCourseView } from './views/Faculty/CreateCourseView';
 import { CourseBuilder } from './views/Faculty/CourseBuilder';
 import { EmployerPortal } from './views/Employer/EmployerPortal';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
@@ -175,14 +178,17 @@ export const AppContent: React.FC = () => {
   const renderFacultyView = () => {
     switch (activeView) {
       case 'home':
+        return <FacultyDashboard />;
+      case 'courses':
+        return <FacultyCoursesView />;
+      case 'course_new':
+        return <CreateCourseView />;
       case 'course_builder':
         return <CourseBuilder />;
-      case 'courses':
-        return <CourseCatalog />;
       case 'settings':
         return <SettingsView />;
       default:
-        return <CourseBuilder />;
+        return <FacultyDashboard />;
     }
   };
 
