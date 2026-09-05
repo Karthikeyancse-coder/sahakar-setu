@@ -26,7 +26,7 @@ export const AttendanceKiosk: React.FC = () => {
   const { sessions, attendance, markAttendance, currentUser, t } = useApp();
   const [activeTab, setActiveTab] = useState<'qr' | 'face'>('qr');
   const [selectedSessionId, setSelectedSessionId] = useState(sessions[0]?.id || '');
-  
+
   // Webcam & Face Kiosk State
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -99,7 +99,7 @@ export const AttendanceKiosk: React.FC = () => {
             // Draw simulated dark feed
             ctx.fillStyle = '#1E2523';
             ctx.fillRect(0, 0, 400, 300);
-            
+
             ctx.fillStyle = '#34A868';
             ctx.font = '12px Inter';
             ctx.fillText('• KIOSK CAMERA NODE-01 ACTIVE', 20, 30);
@@ -109,7 +109,7 @@ export const AttendanceKiosk: React.FC = () => {
             // Draw scanning bounding box
             const time = Date.now() / 300;
             const offsetY = Math.sin(time) * 15;
-            
+
             ctx.strokeStyle = '#E68A2E';
             ctx.lineWidth = 3;
             ctx.strokeRect(100, 60 + offsetY, 200, 180);
@@ -178,7 +178,7 @@ export const AttendanceKiosk: React.FC = () => {
 
   return (
     <PageContainer>
-      
+
       {/* Header Banner */}
       <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="space-y-2">
@@ -200,22 +200,20 @@ export const AttendanceKiosk: React.FC = () => {
         <div className="flex flex-col sm:flex-col lg:flex-row w-full lg:w-auto bg-govBg p-1.5 rounded-xl border border-govTeal-100 gap-2 lg:gap-1.5">
           <button
             onClick={() => setActiveTab('qr')}
-            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
-              activeTab === 'qr'
+            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${activeTab === 'qr'
                 ? 'bg-govTeal-600 text-white shadow'
                 : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
-            }`}
+              }`}
           >
             <QrCode className="w-4 h-4" />
             <span>Primary: Session QR Check-in</span>
           </button>
           <button
             onClick={() => setActiveTab('face')}
-            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
-              activeTab === 'face'
+            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${activeTab === 'face'
                 ? 'bg-saffron-500 text-white shadow'
                 : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
-            }`}
+              }`}
           >
             <Cpu className="w-4 h-4" />
             <span>Hardware Showcase: Face Kiosk</span>
@@ -251,14 +249,14 @@ export const AttendanceKiosk: React.FC = () => {
       {/* TAB 1: QR Code Check-in Flow */}
       {activeTab === 'qr' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
+
           {/* QR Display Card (7 cols) */}
           <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-8 border border-govText-border shadow-sm flex flex-col items-center text-center space-y-6 w-full">
             <div className="space-y-1 w-full">
               <span className="text-xs font-bold text-saffron-600 uppercase tracking-wider">
                 Live Dynamic Token
               </span>
-              <h3 className="text-lg sm:text-xl font-bold text-govText-primary">
+              <h3 className="text-base sm:text-xl font-bold text-govText-primary break-words [overflow-wrap:anywhere] leading-snug">
                 {selectedSession?.title}
               </h3>
               <p className="text-xs text-govText-secondary max-w-md mx-auto">
@@ -339,7 +337,7 @@ export const AttendanceKiosk: React.FC = () => {
       {/* TAB 2: Raspberry Pi Face-Recognition Kiosk Showcase */}
       {activeTab === 'face' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
+
           {/* Webcam & Canvas Feed (7 cols) */}
           <div className="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 border border-govText-border shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -494,11 +492,10 @@ export const AttendanceKiosk: React.FC = () => {
                   <td className="p-3 font-bold text-govText-primary">{record.traineeName}</td>
                   <td className="p-3 text-govText-secondary">{record.traineeCoop}</td>
                   <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded font-mono font-bold uppercase text-[10px] ${
-                      record.method === 'face'
+                    <span className={`px-2 py-0.5 rounded font-mono font-bold uppercase text-[10px] ${record.method === 'face'
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
                         : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                    }`}>
+                      }`}>
                       {record.method}
                     </span>
                   </td>

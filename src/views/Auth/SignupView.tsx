@@ -53,7 +53,7 @@ export const SignupView: React.FC = () => {
     // Switch to first trainee or customized session
     switchUser('usr-trainee-1');
     setLanguage(languagePref);
-    navigate('/dashboard');
+    navigate('/trainee/dashboard');
   };
 
   return (

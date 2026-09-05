@@ -46,11 +46,11 @@ export const TraineeHome: React.FC = () => {
 
   return (
     <PageContainer>
-      
+
       {/* 1. Hero Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-govTeal-700 via-govTeal-800 to-govTeal-900 text-white p-5 sm:p-7 shadow-md border border-govTeal-600/50">
         <div className="relative z-10 max-w-3xl space-y-3">
-          
+
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-2.5 py-0.5 bg-white/15 backdrop-blur-md rounded-md text-[11px] font-bold text-saffron-300">
               NCCT Trainee Portal
@@ -63,8 +63,8 @@ export const TraineeHome: React.FC = () => {
               {currentLanguage === 'hi'
                 ? `नमस्ते, ${currentUser.name}`
                 : currentLanguage === 'mr'
-                ? `नमस्कार, ${currentUser.name}`
-                : `Welcome, ${currentUser.name}`}
+                  ? `नमस्कार, ${currentUser.name}`
+                  : `Welcome, ${currentUser.name}`}
             </h1>
             <p className="text-xs sm:text-sm text-govTeal-100 mt-1 leading-relaxed">
               {currentUser.cooperativeAffiliation || 'Primary Agricultural Credit Society (PACS) Member'}
@@ -106,7 +106,7 @@ export const TraineeHome: React.FC = () => {
 
       {/* 2. Priority Action Grid: Upcoming Class Session & Credentials */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
+
         {/* Next Scheduled Training Session (7 cols) */}
         <div className="lg:col-span-7 bg-white rounded-2xl p-5 sm:p-6 border border-govText-border shadow-sm space-y-4 flex flex-col justify-between">
           <div className="flex items-center justify-between border-b border-gray-100 pb-3">
@@ -130,10 +130,10 @@ export const TraineeHome: React.FC = () => {
 
           {nextSession ? (
             <div className="bg-govBg rounded-xl p-4 border border-govTeal-100 space-y-3">
-              <h3 className="font-bold text-sm text-govText-primary leading-snug">
+              <h3 className="font-bold text-sm text-govText-primary leading-snug break-words [overflow-wrap:anywhere]">
                 {nextSession.title}
               </h3>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-govText-secondary">
                 <div className="flex items-center gap-2">
                   <Clock className="w-3.5 h-3.5 text-govTeal-600" />
@@ -257,7 +257,7 @@ export const TraineeHome: React.FC = () => {
 
       {/* 4. Bottom Row: Cooperative Job Opportunities & Career Sahayak Teasers */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-        
+
         {/* Job Opportunities Teaser */}
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-govText-border shadow-sm space-y-4 flex flex-col justify-between">
           <div className="space-y-2">

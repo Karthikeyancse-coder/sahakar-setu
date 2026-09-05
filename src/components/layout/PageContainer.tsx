@@ -19,7 +19,7 @@ export const PageContainer: React.FC<PageContainerProps> = ({
   }[maxWidth];
 
   return (
-    <div className={`w-full ${maxClass} mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 min-w-0 ${className}`}>
+    <div className={`w-full ${maxClass} mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-8 space-y-5 sm:space-y-6 min-w-0 ${className}`}>
       {children}
     </div>
   );

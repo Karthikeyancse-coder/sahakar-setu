@@ -20,7 +20,7 @@ import {
   TreePine,
   Check
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, getRolePrefix } from '../../context/AppContext';
 import { SEED_USERS } from '../../data/seedData';
 import { Language } from '../../types';
 import TextType from '../../components/TextType/TextType';
@@ -588,7 +588,7 @@ export const AuthPage: React.FC = () => {
         SEED_USERS[0];
       switchUser(matched.id);
       setIsSubmitting(false);
-      navigate('/dashboard');
+      navigate(`${getRolePrefix(matched.role)}/dashboard`);
     }, 400);
   };
 
@@ -601,7 +601,7 @@ export const AuthPage: React.FC = () => {
     else if (roleKey === 'employer') targetUser = SEED_USERS.find(u => u.role === 'employer') || SEED_USERS[10];
 
     switchUser(targetUser.id);
-    navigate('/dashboard');
+    navigate(`${getRolePrefix(targetUser.role)}/dashboard`);
   };
 
   return (

@@ -151,7 +151,7 @@ export const AdminDashboard: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('programmes_erp')}
+              onClick={() => navigate('/institute-admin/nominations')}
               className="text-xs font-bold text-govTeal-700 hover:text-govTeal-900 flex items-center gap-1"
             >
               <span>View All</span>
@@ -249,7 +249,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <button
-            onClick={() => navigate('hostel_timetable')}
+            onClick={() => navigate('/institute-admin/timetable')}
             className="w-full py-2.5 bg-govBg hover:bg-gray-100 text-govText-primary text-xs font-bold rounded-xl border border-govText-border flex items-center justify-center gap-2"
           >
             <Calendar className="w-4 h-4 text-govTeal-600" />

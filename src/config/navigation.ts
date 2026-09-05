@@ -49,18 +49,18 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'MAIN',
       items: [
-        { id: 'home', label: 'Dashboard', route: '/dashboard', icon: LayoutDashboard },
-        { id: 'my_courses', label: 'My Courses', route: '/my-courses', icon: BookOpen },
-        { id: 'certificates', label: 'Certificates', route: '/certificates', icon: Award },
-        { id: 'jobs', label: 'Job Opportunities', route: '/jobs', icon: Briefcase },
-        { id: 'attendance_kiosk', label: 'Attendance', route: '/attendance', icon: QrCode },
+        { id: 'home', label: 'Dashboard', route: '/trainee/dashboard', icon: LayoutDashboard },
+        { id: 'my_courses', label: 'My Courses', route: '/trainee/my-courses', icon: BookOpen },
+        { id: 'certificates', label: 'Certificates', route: '/trainee/certificates', icon: Award },
+        { id: 'jobs', label: 'Job Opportunities', route: '/trainee/jobs', icon: Briefcase },
+        { id: 'attendance_kiosk', label: 'Attendance', route: '/trainee/attendance', icon: QrCode },
       ],
     },
     {
       title: 'SYSTEM',
       items: [
-        { id: 'help', label: 'Help & Support', route: '/help', icon: HelpCircle },
-        { id: 'settings', label: 'Settings', route: '/settings', icon: Settings },
+        { id: 'help', label: 'Help & Support', route: '/trainee/help', icon: HelpCircle },
+        { id: 'settings', label: 'Settings', route: '/trainee/settings', icon: Settings },
       ],
     },
   ],
@@ -69,35 +69,35 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'MAIN',
       items: [
-        { id: 'home', label: 'Dashboard', route: '/dashboard/admin', icon: LayoutDashboard },
+        { id: 'home', label: 'Dashboard', route: '/institute-admin/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'TRAINING OPERATIONS',
       items: [
-        { id: 'programmes_erp', label: 'Programmes', route: '/dashboard/admin/programmes', icon: Layers },
-        { id: 'nominations', label: 'Nominations', route: '/dashboard/admin/nominations', icon: FileCheck },
-        { id: 'trainee_directory', label: 'Trainees', route: '/dashboard/admin/trainees', icon: Users },
-        { id: 'attendance_kiosk', label: 'Sessions & Kiosk', route: '/dashboard/admin/attendance', icon: QrCode, badge: 'Hardware' },
+        { id: 'programmes_erp', label: 'Programmes', route: '/institute-admin/programmes', icon: Layers },
+        { id: 'nominations', label: 'Nominations', route: '/institute-admin/nominations', icon: FileCheck },
+        { id: 'trainee_directory', label: 'Trainees', route: '/institute-admin/trainees', icon: Users },
+        { id: 'attendance_kiosk', label: 'Sessions & Kiosk', route: '/institute-admin/sessions', icon: QrCode, badge: 'Hardware' },
       ],
     },
     {
       title: 'CAMPUS & LOGISTICS',
       items: [
-        { id: 'hostel_timetable', label: 'Hostel & Rooms', route: '/dashboard/admin/hostel', icon: BedDouble },
-        { id: 'timetable', label: 'Academic Timetable', route: '/dashboard/admin/timetable', icon: CalendarDays },
+        { id: 'hostel_timetable', label: 'Hostel & Rooms', route: '/institute-admin/hostel', icon: BedDouble },
+        { id: 'timetable', label: 'Academic Timetable', route: '/institute-admin/timetable', icon: CalendarDays },
       ],
     },
     {
       title: 'INTELLIGENCE',
       items: [
-        { id: 'analytics', label: 'Institute Analytics', route: '/dashboard/admin/analytics', icon: BarChart3 },
+        { id: 'analytics', label: 'Institute Analytics', route: '/institute-admin/analytics', icon: BarChart3 },
       ],
     },
     {
       title: 'SYSTEM',
       items: [
-        { id: 'settings', label: 'Settings', route: '/dashboard/settings', icon: Settings },
+        { id: 'settings', label: 'Settings', route: '/institute-admin/settings', icon: Settings },
       ],
     },
   ],
@@ -106,28 +106,25 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'OVERVIEW',
       items: [
-        { id: 'home', label: 'National Dashboard', route: '/dashboard/super-admin', icon: BarChart3 },
+        { id: 'home', label: 'National Dashboard', route: '/super-admin/dashboard', icon: BarChart3 },
       ],
     },
     {
       title: 'NETWORK MANAGEMENT',
       items: [
-        { id: 'institutes_directory', label: '20 NCCT Institutes', route: '/dashboard/super-admin/institutes', icon: Building2 },
-        { id: 'programmes_erp', label: 'National Programmes', route: '/dashboard/super-admin/programmes', icon: Layers },
-        { id: 'trainee_directory', label: 'Certified Trainees', route: '/dashboard/super-admin/trainees', icon: Users },
-        { id: 'attendance_kiosk', label: 'Kiosk Monitoring', route: '/dashboard/super-admin/kiosks', icon: Cpu, badge: 'Live Nodes' },
+        { id: 'institutes_directory', label: '20 NCCT Institutes', route: '/super-admin/institutes', icon: Building2 },
       ],
     },
     {
       title: 'INTELLIGENCE',
       items: [
-        { id: 'analytics', label: 'National Analytics', route: '/dashboard/super-admin/analytics', icon: TrendingUp },
+        { id: 'analytics', label: 'National Analytics', route: '/super-admin/analytics', icon: TrendingUp },
       ],
     },
     {
       title: 'SYSTEM',
       items: [
-        { id: 'settings', label: 'Audit Logs & Settings', route: '/dashboard/settings', icon: Settings },
+        { id: 'settings', label: 'Settings', route: '/super-admin/settings', icon: Settings },
       ],
     },
   ],
@@ -136,22 +133,14 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'MAIN',
       items: [
-        { id: 'home', label: 'Faculty Dashboard', route: '/dashboard/faculty', icon: LayoutDashboard },
+        { id: 'home', label: 'Faculty Dashboard', route: '/faculty/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'TEACHING & CURRICULUM',
       items: [
-        { id: 'course_builder', label: 'Course Studio', route: '/dashboard/faculty/content', icon: Edit3, badge: 'Studio' },
-        { id: 'courses', label: 'Curriculum Catalog', route: '/dashboard/faculty/courses', icon: BookOpen },
-        { id: 'trainee_directory', label: 'Enrolled Learners', route: '/dashboard/faculty/learners', icon: Users },
-        { id: 'attendance_kiosk', label: 'Class Attendance', route: '/dashboard/faculty/attendance', icon: QrCode },
-      ],
-    },
-    {
-      title: 'SYSTEM',
-      items: [
-        { id: 'settings', label: 'Settings', route: '/dashboard/settings', icon: Settings },
+        { id: 'courses', label: 'Courses', route: '/faculty/courses', icon: BookOpen },
+        { id: 'course_builder', label: 'Course Studio', route: '/faculty/courses/crs-pacs-erp-101/edit', icon: Edit3, badge: 'Studio' },
       ],
     },
   ],
@@ -160,26 +149,14 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'MAIN',
       items: [
-        { id: 'home', label: 'Recruiter Dashboard', route: '/dashboard/employer', icon: LayoutDashboard },
+        { id: 'home', label: 'Recruiter Dashboard', route: '/employer/dashboard', icon: LayoutDashboard },
       ],
     },
     {
       title: 'TALENT ACQUISITION',
       items: [
-        { id: 'trainee_directory', label: 'Find Candidates', route: '/dashboard/employer/candidates', icon: Users, badge: 'Verified' },
-        { id: 'jobs', label: 'Job Postings', route: '/dashboard/employer/jobs', icon: Briefcase },
-      ],
-    },
-    {
-      title: 'INTELLIGENCE',
-      items: [
-        { id: 'analytics', label: 'Skill Demand Insights', route: '/dashboard/employer/analytics', icon: BarChart3 },
-      ],
-    },
-    {
-      title: 'SYSTEM',
-      items: [
-        { id: 'settings', label: 'Company Profile', route: '/dashboard/settings', icon: Settings },
+        { id: 'trainee_directory', label: 'Candidates', route: '/employer/candidates', icon: Users, badge: 'Verified' },
+        { id: 'jobs', label: 'Job Postings', route: '/employer/jobs', icon: Briefcase },
       ],
     },
   ],

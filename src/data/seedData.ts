@@ -1089,6 +1089,66 @@ export const SEED_NOMINATIONS: Nomination[] = [
     status: 'pending',
     nominatedDate: '2026-03-03',
   },
+  {
+    id: 'nom-005',
+    programmeId: 'prog-pacs-2026-01',
+    userId: 'usr-trainee-6',
+    traineeName: 'Kavita Jadhav',
+    traineeEmail: 'kavita.j@shg-mah.org',
+    cooperativeName: 'Baramati Agro Cooperative Society, Pune',
+    status: 'pending',
+    nominatedDate: '2026-03-04',
+  },
+  {
+    id: 'nom-006',
+    programmeId: 'prog-dairy-2026-02',
+    userId: 'usr-trainee-7',
+    traineeName: 'Vikramaditya Solanki',
+    traineeEmail: 'vikram.solanki@amul.coop',
+    cooperativeName: 'Saras Dairy Cooperative Federation, Jaipur',
+    status: 'pending',
+    nominatedDate: '2026-03-04',
+  },
+  {
+    id: 'nom-007',
+    programmeId: 'prog-shg-2026-03',
+    userId: 'usr-trainee-8',
+    traineeName: 'Pooja Mandhare',
+    traineeEmail: 'pooja.shg@prerna.org',
+    cooperativeName: 'Prerna Mahila SHG Federation, Barabanki',
+    status: 'approved',
+    nominatedDate: '2026-02-28',
+  },
+  {
+    id: 'nom-008',
+    programmeId: 'prog-shg-2026-03',
+    userId: 'usr-trainee-9',
+    traineeName: 'Deepak Verma',
+    traineeEmail: 'deepak.v@kisanseva.in',
+    cooperativeName: 'Indore PACS Central Rural Bank',
+    status: 'rejected',
+    nominatedDate: '2026-02-20',
+  },
+  {
+    id: 'nom-009',
+    programmeId: 'prog-dairy-2026-02',
+    userId: 'usr-trainee-10',
+    traineeName: 'Surekha Gaikwad',
+    traineeEmail: 'surekha.dairy@warana.coop',
+    cooperativeName: 'Warana Dairy Sangh, Kolhapur',
+    status: 'pending',
+    nominatedDate: '2026-03-05',
+  },
+  {
+    id: 'nom-010',
+    programmeId: 'prog-pacs-2026-01',
+    userId: 'usr-trainee-11',
+    traineeName: 'Sanjay Deshpande',
+    traineeEmail: 'sanjay.deshpande@khedpacs.org',
+    cooperativeName: 'Khed Taluka Primary Agricultural Society',
+    status: 'pending',
+    nominatedDate: '2026-03-05',
+  },
 ];
 
 export const SEED_JOBS: JobPosting[] = [
@@ -1148,12 +1208,33 @@ export const SEED_HOSTEL_BEDS: HostelBed[] = [
 ];
 
 export const SEED_TIMETABLE: TimetableEntry[] = [
+  // Monday
   { id: 'tt-1', programmeId: 'prog-pacs-2026-01', day: 'Monday', timeSlot: '09:30 AM - 11:00 AM', subject: 'National PACS Computerization Framework', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Lecture Hall 1' },
   { id: 'tt-2', programmeId: 'prog-pacs-2026-01', day: 'Monday', timeSlot: '11:30 AM - 01:00 PM', subject: 'Hands-on ERP Day-Open & Cash Book Simulation', facultyName: 'Prof. Meenakshi Sundaram', venue: 'Smart Computer Lab 2' },
   { id: 'tt-3', programmeId: 'prog-pacs-2026-01', day: 'Monday', timeSlot: '02:30 PM - 04:30 PM', subject: 'KCC Loan Sanctioning & DLTC Scale of Finance', facultyName: 'Shri R. K. Sharma', venue: 'Smart Computer Lab 2' },
+  
+  // Tuesday
   { id: 'tt-4', programmeId: 'prog-pacs-2026-01', day: 'Tuesday', timeSlot: '09:30 AM - 11:30 AM', subject: 'Fertilizer & Non-Credit Inventory POS Management', facultyName: 'Prof. Meenakshi Sundaram', venue: 'Lecture Hall 1' },
   { id: 'tt-5', programmeId: 'prog-pacs-2026-01', day: 'Tuesday', timeSlot: '02:00 PM - 05:00 PM', subject: 'Common Service Centre (CSC) Digital Services Live Demo', facultyName: 'Shri Anand Tripathi', venue: 'Auditorium Hall B' },
-  { id: 'tt-6', programmeId: 'prog-pacs-2026-01', day: 'Wednesday', timeSlot: '10:00 AM - 01:00 PM', subject: 'Statutory Audit Trail & NABARD Compliance Reporting', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Lecture Hall 1' },
+  
+  // Wednesday
+  { id: 'tt-6', programmeId: 'prog-pacs-2026-01', day: 'Wednesday', timeSlot: '09:30 AM - 11:30 AM', subject: 'Statutory Audit Trail & NABARD Compliance Reporting', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Lecture Hall 1' },
+  { id: 'tt-7', programmeId: 'prog-dairy-2026-02', day: 'Wednesday', timeSlot: '11:45 AM - 01:15 PM', subject: 'AMCS Automated Milk Testing & Sensor Calibration', facultyName: 'Prof. Meenakshi Sundaram', venue: 'Smart Computer Lab 2' },
+  { id: 'tt-8', programmeId: 'prog-pacs-2026-01', day: 'Wednesday', timeSlot: '02:30 PM - 04:30 PM', subject: 'Double-Entry General Ledger Migration & Day-End Balancing', facultyName: 'Shri R. K. Sharma', venue: 'Smart Computer Lab 2' },
+
+  // Thursday
+  { id: 'tt-9', programmeId: 'prog-pacs-2026-01', day: 'Thursday', timeSlot: '09:30 AM - 11:30 AM', subject: 'Multi-Service PACS Diversification: PMKSK & FPO Hubs', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Auditorium Hall B' },
+  { id: 'tt-10', programmeId: 'prog-dairy-2026-02', day: 'Thursday', timeSlot: '11:45 AM - 01:15 PM', subject: 'Cold Chain Logistics & Bulk Milk Cooler (BMC) Telemetry', facultyName: 'Shri Anand Tripathi', venue: 'Lecture Hall 2' },
+  { id: 'tt-11', programmeId: 'prog-shg-2026-03', day: 'Thursday', timeSlot: '02:30 PM - 04:30 PM', subject: 'Panchasutra Micro-Credit Bookkeeping & Audit Readiness', facultyName: 'Prof. Meenakshi Sundaram', venue: 'Smart Computer Lab 2' },
+
+  // Friday
+  { id: 'tt-12', programmeId: 'prog-pacs-2026-01', day: 'Friday', timeSlot: '09:30 AM - 11:30 AM', subject: 'NABARD Rural Credit Portal Integration & Interest Subvention', facultyName: 'Shri R. K. Sharma', venue: 'Lecture Hall 1' },
+  { id: 'tt-13', programmeId: 'prog-pacs-2026-01', day: 'Friday', timeSlot: '02:00 PM - 04:00 PM', subject: 'Hands-on Disaster Recovery & Cloud Data Backup Protocols', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Smart Computer Lab 2' },
+  { id: 'tt-14', programmeId: 'prog-dairy-2026-02', day: 'Friday', timeSlot: '04:15 PM - 05:45 PM', subject: 'Cooperative Governance: Bye-laws & AGM Legal Protocols', facultyName: 'Shri Anand Tripathi', venue: 'Auditorium Hall B' },
+
+  // Saturday
+  { id: 'tt-15', programmeId: 'prog-pacs-2026-01', day: 'Saturday', timeSlot: '09:30 AM - 12:30 PM', subject: 'Capstone Simulation: Full PACS Month-End Closing & Trial Balance', facultyName: 'Prof. Meenakshi Sundaram', venue: 'Smart Computer Lab 2' },
+  { id: 'tt-16', programmeId: 'prog-pacs-2026-01', day: 'Saturday', timeSlot: '02:00 PM - 04:30 PM', subject: 'Weekly Assessment, Viva Voce & Biometric Attendance Sign-off', facultyName: 'Dr. Rajesh Deshmukh', venue: 'Lecture Hall 1' },
 ];
 
 export const SEED_NOTIFICATIONS: AppNotification[] = [

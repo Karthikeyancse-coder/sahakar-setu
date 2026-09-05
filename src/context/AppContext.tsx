@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   User,
+  UserRole,
   Language,
   Institute,
   Programme,
@@ -67,6 +68,7 @@ interface AppContextType {
   submitQuiz: (courseId: string, quizId: string, scorePercent: number) => { passed: boolean; certId?: string };
   markAttendance: (sessionId: string, method: 'qr' | 'face', targetUserId?: string, confidence?: number) => { success: boolean; message: string };
   updateNominationStatus: (nominationId: string, status: 'approved' | 'rejected') => void;
+  bulkUpdateNominationStatus: (nominationIds: string[], status: 'approved' | 'rejected') => void;
   bulkImportNominations: (programmeId: string, records: Array<{ name: string; email: string; coop: string }>) => number;
   applyForJob: (jobId: string) => boolean;
   createJobPosting: (job: Omit<JobPosting, 'id' | 'postedDate'>) => void;
@@ -82,8 +84,30 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Clean path resolution without hash routing
-const resolveRoute = (isAuth: boolean) => {
+export const ROLE_PREFIXES: Record<UserRole, string> = {
+  trainee: '/trainee',
+  institute_admin: '/institute-admin',
+  super_admin: '/super-admin',
+  faculty: '/faculty',
+  employer: '/employer',
+};
+
+export const getRolePrefix = (role?: UserRole): string => {
+  if (!role) return '/trainee';
+  return ROLE_PREFIXES[role] || '/trainee';
+};
+
+export const getRoleFromPrefix = (path: string): UserRole | null => {
+  if (path.startsWith('/trainee')) return 'trainee';
+  if (path.startsWith('/institute-admin')) return 'institute_admin';
+  if (path.startsWith('/super-admin')) return 'super_admin';
+  if (path.startsWith('/faculty')) return 'faculty';
+  if (path.startsWith('/employer')) return 'employer';
+  return null;
+};
+
+// Clean path resolution without hash routing + Role-based namespaced route guarding
+const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; params: any } => {
   const path = window.location.pathname;
   const hash = window.location.hash;
 
@@ -105,7 +129,8 @@ const resolveRoute = (isAuth: boolean) => {
     }
     if (lowerHash === '#/dashboard' || lowerHash === '#dashboard' || lowerHash === '#/home' || lowerHash === '#home') {
       if (isAuth) {
-        window.history.replaceState({}, '', '/dashboard');
+        const dest = `${getRolePrefix(userRole)}/dashboard`;
+        window.history.replaceState({}, '', dest);
         return { view: 'home', params: null };
       } else {
         window.history.replaceState({}, '', '/');
@@ -117,7 +142,7 @@ const resolveRoute = (isAuth: boolean) => {
     return { view: 'login', params: null };
   }
 
-  // Pure HTML5 pathname routing
+  // Pure HTML5 pathname routing - Public unauthenticated routes
   if (path.startsWith('/verify/')) {
     const certId = path.replace(/^\/verify\//, '');
     return { view: 'verify_public', params: { certId } };
@@ -140,60 +165,182 @@ const resolveRoute = (isAuth: boolean) => {
     return { view: 'login', params: null };
   }
 
-  // Authenticated routes
-  if (path === '/dashboard' || path === '/home' || path === '/') {
+  const role = userRole || 'trainee';
+  const rolePrefix = getRolePrefix(role);
+
+  // ROUTE GUARD: Check if user is attempting to access a role namespace outside their role
+  const pathRole = getRoleFromPrefix(path);
+  if (pathRole && pathRole !== role) {
+    const fallbackPath = `${rolePrefix}/dashboard`;
+    window.history.replaceState({}, '', fallbackPath);
     return { view: 'home', params: null };
   }
-  if (path === '/courses' || path === '/catalog' || path === '/dashboard/courses') {
-    return { view: 'courses', params: null };
-  }
-  if (path === '/my-courses' || path === '/dashboard/my-courses') {
-    return { view: 'my_courses', params: null };
+
+  // Root or generic dashboard redirects for authenticated users
+  if (path === '/' || path === '/dashboard' || path === '/home') {
+    const target = `${rolePrefix}/dashboard`;
+    window.history.replaceState({}, '', target);
+    return { view: 'home', params: null };
   }
 
-  const courseLearnMatch = path.match(/^\/courses\/([^/]+)\/learn/);
+  // Legacy flat routes redirection into user's role namespace
+  if (path === '/settings' || path === '/dashboard/settings') {
+    window.history.replaceState({}, '', `${rolePrefix}/settings`);
+    return { view: 'settings', params: null };
+  }
+
+  // 1. TRAINEE ROUTES (/trainee/...)
+  if (path === '/trainee/dashboard' || path === '/trainee') {
+    return { view: 'home', params: null };
+  }
+  if (path === '/trainee/courses' || path === '/courses') {
+    if (path !== '/trainee/courses') window.history.replaceState({}, '', '/trainee/courses');
+    return { view: 'courses', params: null };
+  }
+  const courseLearnMatch = path.match(/^\/(?:trainee\/)?courses\/([^/]+)\/learn/);
   if (courseLearnMatch) {
     return { view: 'course_player', params: { courseId: courseLearnMatch[1] } };
   }
-  const courseQuizMatch = path.match(/^\/courses\/([^/]+)\/quiz(?:\/([^/]+))?/);
+  const courseQuizMatch = path.match(/^\/(?:trainee\/)?courses\/([^/]+)\/quiz(?:\/([^/]+))?/);
   if (courseQuizMatch) {
     return { view: 'quiz', params: { courseId: courseQuizMatch[1], moduleId: courseQuizMatch[2] } };
   }
-  const courseDetailMatch = path.match(/^\/courses\/([^/]+)$/);
+  const courseDetailMatch = path.match(/^\/(?:trainee\/)?courses\/([^/]+)$/);
   if (courseDetailMatch) {
     return { view: 'course_detail', params: { courseId: courseDetailMatch[1] } };
   }
-
-  if (path === '/certificates' || path === '/dashboard/certificates') {
+  if (path === '/trainee/my-courses' || path === '/my-courses') {
+    if (path !== '/trainee/my-courses') window.history.replaceState({}, '', '/trainee/my-courses');
+    return { view: 'my_courses', params: null };
+  }
+  const certDetailMatch = path.match(/^\/trainee\/certificates\/([^/]+)$/);
+  if (certDetailMatch) {
+    return { view: 'certificates', params: { certId: certDetailMatch[1] } };
+  }
+  if (path === '/trainee/certificates' || path === '/certificates') {
+    if (path !== '/trainee/certificates') window.history.replaceState({}, '', '/trainee/certificates');
     return { view: 'certificates', params: null };
   }
-  if (path === '/jobs' || path === '/dashboard/jobs') {
-    return { view: 'jobs', params: null };
-  }
-  const jobDetailMatch = path.match(/^\/jobs\/([^/]+)$/);
+  const jobDetailMatch = path.match(/^\/(?:trainee\/)?jobs\/([^/]+)$/);
   if (jobDetailMatch) {
     return { view: 'job_detail', params: { jobId: jobDetailMatch[1] } };
   }
-  if (path === '/my-applications' || path === '/dashboard/my-applications') {
+  if (path === '/trainee/jobs' || path === '/jobs') {
+    if (path !== '/trainee/jobs') window.history.replaceState({}, '', '/trainee/jobs');
+    return { view: 'jobs', params: null };
+  }
+  if (path === '/trainee/my-applications' || path === '/my-applications') {
+    if (path !== '/trainee/my-applications') window.history.replaceState({}, '', '/trainee/my-applications');
     return { view: 'my_applications', params: null };
   }
-  if (path === '/career-chat' || path === '/dashboard/career-chat') {
+  if (path === '/trainee/career-chat' || path === '/career-chat') {
+    if (path !== '/trainee/career-chat') window.history.replaceState({}, '', '/trainee/career-chat');
     return { view: 'career_chat', params: null };
   }
-  if (path === '/attendance' || path === '/dashboard/attendance') {
+  if (path === '/trainee/attendance' || path === '/attendance') {
+    if (path !== '/trainee/attendance') window.history.replaceState({}, '', '/trainee/attendance');
     return { view: 'attendance_kiosk', params: null };
   }
-  if (path === '/profile' || path === '/dashboard/profile') {
+  if (path === '/trainee/profile' || path === '/profile') {
+    if (path !== '/trainee/profile') window.history.replaceState({}, '', '/trainee/profile');
     return { view: 'profile', params: null };
   }
-  if (path === '/settings' || path === '/dashboard/settings') {
+  if (path === '/trainee/settings') {
     return { view: 'settings', params: null };
   }
-  if (path === '/help' || path === '/dashboard/help') {
+  if (path === '/trainee/help' || path === '/help') {
+    if (path !== '/trainee/help') window.history.replaceState({}, '', '/trainee/help');
     return { view: 'help', params: null };
   }
 
-  // Root '/' and default fallback
+  // 2. INSTITUTE ADMIN ROUTES (/institute-admin/...)
+  if (path === '/institute-admin/dashboard' || path === '/institute-admin' || path === '/dashboard/admin') {
+    if (path !== '/institute-admin/dashboard') window.history.replaceState({}, '', '/institute-admin/dashboard');
+    return { view: 'home', params: null };
+  }
+  if (path === '/institute-admin/programmes' || path === '/dashboard/admin/programmes') {
+    if (path !== '/institute-admin/programmes') window.history.replaceState({}, '', '/institute-admin/programmes');
+    return { view: 'programmes_erp', params: null };
+  }
+  if (path === '/institute-admin/nominations' || path === '/dashboard/admin/nominations') {
+    if (path !== '/institute-admin/nominations') window.history.replaceState({}, '', '/institute-admin/nominations');
+    return { view: 'nominations', params: null };
+  }
+  if (path === '/institute-admin/trainees' || path === '/dashboard/admin/trainees') {
+    if (path !== '/institute-admin/trainees') window.history.replaceState({}, '', '/institute-admin/trainees');
+    return { view: 'trainee_directory', params: null };
+  }
+  if (path === '/institute-admin/sessions' || path === '/institute-admin/attendance' || path === '/dashboard/admin/attendance') {
+    if (path !== '/institute-admin/sessions') window.history.replaceState({}, '', '/institute-admin/sessions');
+    return { view: 'attendance_kiosk', params: null };
+  }
+  if (path === '/institute-admin/hostel' || path === '/dashboard/admin/hostel') {
+    if (path !== '/institute-admin/hostel') window.history.replaceState({}, '', '/institute-admin/hostel');
+    return { view: 'hostel_timetable', params: null };
+  }
+  if (path === '/institute-admin/timetable' || path === '/dashboard/admin/timetable') {
+    if (path !== '/institute-admin/timetable') window.history.replaceState({}, '', '/institute-admin/timetable');
+    return { view: 'timetable', params: null };
+  }
+  if (path === '/institute-admin/analytics' || path === '/dashboard/admin/analytics') {
+    if (path !== '/institute-admin/analytics') window.history.replaceState({}, '', '/institute-admin/analytics');
+    return { view: 'analytics', params: null };
+  }
+  if (path === '/institute-admin/settings') {
+    return { view: 'settings', params: null };
+  }
+
+  // 3. SUPER ADMIN ROUTES (/super-admin/...)
+  if (path === '/super-admin/dashboard' || path === '/super-admin' || path === '/dashboard/super-admin') {
+    if (path !== '/super-admin/dashboard') window.history.replaceState({}, '', '/super-admin/dashboard');
+    return { view: 'home', params: null };
+  }
+  if (path === '/super-admin/analytics' || path === '/dashboard/super-admin/analytics') {
+    if (path !== '/super-admin/analytics') window.history.replaceState({}, '', '/super-admin/analytics');
+    return { view: 'analytics', params: null };
+  }
+  if (path === '/super-admin/institutes' || path === '/dashboard/super-admin/institutes') {
+    if (path !== '/super-admin/institutes') window.history.replaceState({}, '', '/super-admin/institutes');
+    return { view: 'institutes_directory', params: null };
+  }
+  if (path === '/super-admin/settings') {
+    return { view: 'settings', params: null };
+  }
+
+  // 4. FACULTY ROUTES (/faculty/...)
+  if (path === '/faculty/dashboard' || path === '/faculty' || path === '/dashboard/faculty') {
+    if (path !== '/faculty/dashboard') window.history.replaceState({}, '', '/faculty/dashboard');
+    return { view: 'home', params: null };
+  }
+  if (path === '/faculty/courses' || path === '/dashboard/faculty/courses') {
+    if (path !== '/faculty/courses') window.history.replaceState({}, '', '/faculty/courses');
+    return { view: 'courses', params: null };
+  }
+  const facultyEditMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit/);
+  if (facultyEditMatch) {
+    return { view: 'course_builder', params: { courseId: facultyEditMatch[1] } };
+  }
+
+  // 5. EMPLOYER ROUTES (/employer/...)
+  if (path === '/employer/dashboard' || path === '/employer' || path === '/dashboard/employer') {
+    if (path !== '/employer/dashboard') window.history.replaceState({}, '', '/employer/dashboard');
+    return { view: 'home', params: null };
+  }
+  if (path === '/employer/candidates' || path === '/dashboard/employer/candidates') {
+    if (path !== '/employer/candidates') window.history.replaceState({}, '', '/employer/candidates');
+    return { view: 'trainee_directory', params: null };
+  }
+  if (path === '/employer/jobs/new') {
+    return { view: 'jobs_new', params: null };
+  }
+  if (path === '/employer/jobs' || path === '/dashboard/employer/jobs') {
+    if (path !== '/employer/jobs') window.history.replaceState({}, '', '/employer/jobs');
+    return { view: 'jobs', params: null };
+  }
+
+  // Fallback to role dashboard
+  const fallback = `${rolePrefix}/dashboard`;
+  window.history.replaceState({}, '', fallback);
   return { view: 'home', params: null };
 };
 
@@ -216,8 +363,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (saved as Language) || 'en';
   });
 
-  // Resolve initial view based on current browser URL
-  const initialRoute = resolveRoute(localStorage.getItem('ss_auth') === 'true');
+  // Resolve initial view based on current browser URL and authenticated user role
+  const initialRoute = resolveRoute(localStorage.getItem('ss_auth') === 'true', currentUser.role);
   const [activeView, setActiveView] = useState<string>(initialRoute.view);
   const [activeViewParams, setActiveViewParams] = useState<any>(initialRoute.params);
 
@@ -301,14 +448,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const handlePopState = () => {
       const isAuth = localStorage.getItem('ss_auth') === 'true';
-      const route = resolveRoute(isAuth);
+      const route = resolveRoute(isAuth, currentUser.role);
       setActiveView(route.view);
       setActiveViewParams(route.params);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [currentUser.role]);
 
   const logout = () => {
     setIsAuthenticated(false);
@@ -334,8 +481,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       setActiveView('home');
       setActiveViewParams(null);
-      if (window.location.pathname !== '/dashboard') {
-        window.history.pushState({}, '', '/dashboard');
+      const targetPath = `${getRolePrefix(target.role)}/dashboard`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
       }
     }
   };
@@ -345,61 +493,200 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('ss_lang', lang);
   };
 
-  const navigate = (view: string, params?: any) => {
-    if (view === 'login' || view === '/' || view === 'logout') {
+  const navigate = (destination: string, params?: any) => {
+    if (destination === 'login' || destination === '/' || destination === 'logout') {
       logout();
       return;
     }
 
-    let targetPath = '/dashboard';
-    if (view === 'signup' || view === 'register') {
-      targetPath = '/register';
-    } else if (view === 'forgot_password') {
-      targetPath = '/forgot-password';
-    } else if (view === 'verify_public') {
-      const certId = params?.certId || 'NCCT-CERT-2026-VAM-0089';
-      targetPath = `/verify/${certId}`;
-    } else if (view === 'home' || view === 'dashboard') {
-      targetPath = '/dashboard';
-    } else if (view === 'courses') {
-      targetPath = '/courses';
-    } else if (view === 'course_detail') {
-      targetPath = `/courses/${params?.courseId || ''}`;
-    } else if (view === 'course_player' || view === 'course_view') {
-      targetPath = `/courses/${params?.courseId || ''}/learn`;
-    } else if (view === 'quiz') {
-      targetPath = `/courses/${params?.courseId || ''}/quiz/${params?.moduleId || ''}`;
-    } else if (view === 'my_courses') {
-      targetPath = '/my-courses';
-    } else if (view === 'certificates') {
-      targetPath = '/certificates';
-    } else if (view === 'jobs') {
-      targetPath = '/jobs';
-    } else if (view === 'job_detail') {
-      targetPath = `/jobs/${params?.jobId || ''}`;
-    } else if (view === 'my_applications') {
-      targetPath = '/my-applications';
-    } else if (view === 'career_chat' || view === 'career_bot') {
-      targetPath = '/career-chat';
-    } else if (view === 'attendance_kiosk') {
-      targetPath = '/attendance';
-    } else if (view === 'profile') {
-      targetPath = '/profile';
-    } else if (view === 'settings') {
-      targetPath = '/settings';
-    } else if (view === 'help') {
-      targetPath = '/help';
-    } else {
-      targetPath = `/dashboard`;
+    if (destination === 'signup' || destination === 'register' || destination === '/register') {
+      setActiveView('signup');
+      setActiveViewParams(null);
+      window.history.pushState({}, '', '/register');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (destination === 'forgot_password' || destination === '/forgot-password') {
+      setActiveView('forgot_password');
+      setActiveViewParams(null);
+      window.history.pushState({}, '', '/forgot-password');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (destination === 'verify_public' || destination.startsWith('/verify/')) {
+      const certId = params?.certId || (destination.startsWith('/verify/') ? destination.replace(/^\/verify\//, '') : 'NCCT-CERT-2026-VAM-0089');
+      setActiveView('verify_public');
+      setActiveViewParams({ certId });
+      window.history.pushState({}, '', `/verify/${certId}`);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
     }
 
     const isAuth = localStorage.getItem('ss_auth') === 'true' || isAuthenticated;
-    if (!isAuth && view !== 'signup' && view !== 'forgot_password' && view !== 'verify_public') {
+    if (!isAuth) {
       logout();
       return;
     }
 
-    setActiveView(view);
+    // Direct path support (e.g. '/institute-admin/nominations', '/trainee/courses')
+    if (destination.startsWith('/')) {
+      const targetRole = getRoleFromPrefix(destination);
+      if (targetRole && targetRole !== currentUser.role) {
+        // Guard check: mismatch between target path and current role
+        const guardedPath = `${getRolePrefix(currentUser.role)}/dashboard`;
+        window.history.pushState({}, '', guardedPath);
+        const resolved = resolveRoute(true, currentUser.role);
+        setActiveView(resolved.view);
+        setActiveViewParams(resolved.params);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      window.history.pushState({}, '', destination);
+      const resolved = resolveRoute(true, currentUser.role);
+      setActiveView(resolved.view);
+      setActiveViewParams(params || resolved.params);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // Destination is a canonical view ID: map to role-namespaced URL
+    let targetPath = `${getRolePrefix(currentUser.role)}/dashboard`;
+    let targetView = destination;
+
+    if (currentUser.role === 'institute_admin') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/institute-admin/dashboard';
+        targetView = 'home';
+      } else if (destination === 'programmes_erp' || destination === 'programmes') {
+        targetPath = '/institute-admin/programmes';
+        targetView = 'programmes_erp';
+      } else if (destination === 'nominations') {
+        targetPath = '/institute-admin/nominations';
+        targetView = 'nominations';
+      } else if (destination === 'trainee_directory' || destination === 'trainees') {
+        targetPath = '/institute-admin/trainees';
+        targetView = 'trainee_directory';
+      } else if (destination === 'attendance_kiosk' || destination === 'attendance' || destination === 'sessions') {
+        targetPath = '/institute-admin/sessions';
+        targetView = 'attendance_kiosk';
+      } else if (destination === 'hostel_timetable' || destination === 'hostel') {
+        targetPath = '/institute-admin/hostel';
+        targetView = 'hostel_timetable';
+      } else if (destination === 'timetable') {
+        targetPath = '/institute-admin/timetable';
+        targetView = 'timetable';
+      } else if (destination === 'analytics') {
+        targetPath = '/institute-admin/analytics';
+        targetView = 'analytics';
+      } else if (destination === 'settings') {
+        targetPath = '/institute-admin/settings';
+        targetView = 'settings';
+      } else {
+        targetPath = '/institute-admin/dashboard';
+        targetView = 'home';
+      }
+    } else if (currentUser.role === 'trainee') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/trainee/dashboard';
+        targetView = 'home';
+      } else if (destination === 'courses') {
+        targetPath = '/trainee/courses';
+        targetView = 'courses';
+      } else if (destination === 'course_detail') {
+        targetPath = `/trainee/courses/${params?.courseId || ''}`;
+        targetView = 'course_detail';
+      } else if (destination === 'course_player' || destination === 'course_view') {
+        targetPath = `/trainee/courses/${params?.courseId || ''}/learn`;
+        targetView = 'course_player';
+      } else if (destination === 'quiz') {
+        targetPath = `/trainee/courses/${params?.courseId || ''}/quiz/${params?.moduleId || ''}`;
+        targetView = 'quiz';
+      } else if (destination === 'my_courses') {
+        targetPath = '/trainee/my-courses';
+        targetView = 'my_courses';
+      } else if (destination === 'certificates') {
+        targetPath = `/trainee/certificates${params?.certId ? `/${params.certId}` : ''}`;
+        targetView = 'certificates';
+      } else if (destination === 'jobs') {
+        targetPath = '/trainee/jobs';
+        targetView = 'jobs';
+      } else if (destination === 'job_detail') {
+        targetPath = `/trainee/jobs/${params?.jobId || ''}`;
+        targetView = 'job_detail';
+      } else if (destination === 'my_applications') {
+        targetPath = '/trainee/my-applications';
+        targetView = 'my_applications';
+      } else if (destination === 'career_chat' || destination === 'career_bot') {
+        targetPath = '/trainee/career-chat';
+        targetView = 'career_chat';
+      } else if (destination === 'attendance' || destination === 'attendance_kiosk') {
+        targetPath = '/trainee/attendance';
+        targetView = 'attendance_kiosk';
+      } else if (destination === 'profile') {
+        targetPath = '/trainee/profile';
+        targetView = 'profile';
+      } else if (destination === 'settings') {
+        targetPath = '/trainee/settings';
+        targetView = 'settings';
+      } else if (destination === 'help') {
+        targetPath = '/trainee/help';
+        targetView = 'help';
+      } else {
+        targetPath = '/trainee/dashboard';
+        targetView = 'home';
+      }
+    } else if (currentUser.role === 'super_admin') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/super-admin/dashboard';
+        targetView = 'home';
+      } else if (destination === 'analytics') {
+        targetPath = '/super-admin/analytics';
+        targetView = 'analytics';
+      } else if (destination === 'institutes_directory' || destination === 'institutes') {
+        targetPath = '/super-admin/institutes';
+        targetView = 'institutes_directory';
+      } else if (destination === 'settings') {
+        targetPath = '/super-admin/settings';
+        targetView = 'settings';
+      } else {
+        targetPath = '/super-admin/dashboard';
+        targetView = 'home';
+      }
+    } else if (currentUser.role === 'faculty') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/faculty/dashboard';
+        targetView = 'home';
+      } else if (destination === 'courses') {
+        targetPath = '/faculty/courses';
+        targetView = 'courses';
+      } else if (destination === 'course_builder' || destination === 'edit') {
+        targetPath = `/faculty/courses/${params?.courseId || 'crs-pacs-erp-101'}/edit`;
+        targetView = 'course_builder';
+      } else {
+        targetPath = '/faculty/dashboard';
+        targetView = 'home';
+      }
+    } else if (currentUser.role === 'employer') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/employer/dashboard';
+        targetView = 'home';
+      } else if (destination === 'trainee_directory' || destination === 'candidates') {
+        targetPath = '/employer/candidates';
+        targetView = 'trainee_directory';
+      } else if (destination === 'jobs_new') {
+        targetPath = '/employer/jobs/new';
+        targetView = 'jobs_new';
+      } else if (destination === 'jobs') {
+        targetPath = '/employer/jobs';
+        targetView = 'jobs';
+      } else {
+        targetPath = '/employer/dashboard';
+        targetView = 'home';
+      }
+    }
+
+    setActiveView(targetView);
     setActiveViewParams(params || null);
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
@@ -553,6 +840,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setNominations(prev => prev.map(n => n.id === nominationId ? { ...n, status } : n));
   };
 
+  const bulkUpdateNominationStatus = (nominationIds: string[], status: 'approved' | 'rejected') => {
+    const idSet = new Set(nominationIds);
+    setNominations(prev => prev.map(n => idSet.has(n.id) ? { ...n, status } : n));
+  };
+
   const bulkImportNominations = (programmeId: string, records: Array<{ name: string; email: string; coop: string }>) => {
     const newItems: Nomination[] = records.map((r, i) => ({
       id: `nom-${Date.now()}-${i}`,
@@ -657,6 +949,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         submitQuiz,
         markAttendance,
         updateNominationStatus,
+        bulkUpdateNominationStatus,
         bulkImportNominations,
         applyForJob,
         createJobPosting,

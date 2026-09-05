@@ -9,8 +9,8 @@ import {
   Settings,
   Globe
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
-import { NAVIGATION_BY_ROLE } from '../../config/navigation';
+import { useApp, getRolePrefix } from '../../context/AppContext';
+import { NAVIGATION_BY_ROLE, NavItem } from '../../config/navigation';
 
 interface SidebarProps {
   onLogout?: () => void;
@@ -21,10 +21,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
   const { currentUser, logout, activeView, navigate, currentLanguage, t } = useApp();
   const sections = NAVIGATION_BY_ROLE[currentUser.role] || [];
 
-  const handleNavClick = (id: string) => {
-    navigate(id);
+  const handleNavClick = (item: NavItem) => {
+    navigate(item.route);
     if (onNavigate) {
-      onNavigate(id);
+      onNavigate(item.id);
     }
   };
 
@@ -73,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
     >
       {/* 1. Header: Brand Logo & Title */}
       <div
-        onClick={() => navigate('home')}
+        onClick={() => navigate(`/${getRolePrefix(currentUser.role)}/dashboard`)}
         className="p-3 md:p-3 lg:p-5 border-b border-gray-100 flex items-center md:justify-center lg:justify-start gap-3 cursor-pointer hover:bg-govBg/50 transition-colors"
         title="Sahakar Setu Portal"
       >
@@ -104,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
       {/* 2. User Profile Card (Below Sahakar Setu logo - clickable to Profile) */}
       <div className="p-2 md:p-2.5 lg:p-3 border-b border-gray-100 bg-[#FBFDFB]">
         <div
-          onClick={() => navigate('profile')}
+          onClick={() => navigate(currentUser.role === 'trainee' ? '/trainee/profile' : `/${getRolePrefix(currentUser.role)}/settings`)}
           className="bg-white hover:bg-govTeal-50/50 cursor-pointer transition-colors rounded-xl p-1.5 md:p-1.5 lg:p-2.5 border border-gray-200/80 shadow-xs flex items-center md:justify-center lg:justify-start gap-2.5 group"
           title={`${currentUser.name} (${currentUser.role})`}
         >
@@ -149,12 +149,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
 
             {section.items.map(item => {
               const Icon = item.icon;
+              const isCurrentRoute = window.location.pathname === item.route;
               const isActive =
+                isCurrentRoute ||
                 activeView === item.id ||
                 (item.id === 'my_courses' && (activeView === 'my_courses' || activeView === 'course_player' || activeView === 'quiz' || activeView === 'courses' || activeView === 'course_detail')) ||
                 (item.id === 'certificates' && (activeView === 'certificates' || activeView === 'verify_public')) ||
                 (item.id === 'jobs' && (activeView === 'jobs' || activeView === 'job_detail' || activeView === 'my_applications')) ||
                 (item.id === 'attendance_kiosk' && (activeView === 'attendance_kiosk' || activeView === 'attendance')) ||
+                (item.id === 'nominations' && activeView === 'nominations') ||
+                (item.id === 'timetable' && activeView === 'timetable') ||
+                (item.id === 'hostel_timetable' && activeView === 'hostel_timetable') ||
                 (item.id === 'help' && activeView === 'help') ||
                 (item.id === 'settings' && activeView === 'settings');
 
@@ -163,7 +168,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
               return (
                 <button
                   key={item.id}
-                  onClick={() => handleNavClick(item.id)}
+                  onClick={() => handleNavClick(item)}
                   title={label}
                   className={`w-full flex items-center md:justify-center lg:justify-between px-2.5 lg:px-3 py-2.5 rounded-xl text-xs font-semibold transition-all group cursor-pointer ${isActive
                     ? 'bg-govTeal-600 text-white shadow-sm'
