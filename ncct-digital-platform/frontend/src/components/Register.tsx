@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { registerUser } from '../services/api';
-import { User, Phone, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 
 interface RegisterProps {
   onRegisterSuccess: () => void;
@@ -8,13 +7,19 @@ interface RegisterProps {
 }
 
 export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onSwitchToLogin }) => {
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('TRAINEE');
+  const [formData, setFormData] = useState({
+    full_name: '',
+    phone: '',
+    email: '',
+    password: '',
+    role: 'user',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,7 +27,7 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onSwitchT
     setLoading(true);
 
     try {
-      await registerUser({ full_name: fullName, phone, email, password, role });
+      await registerUser(formData);
       setLoading(false);
       onRegisterSuccess();
     } catch (err: any) {
@@ -30,80 +35,321 @@ export const Register: React.FC<RegisterProps> = ({ onRegisterSuccess, onSwitchT
       if (err.response?.data?.detail) {
         setError(err.response.data.detail);
       } else {
-        setError('Registration failed.');
+        setError('Registration failed. Please check your details.');
       }
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4 py-8">
-      <div className="max-w-md w-full bg-slate-800 rounded-xl shadow-xl p-8 border border-slate-700">
-        <div className="text-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Create Account</h2>
-          <p className="text-slate-400 text-sm mt-1">Join the NCCT Digital Platform</p>
+    <div style={styles.container}>
+      {/* Left Minimalist Graphic Panel */}
+      <div style={styles.leftPanel}>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={styles.dot}></div>
+            <div style={styles.line}></div>
+          </div>
+          <div style={styles.cardBody}>
+            <div style={styles.iconBox}>✦</div>
+            <h3 style={styles.cardTitle}>Structured Onboarding</h3>
+            <p style={styles.cardText}>
+              Establish your profile credentials securely within the NCCT digital ecosystem with a streamlined registration workflow.
+            </p>
+          </div>
+          <div style={styles.cardFooter}>
+            <div style={styles.footerBar}></div>
+            <div style={styles.footerDot}></div>
+            <div style={styles.footerDot}></div>
+          </div>
         </div>
+      </div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-950 border border-red-800 text-red-200 text-sm rounded-lg">
-            {error}
+      {/* Right Form Panel */}
+      <div style={styles.rightPanel}>
+        <div style={styles.formWrapper}>
+          <div style={styles.headerArea}>
+            <div style={styles.logoIcon}>✦</div>
+            <h2 style={styles.title}>Create Account</h2>
+            <p style={styles.subtitle}>Join the NCCT Digital Platform</p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Full Name</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><User size={18} /></span>
-              <input type="text" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="John Doe" className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          {error && <div style={styles.errorBox}>{error}</div>}
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Full Name</label>
+              <input
+                type="text"
+                name="full_name"
+                required
+                value={formData.full_name}
+                onChange={handleChange}
+                placeholder="John Doe"
+                style={styles.input}
+              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Phone Number</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><Phone size={18} /></span>
-              <input type="text" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="9876543210" className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Phone Number</label>
+              <input
+                type="text"
+                name="phone"
+                required
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="Enter phone number"
+                style={styles.input}
+              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Email Address</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><Mail size={18} /></span>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Email Address</label>
+              <input
+                type="email"
+                name="email"
+                required
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="name@example.com"
+                style={styles.input}
+              />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400"><Lock size={18} /></span>
-              <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Password</label>
+              <input
+                type="password"
+                name="password"
+                required
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                style={styles.input}
+              />
             </div>
+
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Role</label>
+              <select
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                style={styles.input}
+              >
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            <button type="submit" disabled={loading} style={styles.button}>
+              {loading ? 'Creating account...' : 'Register Account →'}
+            </button>
+          </form>
+
+          <div style={styles.footerText}>
+            Already have an account?{' '}
+            <button onClick={onSwitchToLogin} style={styles.linkButton}>
+              Sign in
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="TRAINEE">Trainee</option>
-              <option value="TRAINER">Trainer</option>
-              <option value="INSTITUTION_ADMIN">Institution Admin</option>
-              <option value="NCCT_ADMIN">NCCT Admin</option>
-            </select>
-          </div>
-
-          <button type="submit" disabled={loading} className="w-full mt-2 flex items-center justify-center py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin mr-2" size={18} /> : <>Register <ArrowRight className="ml-2" size={18} /></>}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-slate-400">
-          Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="text-blue-400 hover:underline font-medium">
-            Sign In
-          </button>
         </div>
       </div>
     </div>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    minHeight: '100vh',
+    backgroundColor: '#f4f4f0',
+    color: '#2d3748',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  leftPanel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e8ece9',
+    borderRight: '1px solid #d9dedb',
+    padding: '40px',
+  },
+  card: {
+    width: '100%',
+    maxWidth: '420px',
+    aspectRatio: '4 / 3',
+    backgroundColor: '#fafbfc',
+    border: '1px solid #d4dec9',
+    borderRadius: '24px',
+    padding: '32px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    boxShadow: '0 20px 40px rgba(74, 85, 104, 0.05)',
+  },
+  cardHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: '#cbd5e1',
+  },
+  line: {
+    width: '50px',
+    height: '4px',
+    borderRadius: '2px',
+    backgroundColor: '#e2e8f0',
+  },
+  cardBody: {
+    margin: 'auto 0',
+  },
+  iconBox: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    backgroundColor: '#e2ede6',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    color: '#3b5343',
+    marginBottom: '20px',
+    border: '1px solid #c8d8ce',
+  },
+  cardTitle: {
+    fontSize: '20px',
+    fontWeight: 400,
+    color: '#2d3748',
+    marginBottom: '10px',
+  },
+  cardText: {
+    fontSize: '14px',
+    color: '#718096',
+    lineHeight: '1.5',
+    fontWeight: 300,
+  },
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  footerBar: {
+    width: '32px',
+    height: '6px',
+    borderRadius: '3px',
+    backgroundColor: '#94a3b8',
+  },
+  footerDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#cbd5e1',
+  },
+  rightPanel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px',
+  },
+  formWrapper: {
+    width: '100%',
+    maxWidth: '380px',
+  },
+  headerArea: {
+    marginBottom: '24px',
+  },
+  logoIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    backgroundColor: '#e2ede6',
+    border: '1px solid #c8d8ce',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+    marginBottom: '16px',
+    color: '#3b5343',
+  },
+  title: {
+    fontSize: '22px',
+    fontWeight: 600,
+    color: '#1a202c',
+    marginBottom: '4px',
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#718096',
+  },
+  errorBox: {
+    padding: '12px',
+    backgroundColor: '#fff5f5',
+    border: '1px solid #fed7d7',
+    color: '#c53030',
+    fontSize: '12px',
+    borderRadius: '10px',
+    marginBottom: '16px',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '16px',
+  },
+  inputGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+  },
+  label: {
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#4a5568',
+  },
+  input: {
+    width: '100%',
+    padding: '10px 14px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #cbd5e1',
+    borderRadius: '10px',
+    color: '#1a202c',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+  },
+  button: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#3b5343',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '14px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    marginTop: '6px',
+  },
+  footerText: {
+    marginTop: '20px',
+    textAlign: 'center',
+    fontSize: '12px',
+    color: '#718096',
+    borderTop: '1px solid #e2e8f0',
+    paddingTop: '16px',
+  },
+  linkButton: {
+    background: 'none',
+    border: 'none',
+    color: '#3b5343',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '12px',
+    padding: 0,
+    marginLeft: '4px',
+  },
 };

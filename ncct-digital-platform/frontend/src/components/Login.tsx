@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { loginUser } from '../services/api';
-import { Lock, Phone, ArrowRight, Loader2 } from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: () => void;
@@ -33,70 +32,282 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess, onSwitchToRegister
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-900 px-4">
-      <div className="max-w-md w-full bg-slate-800 rounded-xl shadow-xl p-8 border border-slate-700">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-white">NCCT Digital Platform</h2>
-          <p className="text-slate-400 text-sm mt-1">Sign in to your account</p>
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-950 border border-red-800 text-red-200 text-sm rounded-lg">
-            {error}
+    <div style={styles.container}>
+      {/* Left Minimalist Graphic Panel */}
+      <div style={styles.leftPanel}>
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={styles.dot}></div>
+            <div style={styles.line}></div>
           </div>
-        )}
+          <div style={styles.cardBody}>
+            <div style={styles.iconBox}>✦</div>
+            <h3 style={styles.cardTitle}>Architectural Simplicity</h3>
+            <p style={styles.cardText}>
+              Designed with strict geometric balance, muted tones, and uncompromising minimalism for the NCCT platform.
+            </p>
+          </div>
+          <div style={styles.cardFooter}>
+            <div style={styles.footerBar}></div>
+            <div style={styles.footerDot}></div>
+            <div style={styles.footerDot}></div>
+          </div>
+        </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Phone Number</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Phone size={18} />
-              </span>
+      {/* Right Form Panel */}
+      <div style={styles.rightPanel}>
+        <div style={styles.formWrapper}>
+          <div style={styles.headerArea}>
+            <div style={styles.logoIcon}>✦</div>
+            <h2 style={styles.title}>NCCT Digital Platform</h2>
+            <p style={styles.subtitle}>Sign in to your account</p>
+          </div>
+
+          {error && <div style={styles.errorBox}>{error}</div>}
+
+          <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.inputGroup}>
+              <label style={styles.label}>Phone Number</label>
               <input
                 type="text"
                 required
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="Enter your phone number"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter phone number"
+                style={styles.input}
               />
             </div>
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Password</label>
-            <div className="relative">
-              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                <Lock size={18} />
-              </span>
+            <div style={styles.inputGroup}>
+              <div style={styles.labelRow}>
+                <label style={styles.label}>Password</label>
+                <span style={styles.forgot}>Forgot Password?</span>
+              </div>
               <input
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder=""
+                style={styles.input}
               />
             </div>
+
+            <button type="submit" disabled={loading} style={styles.button}>
+              {loading ? 'Signing in...' : 'Sign In →'}
+            </button>
+          </form>
+
+          <div style={styles.footerText}>
+            Don't have an account?{' '}
+            <button onClick={onSwitchToRegister} style={styles.linkButton}>
+              Register here
+            </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex items-center justify-center py-2.5 px-4 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading ? <Loader2 className="animate-spin mr-2" size={18} /> : <>Sign In <ArrowRight className="ml-2" size={18} /></>}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center text-sm text-slate-400">
-          Don't have an account?{' '}
-          <button onClick={onSwitchToRegister} className="text-blue-400 hover:underline font-medium">
-            Register
-          </button>
         </div>
       </div>
     </div>
   );
+};
+
+const styles: { [key: string]: React.CSSProperties } = {
+  container: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    minHeight: '100vh',
+    backgroundColor: '#f4f4f0', // Soft warm stone background
+    color: '#2d3748',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+  },
+  leftPanel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#e8ece9', // Gentle sage-gray tinted backdrop
+    borderRight: '1px solid #d9dedb',
+    padding: '40px',
+  },
+  card: {
+    width: '100%',
+    maxWidth: '420px',
+    aspectRatio: '4 / 3',
+    backgroundColor: '#fafbfc', // Clean porcelain white card
+    border: '1px solid #d4dec9', // Subtle sage border accent
+    borderRadius: '24px',
+    padding: '32px',
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    boxShadow: '0 20px 40px rgba(74, 85, 104, 0.05)',
+  },
+  dot: {
+    width: '10px',
+    height: '10px',
+    borderRadius: '50%',
+    backgroundColor: '#cbd5e1',
+  },
+  line: {
+    width: '50px',
+    height: '4px',
+    borderRadius: '2px',
+    backgroundColor: '#e2e8f0',
+  },
+  cardBody: {
+    margin: 'auto 0',
+  },
+  iconBox: {
+    width: '48px',
+    height: '48px',
+    borderRadius: '12px',
+    backgroundColor: '#e2ede6', // Soft muted green tint
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '20px',
+    color: '#3b5343',
+    marginBottom: '20px',
+    border: '1px solid #c8d8ce',
+  },
+  cardTitle: {
+    fontSize: '20px',
+    fontWeight: 400,
+    color: '#2d3748',
+    marginBottom: '10px',
+  },
+  cardText: {
+    fontSize: '14px',
+    color: '#718096',
+    lineHeight: '1.5',
+    fontWeight: 300,
+  },
+  cardFooter: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  footerBar: {
+    width: '32px',
+    height: '6px',
+    borderRadius: '3px',
+    backgroundColor: '#94a3b8',
+  },
+  footerDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    backgroundColor: '#cbd5e1',
+  },
+  rightPanel: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '40px',
+  },
+  formWrapper: {
+    width: '100%',
+    maxWidth: '380px',
+  },
+  headerArea: {
+    marginBottom: '32px',
+  },
+  logoIcon: {
+    width: '36px',
+    height: '36px',
+    borderRadius: '10px',
+    backgroundColor: '#e2ede6',
+    border: '1px solid #c8d8ce',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '16px',
+    marginBottom: '20px',
+    color: '#3b5343',
+  },
+  title: {
+    fontSize: '22px',
+    fontWeight: 600,
+    color: '#1a202c',
+    marginBottom: '6px',
+  },
+  subtitle: {
+    fontSize: '14px',
+    color: '#718096',
+  },
+  errorBox: {
+    padding: '12px',
+    backgroundColor: '#fff5f5',
+    border: '1px solid #fed7d7',
+    color: '#c53030',
+    fontSize: '12px',
+    borderRadius: '10px',
+    marginBottom: '20px',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '20px',
+  },
+  inputGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  label: {
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#4a5568',
+  },
+  labelRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  forgot: {
+    fontSize: '12px',
+    color: '#718096',
+    cursor: 'pointer',
+  },
+  input: {
+    width: '100%',
+    padding: '12px 16px',
+    backgroundColor: '#ffffff',
+    border: '1px solid #cbd5e1',
+    borderRadius: '10px',
+    color: '#1a202c',
+    fontSize: '14px',
+    outline: 'none',
+    boxSizing: 'border-box',
+    boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)',
+  },
+  button: {
+    width: '100%',
+    padding: '12px',
+    backgroundColor: '#3b5343', // Deep natural sage-green primary button
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '10px',
+    fontSize: '14px',
+    fontWeight: 500,
+    cursor: 'pointer',
+    marginTop: '8px',
+  },
+  footerText: {
+    marginTop: '24px',
+    textAlign: 'center',
+    fontSize: '12px',
+    color: '#718096',
+    borderTop: '1px solid #e2e8f0',
+    paddingTop: '20px',
+  },
+  linkButton: {
+    background: 'none',
+    border: 'none',
+    color: '#3b5343',
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontSize: '12px',
+    padding: 0,
+    marginLeft: '4px',
+  },
 };
