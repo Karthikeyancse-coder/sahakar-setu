@@ -192,12 +192,6 @@ export const EmployerPortal: React.FC = () => {
 
                     <div className="bg-govBg p-3 rounded-xl border border-gray-200 text-xs space-y-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-govText-muted">Aadhaar Ref:</span>
-                        <span className="font-mono font-bold text-govText-primary">
-                          {candidate.aadhaarMock || 'Verified'}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
                         <span className="text-govText-muted">Trained At:</span>
                         <span className="font-medium text-govText-primary truncate max-w-[150px]">
                           {inst?.name || 'VAMNICOM'}

@@ -76,7 +76,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({ isOpen, onClose }) =
   };
 
   return (
-    <div className="md:hidden fixed inset-0 z-50 flex">
+    <div className="lg:hidden fixed inset-0 z-[9900] flex">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-fadeIn"

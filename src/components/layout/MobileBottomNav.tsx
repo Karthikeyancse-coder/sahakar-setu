@@ -22,14 +22,100 @@ interface MobileBottomNavProps {
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ onOpenMore, isMoreOpen = false }) => {
   const { currentUser, activeView, navigate } = useApp();
 
-  // Bottom navigation is shown on mobile and tablet (< 1024px) for Trainee, Institute Admin, Super Admin, and Faculty
+  // Bottom navigation is shown on mobile/tablet (< 1024px) for Trainee, Institute Admin, Super Admin, Faculty.
+  // Employer gets its own mobile-only bottom nav (< 768px) defined below.
   if (
     currentUser.role !== 'trainee' &&
     currentUser.role !== 'institute_admin' &&
     currentUser.role !== 'super_admin' &&
-    currentUser.role !== 'faculty'
+    currentUser.role !== 'faculty' &&
+    currentUser.role !== 'employer'
   ) {
     return null;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // EMPLOYER: 4-tab bottom nav — visible ONLY on mobile (< 768px / md breakpoint)
+  // On tablet (768-1023px) the hamburger drawer handles navigation instead.
+  // ─────────────────────────────────────────────────────────────────────────────
+  if (currentUser.role === 'employer') {
+    const employerNavItems = [
+      {
+        id: 'employer_dashboard',
+        label: 'Dashboard',
+        icon: LayoutDashboard,
+        isActive: activeView === 'home',
+        action: () => navigate('/employer/dashboard'),
+      },
+      {
+        id: 'employer_candidates',
+        label: 'Candidates',
+        icon: Users,
+        isActive: activeView === 'trainee_directory',
+        action: () => navigate('/employer/candidates'),
+      },
+      {
+        id: 'employer_jobs',
+        label: 'Jobs',
+        icon: Briefcase,
+        isActive: activeView === 'jobs' || activeView === 'jobs_new',
+        action: () => navigate('/employer/jobs'),
+      },
+      {
+        id: 'employer_profile',
+        label: 'Profile',
+        icon: UserRound,
+        isActive: activeView === 'settings',
+        action: () => navigate('/employer/settings'),
+      },
+    ];
+
+    return (
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[900] bg-white border-t border-govText-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)] flex items-stretch justify-around select-none pb-[env(safe-area-inset-bottom,0px)] h-[calc(64px+env(safe-area-inset-bottom,0px))]"
+        aria-label="Employer Mobile Bottom Navigation"
+      >
+        {employerNavItems.map(item => {
+          const Icon = item.icon;
+          const isActive = item.isActive;
+
+          return (
+            <button
+              key={item.id}
+              onClick={item.action}
+              aria-label={item.label}
+              className={`relative flex-1 flex flex-col items-center justify-center min-w-0 py-2 px-1 gap-1 transition-colors cursor-pointer ${
+                isActive ? 'text-[#0B6E4F]' : 'text-gray-500'
+              }`}
+            >
+              {/* Active pill at top */}
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[3px] bg-[#0B6E4F] rounded-full" />
+              )}
+
+              {/* Icon with subtle green background when active */}
+              <div className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
+                isActive ? 'bg-govTeal-50' : ''
+              }`}>
+                <Icon
+                  className={`w-5 h-5 ${
+                    isActive ? 'text-[#0B6E4F] stroke-[2.2]' : 'text-gray-500 stroke-[1.8]'
+                  }`}
+                />
+              </div>
+
+              <span
+                className={`text-[11px] leading-none whitespace-nowrap ${
+                  isActive ? 'font-bold text-[#0B6E4F]' : 'font-semibold text-gray-500'
+                }`}
+              >
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+    );
   }
 
   // Faculty Navigation (5 items: Dashboard, Courses, Studio, Chat, Profile)

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { DashboardHeader } from './DashboardHeader';
+import { MobileDrawer } from './MobileDrawer';
 import { MoreBottomSheet } from './MoreBottomSheet';
 import { MobileBottomNav } from './MobileBottomNav';
 import { OfflineBanner } from '../common/OfflineBanner';
@@ -12,6 +13,7 @@ interface DashboardLayoutProps {
 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [isMoreOpen, setIsMoreOpen] = useState(false);
+  const [isSidebarDrawerOpen, setIsSidebarDrawerOpen] = useState(false);
 
   return (
     <div className="min-h-screen lg:h-screen lg:overflow-hidden bg-govBg text-govText-primary flex flex-col antialiased">
@@ -22,7 +24,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
         {/* Right Content Area: Header + Banner + Page Content (starts after 265px fixed sidebar on desktop) */}
         <div className="flex min-w-0 flex-1 flex-col w-full lg:pl-[265px] lg:h-screen lg:overflow-hidden">
-          <DashboardHeader onOpenMobileDrawer={() => setIsMoreOpen(prev => !prev)} />
+          <DashboardHeader
+            onOpenMobileDrawer={() => {
+              // On tablet (768-1023px): opens the sidebar drawer for all roles (esp. Employer).
+              // The MoreBottomSheet is a separate concern for Trainee/Admin roles triggered by their own nav.
+              setIsSidebarDrawerOpen(prev => !prev);
+            }}
+          />
           <OfflineBanner />
 
           {/* Main Content Area: 100% width on mobile/tablet with safe area bottom padding, scrollable independently on desktop */}
@@ -35,13 +43,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* 2. Floating Career Sahayak AI Chatbot Button & Panel (z-[950] / z-[1001]) */}
       <FloatingCareerChatbot />
 
-      {/* 3. Mobile More Bottom Sheet (z-[920]) */}
+      {/* 3. Mobile Sidebar Drawer — for roles without MobileBottomNav (e.g. Employer) on < lg screens */}
+      <MobileDrawer
+        isOpen={isSidebarDrawerOpen}
+        onClose={() => setIsSidebarDrawerOpen(false)}
+      />
+
+      {/* 4. Mobile More Bottom Sheet (z-[920]) — for Trainee/Admin/Faculty */}
       <MoreBottomSheet
         isOpen={isMoreOpen}
         onClose={() => setIsMoreOpen(false)}
       />
 
-      {/* 4. Mobile Bottom Navigation for Trainees (z-[900]) */}
+      {/* 5. Mobile Bottom Navigation for Trainees/Admin/Faculty (z-[900]) */}
       <MobileBottomNav
         onOpenMore={() => setIsMoreOpen(prev => !prev)}
         isMoreOpen={isMoreOpen}

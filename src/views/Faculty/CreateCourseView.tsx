@@ -17,22 +17,127 @@ import {
   FileText,
   ListPlus,
   X,
-  GraduationCap
+  GraduationCap,
+  Edit3,
+  Check,
+  ExternalLink,
+  Zap,
+  Video,
+  Paperclip,
+  Image as ImageIcon,
+  Link2,
+  Globe
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
-import { Course, CourseModule, Lesson } from '../../types';
+import { Course, CourseModule, Lesson, ContentBlock } from '../../types';
 import { FacultyCourseCard } from '../../components/common/FacultyCourseCard';
 import { CoursePreviewModal } from '../../components/common/CoursePreviewModal';
+import { GlobalModal } from '../../components/common/GlobalModal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
+import { LessonEditor, LessonPreviewModal } from './LessonEditor';
 
-interface ModuleFormItem {
+export interface ModuleFormItem {
   id: string;
   title: string;
   description: string;
   durationHours: number;
-  lessons: string[];
+  lessons: Lesson[];
 }
+
+const createDefaultLesson = (
+  moduleId: string,
+  order: number,
+  titleEn: string,
+  titleHi: string,
+  titleMr: string,
+  durationMinutes: number = 25
+): Lesson => ({
+  id: `les-${moduleId}-${order}`,
+  moduleId,
+  order,
+  title: titleEn,
+  titleHi,
+  titleMr,
+  durationMinutes,
+  contentType: 'Interactive Reading / Theory',
+  status: 'Published',
+  blocks: [
+    {
+      id: `blk-${moduleId}-${order}-1`,
+      type: 'text',
+      text: {
+        en: {
+          heading: 'Foundational Knowledge & Mandates',
+          body:
+            'This training unit outlines standard operational workflows sanctioned by the National Council for Cooperative Training (NCCT).\n\n### Core Competencies\n- Accurate ledger posting\n- Statutory bye-law adherence\n- Transparent member accounting.',
+        },
+        hi: {
+          heading: 'मूलभूत ज्ञान एवं विनियामक मानक',
+          body:
+            'यह प्रशिक्षण इकाई राष्ट्रीय सहकारी प्रशिक्षण परिषद (NCCT) द्वारा अनुमोदित मानक संचालन प्रक्रियाओं को समाहित करती है।\n\n### मुख्य उद्देश्य\n- सटीक बही-खाता संधारण\n- उप-नियमों का अनुपालन\n- पारदर्शी लेखांकन।',
+        },
+        mr: {
+          heading: 'मूलभूत माहिती आणि नियम',
+          body:
+            'हा प्रशिक्षण विभाग राष्ट्रीय सहकारी प्रशिक्षण परिषदेने (NCCT) निर्धारित केलेल्या मानकांची माहिती देतो.\n\n### प्रमुख उद्दिष्टे\n- अचूक हिशोब नोंदणी\n- पोटनियमांचे पालन\n- पारदर्शक ताळेबंद.',
+        },
+      },
+    },
+    {
+      id: `blk-${moduleId}-${order}-2`,
+      type: 'attachment',
+      attachment: {
+        fileName: 'PACS_ERP_Standard_Manual.pdf',
+        fileType: 'pdf',
+        fileSize: '2.4 MB',
+        fileUrl: 'https://cooperation.gov.in/pacs-manual.pdf',
+      },
+    },
+    {
+      id: `blk-${moduleId}-${order}-3`,
+      type: 'link',
+      link: {
+        en: {
+          title: 'Official Ministry of Cooperation Circular',
+          url: 'https://cooperation.gov.in',
+          description: 'Accredited national standard guidelines and circulars.',
+          openInNewTab: true,
+        },
+        hi: {
+          title: 'सहकारिता मंत्रालय आधिकारिक परिपत्र',
+          url: 'https://cooperation.gov.in',
+          description: 'मान्यता प्राप्त राष्ट्रीय मानक दिशानिर्देश।',
+          openInNewTab: true,
+        },
+        mr: {
+          title: 'सहकार मंत्रालय अधिकृत परिपत्रक',
+          url: 'https://cooperation.gov.in',
+          description: 'अधिकृत मार्गदर्शक सूचना आणि नियमावली.',
+          openInNewTab: true,
+        },
+      },
+    },
+  ],
+  contentByLanguage: {
+    en: {
+      text: 'Comprehensive modular learning syllabus.',
+      overview: 'Overview of core operational topics covered in this lesson.',
+      keyTakeaways: ['Accredited standard curriculum under Ministry of Cooperation'],
+    },
+    hi: {
+      text: 'व्यापक मॉड्यूलर अध्ययन पाठ्यक्रम।',
+      overview: 'इस पाठ में शामिल मुख्य परिचालन विषयों का अवलोकन।',
+      keyTakeaways: ['सहकारिता मंत्रालय के अंतर्गत मान्यता प्राप्त पाठ्यक्रम'],
+    },
+    mr: {
+      text: 'सर्वसमावेशक अभ्यासक्रम.',
+      overview: 'या धड्यातील महत्त्वाच्या मुद्द्यांचा आढावा.',
+      keyTakeaways: ['अधिकृत राष्ट्रीय अभ्यासक्रम'],
+    },
+  },
+});
 
 export const CreateCourseView: React.FC = () => {
   const { courses, addNewCourse, navigate, currentUser, activeViewParams } = useApp();
@@ -40,6 +145,19 @@ export const CreateCourseView: React.FC = () => {
   const editCourseId = activeViewParams?.editCourseId;
   const courseToEdit = editCourseId ? courses.find(c => c.id === editCourseId) : null;
   const isEditMode = Boolean(courseToEdit);
+
+  // Active Lesson Context for opening full Lesson Editor
+  const [activeLessonContext, setActiveLessonContext] = useState<{
+    moduleIndex: number;
+    lesson: Lesson;
+  } | null>(null);
+
+  // Active Lesson for Quick Learner Preview Modal
+  const [previewLesson, setPreviewLesson] = useState<{
+    lesson: Lesson;
+    moduleTitle: string;
+  } | null>(null);
+  const [previewLang, setPreviewLang] = useState<'en' | 'hi' | 'mr'>('en');
 
   // Basic Information Form State
   const [title, setTitle] = useState('');
@@ -55,21 +173,55 @@ export const CreateCourseView: React.FC = () => {
   ]);
   const [newObjectiveInput, setNewObjectiveInput] = useState('');
 
-  // Course Modules State
+  // Course Modules State with Rich Structured Lessons
   const [modules, setModules] = useState<ModuleFormItem[]>([
     {
       id: 'mod-init-1',
       title: 'Module 01: Foundations & Legal Framework',
       description: 'Cooperative legislation, state bye-laws, and National MoC policy architecture.',
       durationHours: 12,
-      lessons: ['What is a Cooperative?', 'Cooperative Governance Principles', 'Role of PACS in Rural Economy'],
+      lessons: [
+        createDefaultLesson(
+          'mod-init-1',
+          1,
+          '1.1 Overview of MoC PACS Digitalization Mandate',
+          '1.1 सहकारिता मंत्रालय का पैक्स डिजिटलीकरण विजन',
+          '1.1 सहकार मंत्रालयाचे पॅक्स संगणकीकरण धोरण',
+          25
+        ),
+        createDefaultLesson(
+          'mod-init-1',
+          2,
+          '1.2 Daily Cash & Ledger Book Entry Workflow',
+          '1.2 दैनिक रोकड़ बही एवं खाता प्रविष्टि कार्यप्रणाली',
+          '1.2 दैनिक रोख वही आणि खाते नोंद प्रक्रिया',
+          30
+        ),
+      ],
     },
     {
       id: 'mod-init-2',
       title: 'Module 02: Digital Operations & Day-End Balancing',
       description: 'Transaction entry, double-entry ledger balancing, and KCC loan disbursement.',
       durationHours: 18,
-      lessons: ['Digital Cash Book Posting', 'Day-Open and Day-Close Locks', 'NABARD Subvention Audit Trail'],
+      lessons: [
+        createDefaultLesson(
+          'mod-init-2',
+          1,
+          '2.1 Digital Cash Book Posting & Day-Open Controls',
+          '2.1 दैनिक रोकड़ बही प्रविष्टि एवं डे-ओपन नियंत्रण',
+          '2.1 दैनिक रोख नोंद आणि दिवस प्रारंभ नियंत्रण',
+          30
+        ),
+        createDefaultLesson(
+          'mod-init-2',
+          2,
+          '2.2 NABARD Interest Subvention & Direct Benefit Audits',
+          '2.2 नाबार्ड ब्याज अनुदान एवं डीबीटी ऑडिट',
+          '2.2 नाबार्ड व्याज अनुदान आणि थेट लाभ तपासणी',
+          35
+        ),
+      ],
     },
   ]);
 
@@ -84,13 +236,54 @@ export const CreateCourseView: React.FC = () => {
       setDurationHours(courseToEdit.durationHours || 30);
       setDescription(courseToEdit.description || '');
       if (courseToEdit.modules && courseToEdit.modules.length > 0) {
-        setModules(courseToEdit.modules.map(m => ({
-          id: m.id,
-          title: m.title,
-          description: m.lessons?.[0]?.contentByLanguage?.en?.text?.slice(0, 120) || 'Comprehensive modular syllabus.',
-          durationHours: Math.round(m.lessons?.reduce((acc, l) => acc + (l.durationMinutes || 30), 0) / 60) || 12,
-          lessons: m.lessons?.map(l => l.title) || ['Introduction & Overview']
-        })));
+        setModules(
+          courseToEdit.modules.map(m => ({
+            id: m.id,
+            title: m.title,
+            description:
+              m.lessons?.[0]?.contentByLanguage?.en?.overview ||
+              m.lessons?.[0]?.contentByLanguage?.en?.text?.slice(0, 120) ||
+              'Comprehensive modular syllabus.',
+            durationHours:
+              Math.round(
+                m.lessons?.reduce((acc, l) => acc + (l.durationMinutes || 30), 0) / 60
+              ) || 12,
+            lessons: m.lessons?.length
+              ? m.lessons.map(l => ({
+                  ...l,
+                  blocks: l.blocks || [
+                    {
+                      id: `blk-${l.id}-1`,
+                      type: 'text',
+                      text: {
+                        en: {
+                          heading: 'Lesson Overview',
+                          body: l.contentByLanguage?.en?.richContent || l.contentByLanguage?.en?.text || 'Course content...',
+                        },
+                        hi: {
+                          heading: 'पाठ सारांश',
+                          body: l.contentByLanguage?.hi?.richContent || l.contentByLanguage?.hi?.text || 'पाठ सामग्री...',
+                        },
+                        mr: {
+                          heading: 'धडा सारांश',
+                          body: l.contentByLanguage?.mr?.richContent || l.contentByLanguage?.mr?.text || 'अभ्यासक्रम सामग्री...',
+                        },
+                      },
+                    },
+                  ],
+                }))
+              : [
+                  createDefaultLesson(
+                    m.id,
+                    1,
+                    '1.1 Introduction & Overview',
+                    '1.1 परिचय एवं अवलोकन',
+                    '1.1 परिचय आणि विहंगावलोकन',
+                    25
+                  ),
+                ],
+          }))
+        );
       }
     }
   }, [courseToEdit?.id]);
@@ -103,6 +296,8 @@ export const CreateCourseView: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [publishedCourseTitle, setPublishedCourseTitle] = useState('');
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [lessonToDelete, setLessonToDelete] = useState<{ moduleId: string; lessonIndex: number; title: string } | null>(null);
 
   // Auto-generate Course ID from Title if not manually edited
   const handleTitleChange = (val: string) => {
@@ -137,12 +332,22 @@ export const CreateCourseView: React.FC = () => {
   // Modules Handlers
   const handleAddModule = () => {
     const newModNumber = modules.length + 1;
+    const newModId = `mod-${Date.now()}`;
     const newMod: ModuleFormItem = {
-      id: `mod-${Date.now()}`,
+      id: newModId,
       title: `Module ${String(newModNumber).padStart(2, '0')}: New Curriculum Section`,
       description: 'Provide an overview of key operational topics covered in this module.',
       durationHours: 10,
-      lessons: ['Introduction & Conceptual Overview'],
+      lessons: [
+        createDefaultLesson(
+          newModId,
+          1,
+          `${newModNumber}.1 Foundation Topics & Principles`,
+          `${newModNumber}.1 मूलभूत विषय एवं सिद्धांत`,
+          `${newModNumber}.1 मूलभूत घटक आणि तत्त्वे`,
+          25
+        ),
+      ],
     };
     setModules(prev => [...prev, newMod]);
   };
@@ -173,18 +378,73 @@ export const CreateCourseView: React.FC = () => {
     });
   };
 
+  // Add Lesson: creates the lesson and immediately opens the dedicated Lesson Editor interface!
   const handleAddLesson = (moduleId: string) => {
-    const text = lessonInputs[moduleId]?.trim();
-    if (!text) return;
-    setModules(prev =>
-      prev.map(m => {
-        if (m.id === moduleId) {
-          return { ...m, lessons: [...m.lessons, text] };
-        }
-        return m;
-      })
-    );
-    setLessonInputs(prev => ({ ...prev, [moduleId]: '' }));
+    const modIdx = modules.findIndex(m => m.id === moduleId);
+    if (modIdx < 0) return;
+    const currentMod = modules[modIdx];
+    const lessonNum = `${modIdx + 1}.${currentMod.lessons.length + 1}`;
+    const newLesson: Lesson = {
+      id: `les-${moduleId}-${Date.now()}`,
+      moduleId: currentMod.id,
+      order: currentMod.lessons.length + 1,
+      title: `${lessonNum} New Lesson Title`,
+      titleHi: `${lessonNum} नया पाठ शीर्षक`,
+      titleMr: `${lessonNum} नवीन धडा शीर्षक`,
+      durationMinutes: 25,
+      contentType: 'Interactive Reading / Theory',
+      status: 'Draft',
+      blocks: [
+        {
+          id: `blk-${Date.now()}-1`,
+          type: 'text',
+          text: {
+            en: {
+              heading: 'Learning Unit Overview',
+              body: 'Enter structured lesson theory, regulatory guidelines, and standard operating procedures...',
+            },
+            hi: {
+              heading: 'पाठ परिचय एवं उद्देश्य',
+              body: 'यहाँ पाठ की विस्तृत सामग्री एवं मानक प्रक्रियाएं दर्ज करें...',
+            },
+            mr: {
+              heading: 'धडा विहंगावलोकन आणि उद्दिष्टे',
+              body: 'येथे धड्याची सविस्तर माहिती आणि कार्यपद्धती नोंदवा...',
+            },
+          },
+        },
+      ],
+      attachments: [],
+      contentByLanguage: {
+        en: {
+          text: 'Comprehensive modular learning syllabus.',
+          overview: 'Overview of core operational topics covered in this lesson.',
+          keyTakeaways: ['Accredited standard curriculum under Ministry of Cooperation'],
+        },
+        hi: {
+          text: 'व्यापक मॉड्यूलर अध्ययन पाठ्यक्रम।',
+          overview: 'इस पाठ में शामिल मुख्य परिचालन विषयों का अवलोकन।',
+          keyTakeaways: ['सहकारिता मंत्रालय के अंतर्गत मान्यता प्राप्त पाठ्यक्रम'],
+        },
+        mr: {
+          text: 'सर्वसमावेशक अभ्यासक्रम.',
+          overview: 'या धड्यातील महत्त्वाच्या मुद्द्यांचा आढावा.',
+          keyTakeaways: ['अधिकृत राष्ट्रीय अभ्यासक्रम'],
+        },
+      },
+    };
+
+    setActiveLessonContext({
+      moduleIndex: modIdx,
+      lesson: newLesson,
+    });
+  };
+
+  const handleEditLesson = (moduleIndex: number, lesson: Lesson) => {
+    setActiveLessonContext({
+      moduleIndex,
+      lesson: JSON.parse(JSON.stringify(lesson)),
+    });
   };
 
   const handleRemoveLesson = (moduleId: string, lessonIdx: number) => {
@@ -262,32 +522,10 @@ export const CreateCourseView: React.FC = () => {
         title: m.title,
         titleHi: m.title,
         titleMr: m.title,
-        lessons: m.lessons.map((lessonTitle, lIdx) => ({
-          id: `les-${m.id}-${lIdx + 1}`,
+        lessons: m.lessons.map((lesson, lIdx) => ({
+          ...lesson,
           moduleId: m.id,
           order: lIdx + 1,
-          title: lessonTitle,
-          titleHi: lessonTitle,
-          titleMr: lessonTitle,
-          durationMinutes: 30,
-          contentType: 'text',
-          contentByLanguage: {
-            en: {
-              text: `### Overview: ${lessonTitle}\n\nThis training unit covers the regulatory standards and standard operating procedures sanctioned by the National Council for Cooperative Training (NCCT) under the Ministry of Cooperation.\n\nKey takeaways:\n- Standardized operating workflow\n- Compliance auditing guidelines\n- Practical field simulations`,
-              keyTakeaways: [
-                'Accredited standard curriculum under Ministry of Cooperation',
-                'Verifiable assessment criteria with practical ledger demonstrations',
-              ],
-            },
-            hi: {
-              text: `### सारांश: ${lessonTitle}\n\nयह प्रशिक्षण इकाई सहकारिता मंत्रालय के तत्वावधान में राष्ट्रीय सहकारी प्रशिक्षण परिषद (NCCT) द्वारा अनुमोदित मानक संचालन प्रक्रियाओं को समाहित करती है।`,
-              keyTakeaways: ['सहकारिता मंत्रालय के अंतर्गत मान्यता प्राप्त पाठ्यक्रम', 'व्यावहारिक सत्यापन एवं ई-केवाईसी दिशानिर्देश'],
-            },
-            mr: {
-              text: `### सारांश: ${lessonTitle}\n\nहा प्रशिक्षण विभाग सहकार मंत्रालयाच्या अंतर्गत राष्ट्रीय सहकारी प्रशिक्षण परिषदेने (NCCT) निर्धारित केलेल्या मानकांची माहिती देतो.`,
-              keyTakeaways: ['अधिकृत राष्ट्रीय अभ्यासक्रम', 'प्रत्यक्ष प्रात्यक्षिक व मूल्यांकन'],
-            },
-          },
         })),
         quiz: {
           id: `quiz-${m.id}`,
@@ -382,32 +620,46 @@ export const CreateCourseView: React.FC = () => {
       titleMr: '',
       description: m.description || '',
       durationHours: m.durationHours || 10,
-      lessons: m.lessons.map((lessonTitle, lIdx) => ({
-        id: `les-${idx + 1}-${lIdx + 1}`,
+      lessons: m.lessons.map((lesson, lIdx) => ({
+        ...lesson,
+        id: lesson.id || `les-${idx + 1}-${lIdx + 1}`,
         moduleId: m.id,
         order: lIdx + 1,
-        title: lessonTitle,
-        titleHi: lessonTitle,
-        titleMr: lessonTitle,
-        durationMinutes: 30,
-        contentType: 'text' as const,
-        contentByLanguage: {
-          en: {
-            text: `Overview of ${lessonTitle}`,
-            keyTakeaways: ['Accredited training curriculum'],
-          },
-          hi: {
-            text: `विवरण: ${lessonTitle}`,
-            keyTakeaways: ['प्रमाणित पाठ्यक्रम'],
-          },
-          mr: {
-            text: `तपशील: ${lessonTitle}`,
-            keyTakeaways: ['प्रमाणित अभ्यासक्रम'],
-          },
-        },
       })),
     })),
   };
+
+  // If a lesson is being edited or created, render the full dedicated Lesson Editor interface
+  if (activeLessonContext) {
+    const currentMod = modules[activeLessonContext.moduleIndex];
+    return (
+      <PageContainer>
+        <LessonEditor
+          initialLesson={activeLessonContext.lesson}
+          moduleTitle={currentMod?.title || 'Module'}
+          moduleNumber={activeLessonContext.moduleIndex + 1}
+          courseTitle={title || 'Untitled Course'}
+          onSave={(updatedLesson, publish) => {
+            setModules(prev => {
+              const next = [...prev];
+              const mod = { ...next[activeLessonContext.moduleIndex] };
+              const existingIdx = mod.lessons.findIndex(l => l.id === updatedLesson.id);
+              if (existingIdx >= 0) {
+                mod.lessons[existingIdx] = updatedLesson;
+              } else {
+                mod.lessons.push(updatedLesson);
+              }
+              next[activeLessonContext.moduleIndex] = mod;
+              return next;
+            });
+            setActiveLessonContext(null);
+          }}
+          onBackToCourse={() => setActiveLessonContext(null)}
+          onBackToModule={() => setActiveLessonContext(null)}
+        />
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -768,7 +1020,7 @@ export const CreateCourseView: React.FC = () => {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeleteModule(module.id)}
+                          onClick={() => setModuleToDelete({ id: module.id, title: module.title || `Module ${index + 1}` })}
                           className="w-9 h-9 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-rose-600 hover:bg-rose-50 cursor-pointer ml-1"
                           title="Delete Module"
                         >
@@ -820,61 +1072,133 @@ export const CreateCourseView: React.FC = () => {
                     </div>
 
                     {/* Lessons Section under this module */}
-                    <div className="space-y-2 pt-2 border-t border-gray-100">
+                    <div className="space-y-3 pt-3 border-t border-gray-100">
                       <div className="flex items-center justify-between text-xs">
                         <span className="font-bold text-govText-primary flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-govTeal-600" />
+                          <FileText className="w-3.5 h-3.5 text-[#0B6E4F]" />
                           <span>Lessons in this Module ({module.lessons.length})</span>
+                        </span>
+                        <span className="text-[11px] text-govText-muted hidden sm:inline">
+                          Full structured learning units with multimedia blocks
                         </span>
                       </div>
 
-                      <div className="space-y-1.5">
-                        {module.lessons.map((lesson, lIdx) => (
-                          <div
-                            key={lIdx}
-                            className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-gray-100 text-xs shadow-2xs gap-2"
-                          >
-                            <span className="font-medium text-govText-primary break-words flex-1 leading-relaxed min-w-0 pr-1">
-                              {lIdx + 1}. {lesson}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveLesson(module.id, lIdx)}
-                              className="text-gray-400 hover:text-rose-600 p-1.5 rounded-lg shrink-0 min-w-[36px] min-h-[36px] flex items-center justify-center hover:bg-rose-50 transition-colors"
-                              title="Delete lesson"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
+                      {module.lessons.length === 0 ? (
+                        <div className="p-4 rounded-xl border border-dashed border-gray-200 bg-[#FBFDFB] text-center text-xs text-govText-muted">
+                          No lessons added yet in this module. Click "+ Add Lesson" below to author a comprehensive learning unit.
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {module.lessons.map((lesson, lIdx) => {
+                            const isTrilingual = Boolean(
+                              lesson.title?.trim() &&
+                              lesson.titleHi?.trim() &&
+                              lesson.titleMr?.trim() &&
+                              lesson.titleHi !== lesson.title
+                            );
+                            const blockCount = lesson.blocks?.length ?? 2;
+                            const duration = lesson.durationMinutes || 25;
 
-                      {/* Add Lesson input */}
-                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1.5">
-                        <input
-                          type="text"
-                          value={lessonInputs[module.id] || ''}
-                          onChange={e =>
-                            setLessonInputs(prev => ({ ...prev, [module.id]: e.target.value }))
-                          }
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleAddLesson(module.id);
-                            }
-                          }}
-                          placeholder="Add a lesson title (e.g. 'Role of PACS in Credit Linkage')..."
-                          className="w-full sm:flex-1 px-3.5 py-2.5 min-h-[40px] text-xs rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#0B6E4F]"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleAddLesson(module.id)}
-                          className="w-full sm:w-auto px-3.5 py-2.5 min-h-[40px] bg-gray-100 hover:bg-govTeal-50 text-govTeal-800 text-xs font-semibold rounded-xl border border-gray-200 flex items-center justify-center gap-1 shrink-0 cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span>Add Lesson</span>
-                        </button>
-                      </div>
+                            return (
+                              <div
+                                key={lesson.id || lIdx}
+                                className="p-3 sm:p-3.5 rounded-xl bg-white border border-gray-200 hover:border-emerald-300 transition-all shadow-2xs hover:shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                              >
+                                <div className="space-y-1.5 min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-bold text-govText-primary break-words">
+                                      {lIdx + 1}. {lesson.title}
+                                    </span>
+                                    <span
+                                      className={`px-2 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                                        lesson.status === 'Published'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : lesson.status === 'Ready'
+                                          ? 'bg-blue-100 text-blue-800'
+                                          : 'bg-amber-100 text-amber-800'
+                                      }`}
+                                    >
+                                      {lesson.status || 'Draft'}
+                                    </span>
+                                  </div>
+
+                                  {/* Metadata row */}
+                                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap text-[11px] text-govText-muted">
+                                    <span className="inline-flex items-center gap-1 font-medium text-govText-secondary">
+                                      <Clock className="w-3.5 h-3.5 text-gray-400" />
+                                      <span>{duration} mins</span>
+                                    </span>
+                                    <span>•</span>
+                                    <span className="inline-flex items-center gap-1 font-medium text-govText-secondary">
+                                      <Layers className="w-3.5 h-3.5 text-gray-400" />
+                                      <span>{blockCount} Content Block{blockCount !== 1 ? 's' : ''}</span>
+                                    </span>
+                                    <span>•</span>
+                                    {isTrilingual ? (
+                                      <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 text-[10px]">
+                                        <Check className="w-3 h-3 text-emerald-600" />
+                                        <span>Trilingual Verified</span>
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center gap-1 font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[10px]">
+                                        <span>Translation Pending</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Action buttons */}
+                                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEditLesson(index, lesson)}
+                                    className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100/80 text-[#0B6E4F] hover:text-[#085A40] text-xs font-bold rounded-lg border border-emerald-200 flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                                    title="Open Lesson Editor"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                    <span>Edit Lesson</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewLesson({ lesson, moduleTitle: module.title })}
+                                    className="px-2.5 py-1.5 bg-white hover:bg-gray-100 text-govText-secondary hover:text-govText-primary text-xs font-semibold rounded-lg border border-gray-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                                    title="Preview Learner View"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-gray-500" />
+                                    <span>Preview</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setLessonToDelete({
+                                        moduleId: module.id,
+                                        lessonIndex: lIdx,
+                                        title: lesson.title || `Lesson ${lIdx + 1}`,
+                                      })
+                                    }
+                                    className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                    title="Delete Lesson"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* + Add Lesson Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddLesson(module.id)}
+                        className="w-full py-2.5 px-4 bg-emerald-50/60 hover:bg-emerald-100/70 text-[#0B6E4F] text-xs font-bold rounded-xl border border-dashed border-emerald-300 hover:border-emerald-500 flex items-center justify-center gap-2 transition-all cursor-pointer shadow-2xs group"
+                      >
+                        <Plus className="w-4 h-4 transition-transform group-hover:scale-110" />
+                        <span>+ Add Lesson</span>
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -937,10 +1261,47 @@ export const CreateCourseView: React.FC = () => {
           modules={modules}
         />
 
-        {/* 4. Success Modal Experience (Part 11) */}
-        {showSuccessModal && (
-          <div className="fixed inset-0 z-[1300] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 text-center space-y-4 animate-scaleUp">
+        {/* 3.1 Dedicated Lesson Preview Modal */}
+        {previewLesson && (
+          <LessonPreviewModal
+            isOpen={Boolean(previewLesson)}
+            onClose={() => setPreviewLesson(null)}
+            lesson={{
+              title: previewLesson.lesson.title,
+              titleHi: previewLesson.lesson.titleHi,
+              titleMr: previewLesson.lesson.titleMr,
+              contentType: previewLesson.lesson.contentType,
+              durationMinutes: previewLesson.lesson.durationMinutes,
+              overview:
+                previewLesson.lesson.overview ||
+                previewLesson.lesson.contentByLanguage?.en?.overview ||
+                previewLesson.lesson.contentByLanguage?.en?.text,
+              overviewHi:
+                previewLesson.lesson.overviewHi ||
+                previewLesson.lesson.contentByLanguage?.hi?.overview ||
+                previewLesson.lesson.contentByLanguage?.hi?.text,
+              overviewMr:
+                previewLesson.lesson.overviewMr ||
+                previewLesson.lesson.contentByLanguage?.mr?.overview ||
+                previewLesson.lesson.contentByLanguage?.mr?.text,
+              blocks: previewLesson.lesson.blocks,
+            }}
+            moduleTitle={previewLesson.moduleTitle}
+          />
+        )}
+
+        {/* 4. Success Modal Experience (Global Viewport Centered via Portal) */}
+        <GlobalModal
+          isOpen={showSuccessModal}
+          onClose={() => {
+            setShowSuccessModal(false);
+            navigate('/faculty/courses');
+          }}
+          maxWidth="max-w-md"
+          ariaLabel="Course Published Successfully"
+        >
+          {showSuccessModal && (
+            <div className="p-6 text-center space-y-4">
               <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto shadow-xs">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
@@ -978,8 +1339,54 @@ export const CreateCourseView: React.FC = () => {
                 Back to My Courses
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </GlobalModal>
+
+        {/* 5. Delete Module Confirmation Dialog (Global Viewport Centered via Portal) */}
+        <ConfirmDialog
+          isOpen={Boolean(moduleToDelete)}
+          onClose={() => setModuleToDelete(null)}
+          onConfirm={() => {
+            if (moduleToDelete) {
+              handleDeleteModule(moduleToDelete.id);
+              setModuleToDelete(null);
+            }
+          }}
+          title="Delete Module?"
+          message={
+            <>
+              Are you sure you want to remove{' '}
+              <strong className="text-govText-primary font-bold">"{moduleToDelete?.title}"</strong>?
+              This will remove all lessons authored under this module.
+            </>
+          }
+          confirmLabel="Confirm Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+        />
+
+        {/* 6. Delete Lesson Confirmation Dialog (Global Viewport Centered via Portal) */}
+        <ConfirmDialog
+          isOpen={Boolean(lessonToDelete)}
+          onClose={() => setLessonToDelete(null)}
+          onConfirm={() => {
+            if (lessonToDelete) {
+              handleRemoveLesson(lessonToDelete.moduleId, lessonToDelete.lessonIndex);
+              setLessonToDelete(null);
+            }
+          }}
+          title="Delete Lesson?"
+          message={
+            <>
+              Are you sure you want to remove{' '}
+              <strong className="text-govText-primary font-bold">"{lessonToDelete?.title}"</strong>?
+              This action cannot be undone.
+            </>
+          }
+          confirmLabel="Confirm Delete"
+          cancelLabel="Cancel"
+          variant="danger"
+        />
       </div>
     </PageContainer>
   );

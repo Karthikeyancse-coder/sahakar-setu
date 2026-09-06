@@ -20,7 +20,7 @@ export interface CoursePreviewModalProps {
     title: string;
     description: string;
     durationHours: number;
-    lessons: string[];
+    lessons: any[];
   }>;
 }
 
@@ -85,30 +85,37 @@ export const CoursePreviewModal: React.FC<CoursePreviewModalProps> = ({
       titleMr: '',
       description: m.description || '',
       durationHours: m.durationHours || 10,
-      lessons: (m.lessons || []).map((lessonTitle, lIdx) => ({
-        id: `les-${idx + 1}-${lIdx + 1}`,
-        moduleId: m.id,
-        order: lIdx + 1,
-        title: lessonTitle,
-        titleHi: lessonTitle,
-        titleMr: lessonTitle,
-        durationMinutes: 30,
-        contentType: 'text' as const,
-        contentByLanguage: {
-          en: {
-            text: `Overview of ${lessonTitle}`,
-            keyTakeaways: ['Accredited training curriculum'],
+      lessons: (m.lessons || []).map((lessonItem, lIdx) => {
+        const lTitle = typeof lessonItem === 'string' ? lessonItem : lessonItem?.title || `Lesson ${lIdx + 1}`;
+        const lTitleHi = typeof lessonItem === 'object' && lessonItem?.titleHi ? lessonItem.titleHi : lTitle;
+        const lTitleMr = typeof lessonItem === 'object' && lessonItem?.titleMr ? lessonItem.titleMr : lTitle;
+        const lDuration = typeof lessonItem === 'object' && lessonItem?.durationMinutes ? lessonItem.durationMinutes : 30;
+
+        return {
+          id: typeof lessonItem === 'object' && lessonItem?.id ? lessonItem.id : `les-${idx + 1}-${lIdx + 1}`,
+          moduleId: m.id,
+          order: lIdx + 1,
+          title: lTitle,
+          titleHi: lTitleHi,
+          titleMr: lTitleMr,
+          durationMinutes: lDuration,
+          contentType: 'text' as const,
+          contentByLanguage: {
+            en: {
+              text: `Overview of ${lTitle}`,
+              keyTakeaways: ['Accredited training curriculum'],
+            },
+            hi: {
+              text: `विवरण: ${lTitleHi}`,
+              keyTakeaways: ['प्रमाणित पाठ्यक्रम'],
+            },
+            mr: {
+              text: `तपशील: ${lTitleMr}`,
+              keyTakeaways: ['प्रमाणित अभ्यासक्रम'],
+            },
           },
-          hi: {
-            text: `विवरण: ${lessonTitle}`,
-            keyTakeaways: ['प्रमाणित पाठ्यक्रम'],
-          },
-          mr: {
-            text: `तपशील: ${lessonTitle}`,
-            keyTakeaways: ['प्रमाणित अभ्यासक्रम'],
-          },
-        },
-      })),
+        };
+      }),
     })),
   };
 

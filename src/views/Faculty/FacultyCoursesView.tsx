@@ -23,6 +23,8 @@ import { PageContainer } from '../../components/layout/PageContainer';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { Course } from '../../types';
 import { FacultyCourseCard } from '../../components/common/FacultyCourseCard';
+import { GlobalModal } from '../../components/common/GlobalModal';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 // Mock enrolled trainees for Part 3 Enrolled Trainee Roster
 interface TraineeRosterItem {
@@ -250,10 +252,15 @@ export const FacultyCoursesView: React.FC = () => {
           })}
         </div>
 
-        {/* 4. Enrolled Trainee Roster Modal (Part 3) */}
-        {activeRosterCourse && (
-          <div className="fixed inset-0 z-[1100] flex items-center justify-center p-3 sm:p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden p-4 sm:p-6 shadow-2xl border border-gray-200 flex flex-col space-y-4 animate-scaleUp">
+        {/* 4. Enrolled Trainee Roster Modal (Global Viewport Centered via Portal) */}
+        <GlobalModal
+          isOpen={Boolean(activeRosterCourse)}
+          onClose={() => setActiveRosterCourse(null)}
+          maxWidth="max-w-3xl"
+          ariaLabel="Enrolled Trainee Roster"
+        >
+          {activeRosterCourse && (
+            <div className="p-4 sm:p-6 flex flex-col space-y-4 max-h-[90vh]">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100 flex-shrink-0 gap-2">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -345,66 +352,35 @@ export const FacultyCoursesView: React.FC = () => {
                 </button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </GlobalModal>
 
-        {/* 5. Delete Course Confirmation Modal */}
-        {courseToDelete && (
-          <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 space-y-4 animate-scaleUp">
-              <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-100 shadow-xs">
-                <Trash2 className="w-6 h-6" />
+        {/* 5. Delete Course Confirmation Modal (Global Viewport Centered via Portal) */}
+        <ConfirmDialog
+          isOpen={Boolean(courseToDelete)}
+          onClose={() => setCourseToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          title="Delete Course?"
+          message={
+            <>
+              Are you sure you want to delete <strong className="text-govText-primary font-bold">'{courseToDelete?.course.title}'</strong>? This action cannot be undone.
+            </>
+          }
+          warningNote={
+            courseToDelete && courseToDelete.enrolledCount > 0 ? (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2 leading-relaxed">
+                <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Warning:</strong> This course has enrolled trainees ({courseToDelete.enrolledCount} learners). Deleting it may affect existing learner records and certification history.
+                </span>
               </div>
-
-              <div className="text-center space-y-1.5">
-                <h3 className="text-lg font-extrabold text-govText-primary">
-                  Delete Course?
-                </h3>
-                <p className="text-xs text-govText-secondary leading-relaxed">
-                  Are you sure you want to delete <strong className="text-govText-primary font-bold">'{courseToDelete.course.title}'</strong>? This action cannot be undone.
-                </p>
-              </div>
-
-              {courseToDelete.enrolledCount > 0 && (
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2 leading-relaxed">
-                  <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-                  <span>
-                    <strong>Warning:</strong> This course has enrolled trainees ({courseToDelete.enrolledCount} learners). Deleting it may affect existing learner records and certification history.
-                  </span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={() => setCourseToDelete(null)}
-                  className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-colors cursor-pointer min-h-[44px] disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isDeleting}
-                  onClick={handleConfirmDelete}
-                  className="w-full py-2.5 px-4 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer min-h-[44px] flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
-                >
-                  {isDeleting ? (
-                    <>
-                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Deleting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="w-4 h-4" />
-                      <span>Delete Course</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            ) : undefined
+          }
+          confirmLabel={isDeleting ? 'Deleting...' : 'Delete Course'}
+          cancelLabel="Cancel"
+          variant="danger"
+          isLoading={isDeleting}
+        />
 
         {/* 6. Small Success Toast */}
         {toastMessage && (

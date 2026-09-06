@@ -28,6 +28,7 @@ import {
   SEED_ATTENDANCE,
   SEED_NOMINATIONS,
   SEED_JOBS,
+  SEED_JOB_INTERESTS,
   SEED_HOSTEL_BEDS,
   SEED_TIMETABLE,
   SEED_NOTIFICATIONS,
@@ -72,6 +73,9 @@ interface AppContextType {
   bulkImportNominations: (programmeId: string, records: Array<{ name: string; email: string; coop: string }>) => number;
   applyForJob: (jobId: string) => boolean;
   createJobPosting: (job: Omit<JobPosting, 'id' | 'postedDate'>) => void;
+  updateJobPosting: (jobId: string, updates: Partial<JobPosting>) => void;
+  deleteJobPosting: (jobId: string) => void;
+  updateJobInterestStatus: (interestId: string, status: 'submitted' | 'reviewed' | 'shortlisted') => void;
   updateHostelBed: (bedId: string, updates: Partial<HostelBed>) => void;
   verifyEkyc: (aadhaarNumber: string) => void;
   toggleOfflineMode: () => void;
@@ -418,8 +422,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [sessions, setSessions] = useState<Session[]>(SEED_SESSIONS);
   const [attendance, setAttendance] = useState<AttendanceRecord[]>(SEED_ATTENDANCE);
   const [nominations, setNominations] = useState<Nomination[]>(SEED_NOMINATIONS);
-  const [jobs, setJobs] = useState<JobPosting[]>(SEED_JOBS);
-  const [jobInterests, setJobInterests] = useState<JobInterest[]>([]);
+  const [jobs, setJobs] = useState<JobPosting[]>(() => {
+    const saved = localStorage.getItem('ss_jobs_list');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 3) return parsed;
+      } catch (e) {}
+    }
+    return SEED_JOBS;
+  });
+  const [jobInterests, setJobInterests] = useState<JobInterest[]>(() => {
+    const saved = localStorage.getItem('ss_job_interests');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return SEED_JOB_INTERESTS;
+  });
   const [hostelBeds, setHostelBeds] = useState<HostelBed[]>(SEED_HOSTEL_BEDS);
   const [timetable, setTimetable] = useState<TimetableEntry[]>(SEED_TIMETABLE);
   const [users, setUsers] = useState<User[]>(() => {
@@ -974,7 +996,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       timestamp: new Date().toLocaleString(),
       status: 'submitted',
     };
-    setJobInterests(prev => [newInterest, ...prev]);
+    setJobInterests(prev => {
+      const updated = [newInterest, ...prev];
+      try { localStorage.setItem('ss_job_interests', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
     return true;
   };
 
@@ -984,7 +1010,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `job-${Date.now()}`,
       postedDate: new Date().toISOString().split('T')[0],
     };
-    setJobs(prev => [newJob, ...prev]);
+    setJobs(prev => {
+      const updated = [newJob, ...prev];
+      try { localStorage.setItem('ss_jobs_list', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  };
+
+  const updateJobPosting = (jobId: string, updates: Partial<JobPosting>) => {
+    setJobs(prev => {
+      const updated = prev.map(j => (j.id === jobId ? { ...j, ...updates } : j));
+      try { localStorage.setItem('ss_jobs_list', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  };
+
+  const deleteJobPosting = (jobId: string) => {
+    setJobs(prev => {
+      const updated = prev.filter(j => j.id !== jobId);
+      try { localStorage.setItem('ss_jobs_list', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
+  };
+
+  const updateJobInterestStatus = (interestId: string, status: 'submitted' | 'reviewed' | 'shortlisted') => {
+    setJobInterests(prev => {
+      const updated = prev.map(ji => (ji.id === interestId ? { ...ji, status } : ji));
+      try { localStorage.setItem('ss_job_interests', JSON.stringify(updated)); } catch (e) {}
+      return updated;
+    });
   };
 
   const updateHostelBed = (bedId: string, updates: Partial<HostelBed>) => {
@@ -1073,6 +1127,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         bulkImportNominations,
         applyForJob,
         createJobPosting,
+        updateJobPosting,
+        deleteJobPosting,
+        updateJobInterestStatus,
         updateHostelBed,
         verifyEkyc,
         toggleOfflineMode,

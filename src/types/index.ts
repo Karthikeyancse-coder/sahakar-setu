@@ -86,6 +86,78 @@ export interface Quiz {
   questions: QuizQuestion[];
 }
 
+export interface LessonAttachment {
+  id: string;
+  name: string;
+  size?: string;
+  type: 'pdf' | 'doc' | 'ppt' | 'image' | 'link';
+  url?: string;
+}
+
+export interface LessonLanguageContent {
+  text: string;
+  overview?: string;
+  richContent?: string;
+  learningObjectives?: string[];
+  keyTakeaways: string[];
+  videoUrl?: string;
+  transcript?: string;
+}
+
+export type ContentBlockType = 'text' | 'video' | 'attachment' | 'image' | 'link' | 'activity';
+
+export interface TextBlockData {
+  heading?: string;
+  body: string;
+}
+
+export interface VideoBlockData {
+  title: string;
+  videoUrl: string;
+  description?: string;
+  thumbnail?: string;
+  duration?: string;
+}
+
+export interface AttachmentBlockData {
+  fileName: string;
+  fileType: string;
+  fileSize: string;
+  fileUrl?: string;
+}
+
+export interface ImageBlockData {
+  imageUrl: string;
+  caption?: string;
+  altText?: string;
+}
+
+export interface LinkBlockData {
+  title: string;
+  url: string;
+  description?: string;
+  openInNewTab?: boolean;
+}
+
+export interface ActivityBlockData {
+  title: string;
+  instructions: string;
+  expectedOutcome: string;
+  resourceName?: string;
+  resourceUrl?: string;
+}
+
+export interface ContentBlock {
+  id: string;
+  type: ContentBlockType;
+  text?: { en: TextBlockData; hi: TextBlockData; mr: TextBlockData };
+  video?: { en: VideoBlockData; hi: VideoBlockData; mr: VideoBlockData };
+  attachment?: AttachmentBlockData;
+  image?: { en: ImageBlockData; hi: ImageBlockData; mr: ImageBlockData };
+  link?: { en: LinkBlockData; hi: LinkBlockData; mr: LinkBlockData };
+  activity?: { en: ActivityBlockData; hi: ActivityBlockData; mr: ActivityBlockData };
+}
+
 export interface Lesson {
   id: string;
   moduleId: string;
@@ -94,23 +166,23 @@ export interface Lesson {
   titleHi: string;
   titleMr: string;
   durationMinutes: number;
-  contentType: 'text' | 'video' | 'interactive';
+  contentType: 'text' | 'video' | 'interactive' | 'pdf' | 'presentation' | 'resource' | 'document' | 'practical' | 'mixed' | string;
+  status?: 'Draft' | 'Ready' | 'Published';
+  overview?: string;
+  overviewHi?: string;
+  overviewMr?: string;
+  blocks?: ContentBlock[];
+  videoUrl?: string;
+  documentName?: string;
+  documentUrl?: string;
+  presentationName?: string;
+  presentationUrl?: string;
+  externalUrl?: string;
+  attachments?: LessonAttachment[];
   contentByLanguage: {
-    en: {
-      text: string;
-      videoUrl?: string;
-      keyTakeaways: string[];
-    };
-    hi: {
-      text: string;
-      videoUrl?: string;
-      keyTakeaways: string[];
-    };
-    mr: {
-      text: string;
-      videoUrl?: string;
-      keyTakeaways: string[];
-    };
+    en: LessonLanguageContent;
+    hi: LessonLanguageContent;
+    mr: LessonLanguageContent;
   };
 }
 

@@ -25,7 +25,7 @@ interface DashboardHeaderProps {
   onOpenMobileDrawer?: () => void;
 }
 
-export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
+export const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onOpenMobileDrawer }) => {
   const {
     currentUser,
     currentLanguage,
@@ -138,8 +138,23 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = () => {
           <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
 
-              {/* Left: Brand Logo & Title on mobile/tablet, Global Search on desktop */}
+              {/* Left: Hamburger (mobile/tablet) + Brand Logo + Search (desktop) */}
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+
+                {/* Hamburger Menu Button — tablet only (768–1023px): opens sidebar drawer.
+                    Hidden on mobile (<768px) where the fixed bottom nav handles Employer navigation.
+                    Hidden on desktop (≥1024px) where the sidebar is always visible. */}
+                {onOpenMobileDrawer && (
+                  <button
+                    onClick={onOpenMobileDrawer}
+                    className="hidden md:flex lg:hidden items-center justify-center w-9 h-9 rounded-xl border border-govText-border bg-govBg hover:bg-govTeal-50 text-govTeal-800 transition-colors flex-shrink-0 cursor-pointer"
+                    aria-label="Open navigation menu"
+                    title="Open menu"
+                  >
+                    <Menu className="w-5 h-5" />
+                  </button>
+                )}
+
                 {/* Mobile/Tablet Brand indicator (when sidebar is hidden on < 1024px) - Compact mobile header */}
                 <div
                   className="lg:hidden flex items-center gap-2 cursor-pointer flex-shrink-0"

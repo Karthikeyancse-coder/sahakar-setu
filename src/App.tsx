@@ -44,7 +44,9 @@ import { FacultyCoursesView } from './views/Faculty/FacultyCoursesView';
 import { CreateCourseView } from './views/Faculty/CreateCourseView';
 import { CourseBuilder } from './views/Faculty/CourseBuilder';
 import { FacultyProfileView } from './views/Faculty/FacultyProfileView';
-import { EmployerPortal } from './views/Employer/EmployerPortal';
+import { EmployerDashboardView } from './views/Employer/EmployerDashboardView';
+import { EmployerCandidatesView } from './views/Employer/EmployerCandidatesView';
+import { EmployerJobsView } from './views/Employer/EmployerJobsView';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
 import { TraineeDirectory } from './views/Common/TraineeDirectory';
 
@@ -198,15 +200,17 @@ export const AppContent: React.FC = () => {
   const renderEmployerView = () => {
     switch (activeView) {
       case 'home':
-      case 'jobs':
-      case 'jobs_new':
-        return <EmployerPortal />;
+        return <EmployerDashboardView />;
       case 'trainee_directory':
-        return <TraineeDirectory />;
+        return <EmployerCandidatesView />;
+      case 'jobs':
+        return <EmployerJobsView />;
+      case 'jobs_new':
+        return <EmployerJobsView initialOpenNewModal={true} />;
       case 'settings':
         return <SettingsView />;
       default:
-        return <EmployerPortal />;
+        return <EmployerDashboardView />;
     }
   };
 
