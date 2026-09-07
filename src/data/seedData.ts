@@ -772,7 +772,14 @@ export const SEED_COURSES: Course[] = [
                 hi: ['फैट (FAT) एवं एसएनएफ (SNF)', 'केवल रंग एवं गंध', 'केवल बर्तन का आयतन', 'केवल तापमान'],
                 mr: ['फॅट (FAT) आणि एसएनएफ (SNF)', 'फक्त रंग आणि वास', 'फक्त भांड्याचा आकार', 'फक्त तापमान'],
               },
+              optionList: [
+                { id: 'q-dairy-1-a', text: 'FAT and SNF (Solids-Not-Fat)', textHi: 'फैट (FAT) एवं एसएनएफ (SNF)', textMr: 'फॅट (FAT) आणि एसएनएफ (SNF)' },
+                { id: 'q-dairy-1-b', text: 'Color and Smell only', textHi: 'केवल रंग एवं गंध', textMr: 'फक्त रंग आणि वास' },
+                { id: 'q-dairy-1-c', text: 'Container volume only', textHi: 'केवल बर्तन का आयतन', textMr: 'फक्त भांड्याचा आकार' },
+                { id: 'q-dairy-1-d', text: 'Temperature and Acidity only', textHi: 'केवल तापमान', textMr: 'फक्त तापमान' },
+              ],
               correctOptionIndex: 0,
+              correctOptionId: 'q-dairy-1-a',
               explanation: {
                 en: 'Indian cooperative dairies determine farmer payment using a two-axis pricing formula based on FAT and SNF percentage.',
                 hi: 'भारतीय दुग्ध सहकारी समितियां फैट और एसएनएफ के प्रतिशत पर आधारित द्वि-अक्षीय मूल्य निर्धारण सूत्र का उपयोग करती हैं।',

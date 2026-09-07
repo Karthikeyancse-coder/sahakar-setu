@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { api, clearToken } from '../lib/api';
 import {
   User,
   UserRole,
@@ -60,13 +61,15 @@ interface AppContextType {
   activeViewParams: any;
 
   // Actions
+  login: (email: string, password: string) => Promise<void>;
   switchUser: (userId: string) => void;
   logout: () => void;
   setLanguage: (lang: Language) => void;
   navigate: (view: string, params?: any) => void;
   enrollInCourse: (courseId: string) => void;
   markLessonComplete: (courseId: string, lessonId: string) => void;
-  submitQuiz: (courseId: string, quizId: string, scorePercent: number) => { passed: boolean; certId?: string };
+  // answers: raw selected option indices (0-based) — graded server-side for Trainee role
+  submitQuiz: (courseId: string, quizId: string, answers: number[], assessmentResult?: any) => Promise<{ passed: boolean; certId?: string; scorePercent?: number }>;
   markAttendance: (sessionId: string, method: 'qr' | 'face', targetUserId?: string, confidence?: number) => { success: boolean; message: string };
   updateNominationStatus: (nominationId: string, status: 'approved' | 'rejected') => void;
   bulkUpdateNominationStatus: (nominationIds: string[], status: 'approved' | 'rejected') => void;
@@ -122,6 +125,11 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   // Immediately clean up any legacy hash in URL
   if (hash) {
     const lowerHash = hash.toLowerCase();
+    if (lowerHash.startsWith('#/skill-card/')) {
+      const token = hash.replace(/^#\/skill-card\//i, '');
+      window.history.replaceState({}, '', `/skill-card/${token}`);
+      return { view: 'skill_card_public', params: { token } };
+    }
     if (lowerHash.startsWith('#/verify/')) {
       const certId = hash.replace(/^#\/verify\//i, '');
       window.history.replaceState({}, '', `/verify/${certId}`);
@@ -151,6 +159,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   }
 
   // Pure HTML5 pathname routing - Public unauthenticated routes
+  if (path.startsWith('/skill-card/')) {
+    const token = path.replace(/^\/skill-card\//, '');
+    return { view: 'skill_card_public', params: { token } };
+  }
   if (path.startsWith('/verify/')) {
     const certId = path.replace(/^\/verify\//, '');
     return { view: 'verify_public', params: { certId } };
@@ -561,12 +573,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('ss_auth');
+    clearToken(); // Clear JWT for Trainee backend sessions
     setActiveView('login');
     setActiveViewParams(null);
     if (window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  /**
+   * login — real API authentication for Trainee (and other roles when backend is ready).
+   * On success: stores JWT via api.ts, sets currentUser from DB response.
+   * Other roles: falls back to SEED_USERS via switchUser.
+   */
+  const login = async (email: string, password: string): Promise<void> => {
+    const { user } = await api.auth.login(email, password); // stores JWT internally
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+    localStorage.setItem('ss_auth', 'true');
+    localStorage.setItem('ss_user', JSON.stringify(user));
+    if (user.languagePreference) {
+      setCurrentLanguageState(user.languagePreference);
+      localStorage.setItem('ss_lang', user.languagePreference);
+    }
+    setActiveView('home');
+    setActiveViewParams(null);
+    const targetPath = `${getRolePrefix(user.role)}/dashboard`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
   };
 
   const switchUser = (userId: string) => {
@@ -611,6 +647,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveView('forgot_password');
       setActiveViewParams(null);
       window.history.pushState({}, '', '/forgot-password');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (destination === 'skill_card_public' || destination.startsWith('/skill-card/')) {
+      const token = params?.token || (destination.startsWith('/skill-card/') ? destination.replace(/^\/skill-card\//, '') : 'token-rameshwar-2026');
+      setActiveView('skill_card_public');
+      setActiveViewParams({ token });
+      window.history.pushState({}, '', `/skill-card/${token}`);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -828,12 +872,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       setEnrollments(prev => [newEnrollment, ...prev]);
     }
+    // Persist to backend for Trainee
+    if (currentUser.role === 'trainee') {
+      api.learning.enroll(courseId)
+        .then(() => api.enrollments.mine())
+        .then(enrs => {
+          if (Array.isArray(enrs)) setEnrollments(enrs);
+        })
+        .catch(err =>
+          console.warn('[API] enrollInCourse failed:', err.message)
+        );
+    }
   };
 
   const markLessonComplete = (courseId: string, lessonId: string) => {
     setEnrollments(prev => {
       return prev.map(e => {
-        if (e.userId === currentUser.id && e.courseId === courseId) {
+        if (e.userId === currentUser.id && (e.courseId === courseId || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301')) {
           if (!e.completedLessonIds.includes(lessonId)) {
             const updatedLessons = [...e.completedLessonIds, lessonId];
             const course = courses.find(c => c.id === courseId);
@@ -852,15 +907,86 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
     });
 
+    // Persist to database
+    if (currentUser.role === 'trainee') {
+      api.learning.completeLesson(lessonId).catch(err =>
+        console.warn('[API] completeLesson failed:', err.message)
+      );
+    }
+
     if (isOffline) {
       setOfflineQueueCount(prev => prev + 1);
     }
   };
 
-  const submitQuiz = (courseId: string, quizId: string, scorePercent: number) => {
+  const submitQuiz = async (
+    courseId: string,
+    quizId: string,
+    answers: any,
+    assessmentResult?: any
+  ): Promise<{ passed: boolean; certId?: string; scorePercent?: number; certificate?: any }> => {
+    // For Trainee role: send answers to server for grading & persistence
+    if (currentUser.role === 'trainee') {
+      try {
+        const payloadAnswers = assessmentResult?.answers || answers;
+        const result = await api.learning.submitQuiz(quizId, payloadAnswers);
+        if (result.passed) {
+          // Update local enrollment state to reflect server result
+          setEnrollments(prev => prev.map(e => {
+            if (e.userId === currentUser.id && (e.courseId === courseId || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301')) {
+              const updatedQuizIds = Array.from(new Set([...e.completedQuizIds, quizId]));
+              return {
+                ...e,
+                completedQuizIds: updatedQuizIds,
+                progressPercent: result.courseCompleted ? 100 : Math.min(100, e.progressPercent),
+                status: result.courseCompleted ? 'completed' : e.status,
+              };
+            }
+            return e;
+          }));
+          // If server issued a certificate, add it to local state
+          const certId = result.certificate?.id || result.certId;
+          if (certId) {
+            api.certificates.mine().then(certs => {
+              if (Array.isArray(certs) && certs.length > 0) setCertificates(certs);
+            }).catch(() => {});
+          }
+        }
+        return {
+          passed: result.passed,
+          scorePercent: result.score ?? result.scorePercent,
+          certId: result.certificate?.id || result.certId,
+          certificate: result.certificate,
+        };
+      } catch (err: any) {
+        console.error('[API] submitQuiz failed:', err.message);
+        // Authoritative fallback to local assessment result
+        const fallbackPassed = assessmentResult?.passed ?? false;
+        const fallbackScore = assessmentResult?.scorePercentage ?? 0;
+        if (fallbackPassed) {
+          setEnrollments(prev => prev.map(e => {
+            if (e.userId === currentUser.id && e.courseId === courseId) {
+              const updatedQuizIds = Array.from(new Set([...e.completedQuizIds, quizId]));
+              return { ...e, completedQuizIds: updatedQuizIds, progressPercent: Math.min(100, e.progressPercent) };
+            }
+            return e;
+          }));
+        }
+        return { passed: fallbackPassed, scorePercent: fallbackScore };
+      }
+    }
+
+    // ── Non-trainee roles: local state grading (unchanged) ──
+    // Compute score from answers array
     const course = courses.find(c => c.id === courseId);
     const module = course?.modules.find(m => m.quiz?.id === quizId);
-    const passThreshold = module?.quiz?.passThreshold || 70;
+    const quiz = module?.quiz;
+    let scorePercent = 0;
+    if (quiz) {
+      const correct = quiz.questions.filter((q, idx) => answers[idx] === q.correctOptionIndex).length;
+      scorePercent = Math.round((correct / quiz.questions.length) * 100);
+    }
+    const passThreshold = quiz?.passThreshold || 70;
     const passed = scorePercent >= passThreshold;
 
     if (passed) {
@@ -907,13 +1033,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           grade: scorePercent >= 90 ? 'Distinction' : scorePercent >= 75 ? 'First Class' : 'Passed',
         };
         setCertificates(prev => [newCert, ...prev]);
-        return { passed: true, certId: newCertId };
+        return { passed: true, certId: newCertId, scorePercent };
       }
-      return { passed: true, certId: existingCert?.id };
+      return { passed: true, certId: existingCert?.id, scorePercent };
     }
 
-    return { passed: false };
+    return { passed: false, scorePercent };
   };
+
 
   const markAttendance = (
     sessionId: string,
@@ -950,6 +1077,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (isOffline) {
       setOfflineQueueCount(prev => prev + 1);
+    }
+
+    // Persist to backend for Trainee (fire-and-forget; QR token from session)
+    if (currentUser.role === 'trainee' && !targetUserId) {
+      const qrToken = method === 'qr' ? session.qrToken : undefined;
+      api.attendance.mark(sessionId, method, qrToken).catch(err =>
+        console.warn('[API] markAttendance failed (local state already updated):', err.message)
+      );
     }
 
     return { success: true, message: `Attendance logged successfully for ${userObj.name} (${method.toUpperCase()})` };
@@ -1115,6 +1250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         activeView,
         activeViewParams,
         switchUser,
+        login,
         logout,
         setLanguage,
         navigate,

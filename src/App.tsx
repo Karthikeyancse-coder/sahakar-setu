@@ -7,6 +7,7 @@ import { LoginView } from './views/Auth/LoginView';
 import { SignupView } from './views/Auth/SignupView';
 import { ForgotPasswordView } from './views/Auth/ForgotPasswordView';
 import { CertificateVerify } from './views/Public/CertificateVerify';
+import { SkillCardPublic } from './views/Public/SkillCardPublic';
 
 // Authenticated Views (Rendered inside DashboardLayout)
 import { TraineeHome } from './views/Trainee/TraineeHome';
@@ -63,7 +64,11 @@ export const AppContent: React.FC = () => {
     }
   }, [currentUser.role, isAuthenticated, activeView, navigate]);
 
-  // 1. Standalone Public Verification Route (No dashboard shell)
+  // 1. Standalone Public Verification Routes (No dashboard shell)
+  if (activeView === 'skill_card_public') {
+    return <SkillCardPublic />;
+  }
+
   if (activeView === 'verify_public') {
     return <CertificateVerify />;
   }

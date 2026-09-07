@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -19,17 +19,44 @@ import { useApp } from '../../context/AppContext';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { downloadCertificatePdf } from '../../utils/certificateGenerator';
 import { PublicLayout } from '../../components/layout/PublicLayout';
+import { api } from '../../lib/api';
 
 export const CertificateVerify: React.FC = () => {
   const { certificates, activeViewParams, navigate } = useApp();
   const [searchId, setSearchId] = useState(
     activeViewParams?.certId || 'NCCT-CERT-2026-VAM-0089'
   );
+  const [apiCert, setApiCert] = useState<any | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
 
-  const cert = certificates.find(c => c.id.toLowerCase() === searchId.trim().toLowerCase());
+  // Fetch from API (public endpoint — no login required) when searchId is set
+  const fetchCert = (query: string) => {
+    if (!query.trim()) return;
+    setIsFetching(true);
+    api.certificates.verify(query.trim())
+      .then(c => setApiCert(c))
+      .catch(() => {
+        api.certificates.get(query.trim())
+          .then(c => setApiCert(c))
+          .catch(() => setApiCert(null));
+      })
+      .finally(() => setIsFetching(false));
+  };
+
+  useEffect(() => {
+    fetchCert(searchId);
+  }, []);
+
+  // Merge: prefer API result, fall back to local state
+  const cert = apiCert ?? certificates.find(c =>
+    c.id.toLowerCase() === searchId.trim().toLowerCase() ||
+    c.verificationToken?.toLowerCase() === searchId.trim().toLowerCase() ||
+    c.certificateNumber?.toLowerCase() === searchId.trim().toLowerCase()
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    fetchCert(searchId);
   };
 
   return (
@@ -115,9 +142,11 @@ export const CertificateVerify: React.FC = () => {
                     <User className="w-3.5 h-3.5 text-govTeal-600" />
                     <span>Candidate Name</span>
                   </span>
-                  <p className="text-base font-bold text-govText-primary">{cert.userName}</p>
-                  {cert.userAadhaarMock && (
-                    <p className="text-[11px] text-govTeal-800 font-mono">Aadhaar Ref: {cert.userAadhaarMock}</p>
+                  <p className="text-base font-bold text-govText-primary">{cert.userName || cert.candidateName}</p>
+                  {(cert.userAadhaarMock || cert.cooperative) && (
+                    <p className="text-[11px] text-govTeal-800 font-mono">
+                      {cert.userAadhaarMock ? `Aadhaar Ref: ${cert.userAadhaarMock}` : `Society: ${cert.cooperative}`}
+                    </p>
                   )}
                 </div>
 
@@ -126,7 +155,7 @@ export const CertificateVerify: React.FC = () => {
                     <Calendar className="w-3.5 h-3.5 text-govTeal-600" />
                     <span>Issue Date & Grade</span>
                   </span>
-                  <p className="text-base font-bold text-govText-primary">{cert.issuedDate}</p>
+                  <p className="text-base font-bold text-govText-primary">{cert.issuedDate || cert.issueDate}</p>
                   <p className="text-[11px] text-emerald-700 font-semibold font-mono">Grade: {cert.grade || 'First Class'}</p>
                 </div>
 
@@ -144,8 +173,8 @@ export const CertificateVerify: React.FC = () => {
                     <Hash className="w-3.5 h-3.5 text-govTeal-600" />
                     <span>Certificate Serial ID</span>
                   </span>
-                  <p className="text-sm font-mono font-bold text-govText-primary">{cert.id}</p>
-                  <p className="text-[10px] font-mono text-govTeal-800 truncate">{cert.certificateHash}</p>
+                  <p className="text-sm font-mono font-bold text-govText-primary">{cert.certificateNumber || cert.id}</p>
+                  <p className="text-[10px] font-mono text-govTeal-800 truncate">{cert.certificateHash || cert.verificationToken}</p>
                 </div>
               </div>
 

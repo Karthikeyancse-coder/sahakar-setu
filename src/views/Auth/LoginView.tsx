@@ -559,16 +559,25 @@ export const Footer: React.FC = () => (
 // MASTER AUTHENTICATION PAGE (Main Hero Height 640-660px, Two-Column, Background Visual)
 // =========================================================================
 export const AuthPage: React.FC = () => {
-  const { switchUser, navigate, currentLanguage, setLanguage } = useApp();
+  const { login, switchUser, navigate, currentLanguage, setLanguage } = useApp();
 
   const [email, setEmail] = useState('rameshwar.pacs@gmail.com');
-  const [password, setPassword] = useState('password123');
+  const [password, setPassword] = useState('Demo@1234');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Real demo credentials that match the seeded users in Supabase
+  const DEMO_CREDENTIALS: Record<string, { email: string; password: string }> = {
+    trainee:         { email: 'rameshwar.pacs@gmail.com', password: 'Demo@1234' },
+    institute_admin: { email: 'admin.vamnicom@ncct.gov.in', password: 'Admin@1234' },
+    super_admin:     { email: 'superadmin@ncct.gov.in', password: 'Super@1234' },
+    faculty:         { email: 'faculty@ncct.gov.in', password: 'Faculty@1234' },
+    employer:        { email: 'employer@ncct.gov.in', password: 'Employer@1234' },
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
@@ -582,26 +591,41 @@ export const AuthPage: React.FC = () => {
     }
 
     setIsSubmitting(true);
-    setTimeout(() => {
+    try {
+      // Real API auth (works for all seeded users in Supabase)
+      await login(email.trim(), password);
+    } catch (apiErr: any) {
+      // Backend unreachable — degrade gracefully to local seed data
       const matched =
         SEED_USERS.find(u => u.email.toLowerCase() === email.trim().toLowerCase()) ||
         SEED_USERS[0];
       switchUser(matched.id);
-      setIsSubmitting(false);
       navigate(`${getRolePrefix(matched.role)}/dashboard`);
-    }, 400);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDemoSelect = (roleKey: 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer') => {
-    let targetUser = SEED_USERS[0];
-    if (roleKey === 'trainee') targetUser = SEED_USERS[0];
-    else if (roleKey === 'institute_admin') targetUser = SEED_USERS.find(u => u.role === 'institute_admin') || SEED_USERS[6];
-    else if (roleKey === 'super_admin') targetUser = SEED_USERS.find(u => u.role === 'super_admin') || SEED_USERS[8];
-    else if (roleKey === 'faculty') targetUser = SEED_USERS.find(u => u.role === 'faculty') || SEED_USERS[9];
-    else if (roleKey === 'employer') targetUser = SEED_USERS.find(u => u.role === 'employer') || SEED_USERS[10];
-
-    switchUser(targetUser.id);
-    navigate(`${getRolePrefix(targetUser.role)}/dashboard`);
+  const handleDemoSelect = async (roleKey: 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer') => {
+    const creds = DEMO_CREDENTIALS[roleKey];
+    setEmail(creds.email);
+    setPassword(creds.password);
+    setIsSubmitting(true);
+    setErrorMessage('');
+    try {
+      // Call real API login with the demo credentials
+      await login(creds.email, creds.password);
+    } catch {
+      // Backend unreachable — fall back to local seed data
+      const targetUser =
+        SEED_USERS.find(u => u.email === creds.email) ||
+        SEED_USERS.find(u => u.role === roleKey) ||
+        SEED_USERS[0];
+      switchUser(targetUser.id);
+      navigate(`${getRolePrefix(targetUser.role)}/dashboard`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

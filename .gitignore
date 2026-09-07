@@ -27,3 +27,12 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# Backend — SQLite DB and secrets
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/node_modules
+backend/dist
+backend/prisma/*.db
+backend/prisma/*.db-journal

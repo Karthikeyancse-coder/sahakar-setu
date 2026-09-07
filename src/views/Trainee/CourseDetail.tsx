@@ -22,6 +22,7 @@ export const CourseDetail: React.FC = () => {
   const {
     courses,
     enrollments,
+    certificates,
     currentUser,
     activeViewParams,
     navigate,
@@ -32,7 +33,8 @@ export const CourseDetail: React.FC = () => {
 
   const courseId = activeViewParams?.courseId || courses[0]?.id;
   const course = courses.find(c => c.id === courseId) || courses[0];
-  const enrollment = enrollments.find(e => e.userId === currentUser.id && e.courseId === course.id);
+  const enrollment = enrollments.find(e => e.userId === currentUser.id && (e.courseId === course.id || (course.id.includes('shg') && (e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301'))));
+  const userCert = certificates.find(c => c.userId === currentUser.id && (c.courseId === course.id || (course.id.includes('shg') && (c.courseId === 'crs-shg-101' || c.courseId === 'crs-shg-gov-301'))));
 
   const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({ 0: true });
 
@@ -43,7 +45,8 @@ export const CourseDetail: React.FC = () => {
   const isEnrolled = !!enrollment;
   const completedLessonsCount = enrollment?.completedLessonIds?.length || 0;
   const totalLessonsCount = course.modules.reduce((acc, m) => acc + m.lessons.length, 0);
-  const progressPercent = totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0;
+  const isCompleted = enrollment?.status === 'completed' || enrollment?.progressPercent === 100 || !!userCert;
+  const progressPercent = isCompleted ? 100 : (totalLessonsCount > 0 ? Math.round((completedLessonsCount / totalLessonsCount) * 100) : 0);
 
   const handleStartOrResume = () => {
     if (!isEnrolled) {
@@ -144,17 +147,37 @@ export const CourseDetail: React.FC = () => {
             </div>
 
             <div className="space-y-2 pt-2">
-              <button
-                onClick={handleStartOrResume}
-                className="w-full py-3.5 sm:py-3 bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-sm shadow transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
-              >
-                <PlayCircle className="w-4 h-4" />
-                <span>
-                  {isEnrolled
-                    ? (progressPercent > 0 ? (t.courseDetail?.continueLearning || 'Continue Learning') : 'Start Learning')
-                    : (t.courseDetail?.enrollBtn || 'Enroll & Start Course')}
-                </span>
-              </button>
+              {isCompleted ? (
+                <div className="space-y-2">
+                  <button
+                    onClick={handleStartOrResume}
+                    className="w-full py-3 sm:py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold rounded-xl text-sm shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Course Completed ✓ (Review Lessons)</span>
+                  </button>
+
+                  <button
+                    onClick={() => navigate('certificates', { certId: userCert?.id })}
+                    className="w-full py-3.5 sm:py-3 bg-gradient-to-r from-govTeal-700 to-govTeal-900 hover:from-govTeal-800 hover:to-govTeal-950 text-white font-bold rounded-xl text-sm shadow transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                  >
+                    <Award className="w-4 h-4 text-saffron-300" />
+                    <span>View Official NCCT Certificate</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={handleStartOrResume}
+                  className="w-full py-3.5 sm:py-3 bg-saffron-500 hover:bg-saffron-600 text-white font-bold rounded-xl text-sm shadow transition-all flex items-center justify-center gap-2 cursor-pointer min-h-[44px]"
+                >
+                  <PlayCircle className="w-4 h-4" />
+                  <span>
+                    {isEnrolled
+                      ? (progressPercent > 0 ? (t.courseDetail?.continueLearning || 'Continue Learning') : 'Start Learning')
+                      : (t.courseDetail?.enrollBtn || 'Enroll in Course')}
+                  </span>
+                </button>
+              )}
 
               <div className="flex items-center justify-center gap-1.5 text-[11px] text-govText-muted font-medium">
                 <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />

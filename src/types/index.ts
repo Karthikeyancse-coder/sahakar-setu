@@ -58,6 +58,13 @@ export interface Nomination {
   nominatedDate: string;
 }
 
+export interface QuizOption {
+  id: string;
+  text: string;
+  textHi?: string;
+  textMr?: string;
+}
+
 export interface QuizQuestion {
   id: string;
   question: string;
@@ -68,7 +75,9 @@ export interface QuizQuestion {
     hi: string[];
     mr: string[];
   };
+  optionList?: QuizOption[];
   correctOptionIndex: number;
+  correctOptionId?: string;
   explanation: {
     en: string;
     hi: string;
@@ -264,7 +273,14 @@ export interface Certificate {
   issuedDate: string;
   certificateHash: string;
   qrCodeUrl: string;
-  grade: 'Distinction' | 'First Class' | 'Passed';
+  grade: 'Distinction' | 'First Class' | 'Passed' | string;
+  certificateNumber?: string;
+  verificationToken?: string;
+  qrCodeData?: string;
+  status?: string;
+  candidateName?: string;
+  issueDate?: string;
+  cooperative?: string;
 }
 
 export interface JobPosting {

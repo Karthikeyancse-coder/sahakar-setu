@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   BookOpen,
   CheckCircle,
@@ -23,6 +23,7 @@ import { Language } from '../../types';
 import { downloadCertificatePdf } from '../../utils/certificateGenerator';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
+import { normalizeQuestion, gradeAssessment, AssessmentResult } from '../../lib/assessmentEngine';
 
 export const CourseViewer: React.FC = () => {
   const {
@@ -48,14 +49,20 @@ export const CourseViewer: React.FC = () => {
   const [isQuizMode, setIsQuizMode] = useState(false);
 
   // Quiz state
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [quizScore, setQuizScore] = useState<number | null>(null);
+  const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
   const [earnedCertId, setEarnedCertId] = useState<string | null>(null);
 
   const currentModule = course.modules[activeModuleIndex] || course.modules[0];
   const currentLesson = currentModule?.lessons[activeLessonIndex] || currentModule?.lessons[0];
   const currentQuiz = currentModule?.quiz;
+
+  const normalizedQuizQuestions = useMemo(() => {
+    if (!currentQuiz?.questions) return [];
+    return currentQuiz.questions.map(q => normalizeQuestion(q, contentLang));
+  }, [currentQuiz, contentLang]);
 
   useEffect(() => {
     setContentLang(currentLanguage);
@@ -67,6 +74,8 @@ export const CourseViewer: React.FC = () => {
     setIsQuizMode(false);
     setQuizSubmitted(false);
     setSelectedAnswers({});
+    setAssessmentResult(null);
+    setQuizScore(null);
   };
 
   const handleOpenQuiz = (modIdx: number) => {
@@ -74,6 +83,8 @@ export const CourseViewer: React.FC = () => {
     setIsQuizMode(true);
     setQuizSubmitted(false);
     setSelectedAnswers({});
+    setAssessmentResult(null);
+    setQuizScore(null);
   };
 
   const handleCompleteCurrentLesson = () => {
@@ -88,37 +99,42 @@ export const CourseViewer: React.FC = () => {
     }
   };
 
-  const handleQuizAnswer = (questionId: string, optionIndex: number) => {
+  const handleQuizAnswer = (questionId: string, optionId: string) => {
     if (quizSubmitted) return;
-    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionIndex }));
+    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionId }));
   };
 
-  const handleQuizSubmit = () => {
-    if (!currentQuiz) return;
-    let correctCount = 0;
-    currentQuiz.questions.forEach(q => {
-      if (selectedAnswers[q.id] === q.correctOptionIndex) {
-        correctCount += 1;
-      }
-    });
+  const handleQuizSubmit = async () => {
+    if (!currentQuiz || normalizedQuizQuestions.length === 0) return;
 
-    const scorePct = Math.round((correctCount / currentQuiz.questions.length) * 100);
-    setQuizScore(scorePct);
+    // 1. Authoritative scoring via pure assessment engine
+    const result = gradeAssessment(normalizedQuizQuestions, selectedAnswers, currentQuiz.passThreshold ?? 70);
+    setAssessmentResult(result);
+    setQuizScore(result.scorePercentage);
     setQuizSubmitted(true);
 
-    const result = submitQuiz(course.id, currentQuiz.id, scorePct);
     if (result.passed) {
-      // Fire confetti
       confetti({
         particleCount: 120,
         spread: 80,
         origin: { y: 0.6 },
         colors: ['#0B6E4F', '#E68A2E', '#2E8B57', '#F7DAB5'],
       });
+    }
 
-      if (result.certId) {
-        setEarnedCertId(result.certId);
+    // 2. Submit to backend/AppContext in background
+    try {
+      const rawAnswers = normalizedQuizQuestions.map(q => {
+        const selOptId = selectedAnswers[q.id];
+        const idx = q.options.findIndex(o => o.id === selOptId);
+        return idx >= 0 ? idx : -1;
+      });
+      const apiResult = await submitQuiz(course.id, currentQuiz.id, rawAnswers, result);
+      if (apiResult?.certId) {
+        setEarnedCertId(apiResult.certId);
       }
+    } catch {
+      // Local result remains authoritative
     }
   };
 
@@ -356,26 +372,25 @@ export const CourseViewer: React.FC = () => {
 
               {/* Quiz Questions */}
               <div className="space-y-6">
-                {currentQuiz.questions.map((q, qIdx) => {
-                  const qText = contentLang === 'hi' ? q.questionHi : contentLang === 'mr' ? q.questionMr : q.question;
-                  const opts = q.options[contentLang] || q.options.en;
-                  const chosenOpt = selectedAnswers[q.id];
-                  const isCorrect = chosenOpt === q.correctOptionIndex;
-                  const explanation = q.explanation[contentLang] || q.explanation.en;
+                {normalizedQuizQuestions.map((q, qIdx) => {
+                  const chosenOptId = selectedAnswers[q.id];
+                  const qResult = assessmentResult?.questionResults[q.id];
+                  const isCorrect = quizSubmitted && qResult?.status === 'correct';
+                  const explanation = q.explanation ? ((q.explanation as any)[contentLang] || q.explanation.en) : '';
 
                   return (
                     <div key={q.id} className="p-5 rounded-xl border border-govTeal-100 bg-govBg space-y-3">
                       <p className="font-bold text-sm text-govText-primary">
-                        {qIdx + 1}. {qText}
+                        {qIdx + 1}. {q.question}
                       </p>
 
                       <div className="space-y-2">
-                        {opts.map((opt, oIdx) => {
-                          const isSelected = chosenOpt === oIdx;
+                        {q.options.map((opt) => {
+                          const isSelected = chosenOptId === opt.id;
                           let optStyle = 'bg-white border-govText-border text-govText-primary hover:border-govTeal-400';
 
                           if (quizSubmitted) {
-                            if (oIdx === q.correctOptionIndex) {
+                            if (opt.id === q.correctOptionId) {
                               optStyle = 'bg-emerald-100 border-emerald-500 text-emerald-900 font-bold';
                             } else if (isSelected && !isCorrect) {
                               optStyle = 'bg-rose-100 border-rose-400 text-rose-900';
@@ -388,13 +403,13 @@ export const CourseViewer: React.FC = () => {
 
                           return (
                             <button
-                              key={oIdx}
+                              key={opt.id}
                               disabled={quizSubmitted}
-                              onClick={() => handleQuizAnswer(q.id, oIdx)}
+                              onClick={() => handleQuizAnswer(q.id, opt.id)}
                               className={`w-full text-left p-3 rounded-lg border text-xs sm:text-sm transition-all flex items-center justify-between ${optStyle}`}
                             >
-                              <span>{opt}</span>
-                              {quizSubmitted && oIdx === q.correctOptionIndex && (
+                              <span>{opt.text}</span>
+                              {quizSubmitted && opt.id === q.correctOptionId && (
                                 <CheckCircle className="w-4 h-4 text-emerald-600" />
                               )}
                               {quizSubmitted && isSelected && !isCorrect && (
@@ -408,7 +423,7 @@ export const CourseViewer: React.FC = () => {
                       {quizSubmitted && (
                         <div className={`p-3 rounded-lg text-xs ${isCorrect ? 'bg-emerald-50 text-emerald-900 border border-emerald-200' : 'bg-rose-50 text-rose-900 border border-rose-200'}`}>
                           <p className="font-semibold">{isCorrect ? '✓ Correct Answer!' : '✗ Incorrect'}</p>
-                          <p className="mt-0.5 text-[11px] opacity-90">{explanation}</p>
+                          {explanation && <p className="mt-0.5 text-[11px] opacity-90">{explanation}</p>}
                         </div>
                       )}
                     </div>
@@ -420,7 +435,7 @@ export const CourseViewer: React.FC = () => {
               {!quizSubmitted ? (
                 <button
                   onClick={handleQuizSubmit}
-                  disabled={Object.keys(selectedAnswers).length < currentQuiz.questions.length}
+                  disabled={Object.keys(selectedAnswers).length < normalizedQuizQuestions.length}
                   className="w-full py-3.5 bg-saffron-500 hover:bg-saffron-600 disabled:opacity-50 text-white font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2"
                 >
                   <Award className="w-5 h-5" />
@@ -429,12 +444,12 @@ export const CourseViewer: React.FC = () => {
               ) : (
                 <div className="space-y-4">
                   <div className={`p-5 rounded-2xl text-center space-y-2 ${
-                    (quizScore || 0) >= currentQuiz.passThreshold
+                    (quizScore || 0) >= (currentQuiz.passThreshold ?? 70)
                       ? 'bg-emerald-50 border border-emerald-300 text-emerald-900'
                       : 'bg-rose-50 border border-rose-300 text-rose-900'
                   }`}>
                     <h4 className="text-xl font-bold">
-                      {(quizScore || 0) >= currentQuiz.passThreshold ? t.lms.congratsTitle : 'Assessment Needs Review'}
+                      {(quizScore || 0) >= (currentQuiz.passThreshold ?? 70) ? t.lms.congratsTitle : 'Assessment Needs Review'}
                     </h4>
                     <p className="text-sm">
                       {t.lms.yourScore}: <strong className="text-base">{quizScore}%</strong> • Passing Requirement: {currentQuiz.passThreshold}%
@@ -474,6 +489,8 @@ export const CourseViewer: React.FC = () => {
                     onClick={() => {
                       setQuizSubmitted(false);
                       setSelectedAnswers({});
+                      setQuizScore(null);
+                      setAssessmentResult(null);
                     }}
                     className="w-full py-2.5 bg-govBg hover:bg-gray-100 text-govText-primary text-xs font-semibold rounded-xl border border-govText-border"
                   >

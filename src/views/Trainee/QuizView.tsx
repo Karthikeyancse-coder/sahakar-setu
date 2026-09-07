@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
   XCircle,
   HelpCircle,
   Award,
-  Sparkles,
   RotateCcw,
   BookOpen,
-  ArrowRight
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
+import {
+  normalizeQuestion,
+  gradeAssessment,
+  AssessmentResult,
+} from '../../lib/assessmentEngine';
 
 export const QuizView: React.FC = () => {
   const {
@@ -32,9 +35,16 @@ export const QuizView: React.FC = () => {
   const currentModule = (moduleId ? course?.modules.find(m => m.id === moduleId) : null) || course?.modules[0];
   const quiz = currentModule?.quiz;
 
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
+  // Normalized questions with stable IDs
+  const normalizedQuestions = useMemo(() => {
+    if (!quiz?.questions) return [];
+    return quiz.questions.map(q => normalizeQuestion(q, currentLanguage));
+  }, [quiz, currentLanguage]);
+
+  // Selected option IDs mapped by question ID (e.g. { "q-dairy-1": "q-dairy-1-a" })
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [scorePercent, setScorePercent] = useState<number | null>(null);
+  const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
 
   if (!quiz) {
     return (
@@ -56,46 +66,46 @@ export const QuizView: React.FC = () => {
     );
   }
 
-  const handleSelectOption = (questionId: string, optionIdx: number) => {
+  const handleSelectOption = (questionId: string, optionId: string) => {
     if (isSubmitted) return;
-    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionIdx }));
+    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionId }));
   };
 
-  const handleSubmit = () => {
-    let correctCount = 0;
-    quiz.questions.forEach(q => {
-      if (selectedAnswers[q.id] === q.correctOptionIndex) {
-        correctCount += 1;
-      }
-    });
+  const handleSubmit = async () => {
+    if (normalizedQuestions.length === 0) return;
 
-    const score = Math.round((correctCount / quiz.questions.length) * 100);
-    setScorePercent(score);
+    // 1. Authoritative scoring via pure assessment engine
+    const result = gradeAssessment(normalizedQuestions, selectedAnswers, quiz.passThreshold);
+    setAssessmentResult(result);
     setIsSubmitted(true);
 
-    submitQuiz(course.id, currentModule.id, score);
-
-    if (score >= quiz.passThreshold) {
+    if (result.passed) {
       try {
-        confetti({
-          particleCount: 80,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch {
-        // Confetti fallback
-      }
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      } catch { /* Confetti fallback */ }
+    }
+
+    // 2. Submit to backend/AppContext in background without overwriting the local authoritative result
+    try {
+      const rawAnswers = normalizedQuestions.map(q => {
+        const selOptId = selectedAnswers[q.id];
+        const idx = q.options.findIndex(o => o.id === selOptId);
+        return idx >= 0 ? idx : -1;
+      });
+      await submitQuiz(course.id, quiz.id, rawAnswers, result);
+    } catch {
+      // Local result remains authoritative
     }
   };
 
   const handleRetry = () => {
     setSelectedAnswers({});
     setIsSubmitted(false);
-    setScorePercent(null);
+    setAssessmentResult(null);
   };
 
-  const isPassed = scorePercent !== null && scorePercent >= quiz.passThreshold;
-  const allAnswered = quiz.questions.every(q => selectedAnswers[q.id] !== undefined);
+  const isPassed = assessmentResult ? assessmentResult.passed : false;
+  const allAnswered = normalizedQuestions.length > 0 && normalizedQuestions.every(q => selectedAnswers[q.id] !== undefined && selectedAnswers[q.id] !== '');
 
   const courseTitle = currentLanguage === 'hi' ? course.titleHi : currentLanguage === 'mr' ? course.titleMr : course.title;
   const moduleTitle = currentLanguage === 'hi' ? currentModule.titleHi : currentLanguage === 'mr' ? currentModule.titleMr : currentModule.title;
@@ -121,7 +131,7 @@ export const QuizView: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-extrabold text-govText-primary mt-1">
-            {moduleTitle}: {t.quiz?.assessmentTitle || 'Knowledge Assessment'}
+            {moduleTitle}: {t.quiz?.assessmentTitle || 'Module Competency Assessment'}
           </h1>
           <p className="text-xs text-govText-secondary mt-1">
             Answer all questions. Minimum passing score: <span className="font-bold text-govTeal-800">{quiz.passThreshold}%</span>.
@@ -131,13 +141,13 @@ export const QuizView: React.FC = () => {
         <div className="bg-govBg border border-govTeal-100 px-4 py-2.5 rounded-xl text-xs flex items-center gap-3">
           <HelpCircle className="w-4 h-4 text-govTeal-600" />
           <span className="font-semibold text-govText-primary">
-            {quiz.questions.length} Questions
+            {normalizedQuestions.length} Questions
           </span>
         </div>
       </div>
 
       {/* 2. Result Banner (Shown after submission) */}
-      {isSubmitted && scorePercent !== null && (
+      {isSubmitted && assessmentResult !== null && (
         <div
           className={`p-5 sm:p-6 rounded-2xl border shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-fadeIn ${
             isPassed
@@ -156,11 +166,11 @@ export const QuizView: React.FC = () => {
             <div>
               <h3 className="text-base sm:text-lg font-extrabold">
                 {isPassed
-                  ? (t.quiz?.congratulations || 'Congratulations! You Passed!')
-                  : (t.quiz?.failedBadge || 'Assessment Not Cleared')}
+                  ? (t.quiz?.congratulations || 'Assessment Passed')
+                  : (t.quiz?.failedBadge || 'Assessment Score Below Threshold')}
               </h3>
               <p className="text-xs mt-0.5 opacity-90">
-                You achieved a score of <span className="font-extrabold text-base">{scorePercent}%</span> (Passing score: {quiz.passThreshold}%).
+                You achieved a score of <span className="font-extrabold text-base">{assessmentResult.scorePercentage}%</span> (Passing score: {quiz.passThreshold}%).
               </p>
             </div>
           </div>
@@ -197,20 +207,19 @@ export const QuizView: React.FC = () => {
 
       {/* 3. Questions List */}
       <div className="space-y-4 sm:space-y-6">
-        {quiz.questions.map((q, qIdx) => {
-          const selectedOption = selectedAnswers[q.id];
-          const isCorrect = isSubmitted && selectedOption === q.correctOptionIndex;
-          const isWrong = isSubmitted && selectedOption !== undefined && selectedOption !== q.correctOptionIndex;
-
-          const questionText = currentLanguage === 'hi' ? q.questionHi : currentLanguage === 'mr' ? q.questionMr : q.question;
-          const optionsList = q.options[currentLanguage] || q.options.en;
+        {normalizedQuestions.map((q, qIdx) => {
+          const selectedOptionId = selectedAnswers[q.id];
+          const qResult = assessmentResult?.questionResults[q.id];
+          const isQuestionCorrect = isSubmitted && qResult?.status === 'correct';
+          const isQuestionIncorrect = isSubmitted && qResult?.status === 'incorrect';
+          const isQuestionUnanswered = isSubmitted && qResult?.status === 'unanswered';
 
           return (
             <div
               key={q.id}
               className={`bg-white rounded-2xl p-4 sm:p-6 border shadow-sm space-y-4 transition-all ${
                 isSubmitted
-                  ? isCorrect
+                  ? isQuestionCorrect
                     ? 'border-emerald-300 bg-emerald-50/20'
                     : 'border-rose-300 bg-rose-50/20'
                   : 'border-govText-border'
@@ -222,21 +231,28 @@ export const QuizView: React.FC = () => {
                     {qIdx + 1}
                   </span>
                   <h3 className="font-bold text-xs sm:text-sm text-govText-primary leading-snug">
-                    {questionText}
+                    {q.question}
                   </h3>
                 </div>
 
                 {isSubmitted && (
                   <div className="flex-shrink-0">
-                    {isCorrect ? (
+                    {isQuestionCorrect && (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         <span className="hidden min-[360px]:inline">Correct</span>
                       </span>
-                    ) : (
+                    )}
+                    {isQuestionIncorrect && (
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700 bg-rose-100 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
                         <XCircle className="w-3.5 h-3.5" />
                         <span className="hidden min-[360px]:inline">Incorrect</span>
+                      </span>
+                    )}
+                    {isQuestionUnanswered && (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-100 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full">
+                        <HelpCircle className="w-3.5 h-3.5" />
+                        <span className="hidden min-[360px]:inline">Not Answered</span>
                       </span>
                     )}
                   </div>
@@ -245,9 +261,9 @@ export const QuizView: React.FC = () => {
 
               {/* Options */}
               <div className="space-y-2.5 pl-0 sm:pl-10">
-                {optionsList.map((optText, optIdx) => {
-                  const isOptSelected = selectedOption === optIdx;
-                  const isOptCorrect = isSubmitted && q.correctOptionIndex === optIdx;
+                {q.options.map((opt) => {
+                  const isOptSelected = selectedOptionId === opt.id;
+                  const isOptCorrect = isSubmitted && opt.id === q.correctOptionId;
 
                   let optClass = 'border-gray-200 hover:bg-gray-50 text-govText-primary';
                   if (isSubmitted) {
@@ -264,12 +280,12 @@ export const QuizView: React.FC = () => {
 
                   return (
                     <button
-                      key={optIdx}
+                      key={opt.id}
                       disabled={isSubmitted}
-                      onClick={() => handleSelectOption(q.id, optIdx)}
+                      onClick={() => handleSelectOption(q.id, opt.id)}
                       className={`w-full min-h-[48px] p-3 sm:p-3.5 rounded-xl border text-xs text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${optClass}`}
                     >
-                      <span className="leading-snug">{optText}</span>
+                      <span className="leading-snug">{opt.text}</span>
                       <span
                         className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
                           isOptSelected
@@ -296,7 +312,7 @@ export const QuizView: React.FC = () => {
       {!isSubmitted && (
         <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <span className="text-xs text-govText-secondary font-medium text-center sm:text-left">
-            {Object.keys(selectedAnswers).length} of {quiz.questions.length} answered
+            {Object.keys(selectedAnswers).length} of {normalizedQuestions.length} answered
           </span>
 
           <button
