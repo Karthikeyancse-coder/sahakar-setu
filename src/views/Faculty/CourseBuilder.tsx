@@ -37,9 +37,11 @@ import {
   Play,
   Circle,
   Presentation,
-  File
+  File,
+  Loader2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../lib/api';
 import { Course, CourseModule, Lesson, Quiz, QuizQuestion, LessonAttachment, LessonLanguageContent } from '../../types';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
@@ -94,14 +96,37 @@ export const CourseBuilder: React.FC = () => {
   const originalCourse = courses.find(c => c.id === selectedCourseId) || courses[0];
   const [workingCourse, setWorkingCourse] = useState<Course | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingCurriculum, setIsLoadingCurriculum] = useState(false);
 
-  // Sync workingCourse whenever selectedCourseId changes
+  // Fetch live curriculum from PostgreSQL/Supabase database whenever selectedCourseId changes
   useEffect(() => {
-    if (originalCourse) {
-      setWorkingCourse(JSON.parse(JSON.stringify(originalCourse)));
-      setHasUnsavedChanges(false);
-    }
-  }, [selectedCourseId, originalCourse?.id]);
+    if (!selectedCourseId) return;
+    let isCancelled = false;
+    setIsLoadingCurriculum(true);
+
+    api.curriculum.getCurriculum(selectedCourseId)
+      .then(liveData => {
+        if (isCancelled) return;
+        setWorkingCourse(liveData);
+        addNewCourse(liveData);
+        setHasUnsavedChanges(false);
+      })
+      .catch(err => {
+        console.warn('Could not load live curriculum from DB, using cached course data:', err);
+        if (originalCourse && !isCancelled) {
+          setWorkingCourse(JSON.parse(JSON.stringify(originalCourse)));
+          setHasUnsavedChanges(false);
+        }
+      })
+      .finally(() => {
+        if (!isCancelled) setIsLoadingCurriculum(false);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [selectedCourseId]);
 
   // Expanded modules state (all expanded by default)
   const [expandedModuleIds, setExpandedModuleIds] = useState<Record<string, boolean>>({});
@@ -305,12 +330,21 @@ export const CourseBuilder: React.FC = () => {
     };
   };
 
-  // Save changes to AppContext
-  const handleSaveCourse = () => {
-    if (!workingCourse) return;
-    addNewCourse(workingCourse);
-    setHasUnsavedChanges(false);
-    showToast(`"${workingCourse.title}" updates saved successfully to NCCT LMS repository!`);
+  // Save changes to database and AppContext
+  const handleSaveCourse = async () => {
+    if (!workingCourse || isSaving) return;
+    setIsSaving(true);
+    try {
+      await api.curriculum.updateCourse(workingCourse.id, workingCourse);
+      addNewCourse(workingCourse);
+      setHasUnsavedChanges(false);
+      showToast(`"${workingCourse.title}" updates saved successfully to NCCT LMS repository!`);
+    } catch (err: any) {
+      console.error('Failed to save course updates:', err);
+      showToast(`Unable to save course: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Helper to mark changes
@@ -319,67 +353,122 @@ export const CourseBuilder: React.FC = () => {
     setHasUnsavedChanges(true);
   };
 
-  // Module Operations
-  const handleAddModule = () => {
-    if (!workingCourse) return;
+  // Module Operations (Database Persistent)
+  const handleAddModule = async () => {
+    if (!workingCourse || isSaving) return;
     const newModNum = workingCourse.modules.length + 1;
-    const newMod: CourseModule = {
-      id: `mod-${Date.now()}`,
-      courseId: workingCourse.id,
-      order: newModNum,
-      title: `Module ${newModNum}: New Curriculum Module`,
-      titleHi: `मॉड्यूल ${newModNum}: नवीन अभ्यासक्रम विभाग`,
-      titleMr: `विभाग ${newModNum}: नवीन अभ्यासक्रम घटक`,
-      lessons: [],
-    };
-    const updated: Course = {
-      ...workingCourse,
-      modules: [...workingCourse.modules, newMod],
-    };
-    updateWorkingCourse(updated);
-    setExpandedModuleIds(prev => ({ ...prev, [newMod.id]: true }));
-    showToast(`Added Module ${newModNum}`);
-  };
+    setIsSaving(true);
+    try {
+      const created = await api.curriculum.createModule(workingCourse.id, {
+        title: `Module ${newModNum}: New Curriculum Module`,
+        titleHi: `मॉड्यूल ${newModNum}: नवीन अभ्यासक्रम विभाग`,
+        titleMr: `विभाग ${newModNum}: नवीन अभ्यासक्रम घटक`,
+        order: newModNum,
+      });
 
-  const handleSaveModuleEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!workingCourse || !editingModule) return;
-    const newModules = [...workingCourse.modules];
-    newModules[editingModule.index] = editingModule.module;
-    updateWorkingCourse({ ...workingCourse, modules: newModules });
-    setEditingModule(null);
-    showToast('Module details updated.');
-  };
-
-  const handleConfirmDelete = () => {
-    if (!workingCourse || !deleteConfirm) return;
-
-    if (deleteConfirm.type === 'module') {
-      const newModules = workingCourse.modules.filter((_, idx) => idx !== deleteConfirm.moduleIndex);
-      updateWorkingCourse({ ...workingCourse, modules: newModules });
-      showToast('Module removed.');
-    } else if (deleteConfirm.type === 'lesson' && deleteConfirm.lessonIndex !== undefined) {
-      const newModules = [...workingCourse.modules];
-      const targetMod = { ...newModules[deleteConfirm.moduleIndex] };
-      targetMod.lessons = targetMod.lessons.filter((_, idx) => idx !== deleteConfirm.lessonIndex);
-      newModules[deleteConfirm.moduleIndex] = targetMod;
-      updateWorkingCourse({ ...workingCourse, modules: newModules });
-      showToast('Lesson removed.');
-    } else if (deleteConfirm.type === 'quiz') {
-      const newModules = [...workingCourse.modules];
-      const targetMod = { ...newModules[deleteConfirm.moduleIndex] };
-      delete targetMod.quiz;
-      newModules[deleteConfirm.moduleIndex] = targetMod;
-      updateWorkingCourse({ ...workingCourse, modules: newModules });
-      showToast('Assessment removed.');
+      const updated: Course = {
+        ...workingCourse,
+        modules: [...workingCourse.modules, created],
+      };
+      setWorkingCourse(updated);
+      addNewCourse(updated);
+      setExpandedModuleIds(prev => ({ ...prev, [created.id]: true }));
+      showToast(`Added Module ${newModNum}`);
+    } catch (err: any) {
+      console.error('Failed to create module in database:', err);
+      showToast(`Unable to save module: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    setDeleteConfirm(null);
   };
 
-  // Move Module Up/Down
-  const moveModule = (index: number, direction: 'up' | 'down') => {
-    if (!workingCourse) return;
+  const handleSaveModuleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workingCourse || !editingModule || isSaving) return;
+    setIsSaving(true);
+    try {
+      const updatedMod = await api.curriculum.updateModule(
+        editingModule.module.id,
+        {
+          title: editingModule.module.title,
+          titleHi: editingModule.module.titleHi,
+          titleMr: editingModule.module.titleMr,
+          description: editingModule.module.description,
+          order: editingModule.module.order,
+        },
+        workingCourse.id
+      );
+
+      const newModules = [...workingCourse.modules];
+      newModules[editingModule.index] = {
+        ...editingModule.module,
+        ...updatedMod,
+      };
+      const updatedCourse = { ...workingCourse, modules: newModules };
+      setWorkingCourse(updatedCourse);
+      addNewCourse(updatedCourse);
+      setEditingModule(null);
+      showToast('Module details updated.');
+    } catch (err: any) {
+      console.error('Failed to update module:', err);
+      showToast(`Unable to update module: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!workingCourse || !deleteConfirm || isSaving) return;
+    setIsSaving(true);
+    try {
+      if (deleteConfirm.type === 'module') {
+        const targetMod = workingCourse.modules[deleteConfirm.moduleIndex];
+        await api.curriculum.deleteModule(targetMod.id, workingCourse.id);
+        const newModules = workingCourse.modules.filter((_, idx) => idx !== deleteConfirm.moduleIndex);
+        newModules.forEach((m, idx) => { m.order = idx + 1; });
+        const updated = { ...workingCourse, modules: newModules };
+        setWorkingCourse(updated);
+        addNewCourse(updated);
+        showToast('Module removed.');
+      } else if (deleteConfirm.type === 'lesson' && deleteConfirm.lessonIndex !== undefined) {
+        const targetMod = workingCourse.modules[deleteConfirm.moduleIndex];
+        const targetLesson = targetMod.lessons[deleteConfirm.lessonIndex];
+        await api.curriculum.deleteLesson(targetLesson.id, targetMod.id);
+        const newModules = [...workingCourse.modules];
+        const targetModCopy = { ...newModules[deleteConfirm.moduleIndex] };
+        targetModCopy.lessons = targetModCopy.lessons.filter((_, idx) => idx !== deleteConfirm.lessonIndex);
+        targetModCopy.lessons.forEach((l, idx) => { l.order = idx + 1; });
+        newModules[deleteConfirm.moduleIndex] = targetModCopy;
+        const updated = { ...workingCourse, modules: newModules };
+        setWorkingCourse(updated);
+        addNewCourse(updated);
+        showToast('Lesson removed.');
+      } else if (deleteConfirm.type === 'quiz') {
+        const targetMod = workingCourse.modules[deleteConfirm.moduleIndex];
+        if (targetMod.quiz) {
+          await api.curriculum.deleteQuiz(targetMod.quiz.id, targetMod.id);
+        }
+        const newModules = [...workingCourse.modules];
+        const targetModCopy = { ...newModules[deleteConfirm.moduleIndex] };
+        delete targetModCopy.quiz;
+        newModules[deleteConfirm.moduleIndex] = targetModCopy;
+        const updated = { ...workingCourse, modules: newModules };
+        setWorkingCourse(updated);
+        addNewCourse(updated);
+        showToast('Assessment removed.');
+      }
+    } catch (err: any) {
+      console.error('Failed to delete item:', err);
+      showToast(`Unable to delete item: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
+      setDeleteConfirm(null);
+    }
+  };
+
+  // Move Module Up/Down (Database Persistent)
+  const moveModule = async (index: number, direction: 'up' | 'down') => {
+    if (!workingCourse || isSaving) return;
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= workingCourse.modules.length) return;
 
@@ -393,7 +482,15 @@ export const CourseBuilder: React.FC = () => {
       m.order = i + 1;
     });
 
-    updateWorkingCourse({ ...workingCourse, modules: newModules });
+    const updated = { ...workingCourse, modules: newModules };
+    setWorkingCourse(updated);
+    addNewCourse(updated);
+
+    try {
+      await api.curriculum.reorderModules(workingCourse.id, newModules.map(m => m.id));
+    } catch (err) {
+      console.error('Failed to persist module reordering:', err);
+    }
   };
 
   // Lesson Operations
@@ -444,9 +541,9 @@ export const CourseBuilder: React.FC = () => {
     setModalLang('en');
   };
 
-  const handleSaveLessonEdit = (e: React.FormEvent) => {
+  const handleSaveLessonEdit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workingCourse || !editingLesson) return;
+    if (!workingCourse || !editingLesson || isSaving) return;
 
     // Validate External URL if format is resource
     if (editingLesson.contentType === 'resource' && editingLesson.externalUrl) {
@@ -456,58 +553,75 @@ export const CourseBuilder: React.FC = () => {
       }
     }
 
-    const newModules = [...workingCourse.modules];
-    const targetMod = { ...newModules[editingLesson.moduleIndex] };
-    const newLessons = [...targetMod.lessons];
+    setIsSaving(true);
+    try {
+      const targetMod = workingCourse.modules[editingLesson.moduleIndex];
+      const payload = {
+        id: editingLesson.isNew ? undefined : editingLesson.id,
+        title: editingLesson.titles.en.trim() || 'Untitled Lesson',
+        titleHi: editingLesson.titles.hi.trim(),
+        titleMr: editingLesson.titles.mr.trim(),
+        order: editingLesson.order,
+        durationMinutes: editingLesson.durationMinutes,
+        contentType: editingLesson.contentType,
+        videoUrl: editingLesson.videoUrl,
+        documentName: editingLesson.documentName,
+        documentUrl: editingLesson.documentUrl,
+        presentationName: editingLesson.presentationName,
+        presentationUrl: editingLesson.presentationUrl,
+        externalUrl: editingLesson.externalUrl,
+        attachments: editingLesson.attachments,
+        contentByLanguage: {
+          en: {
+            ...editingLesson.contents.en,
+            text: editingLesson.contents.en.richContent || editingLesson.contents.en.overview || '',
+          },
+          hi: {
+            ...editingLesson.contents.hi,
+            text: editingLesson.contents.hi.richContent || editingLesson.contents.hi.overview || '',
+          },
+          mr: {
+            ...editingLesson.contents.mr,
+            text: editingLesson.contents.mr.richContent || editingLesson.contents.mr.overview || '',
+          },
+        },
+      };
 
-    const savedLesson: Lesson = {
-      id: editingLesson.id,
-      moduleId: targetMod.id,
-      order: editingLesson.order,
-      title: editingLesson.titles.en.trim() || 'Untitled Lesson',
-      titleHi: editingLesson.titles.hi.trim(),
-      titleMr: editingLesson.titles.mr.trim(),
-      durationMinutes: editingLesson.durationMinutes,
-      contentType: editingLesson.contentType,
-      videoUrl: editingLesson.videoUrl,
-      documentName: editingLesson.documentName,
-      documentUrl: editingLesson.documentUrl,
-      presentationName: editingLesson.presentationName,
-      presentationUrl: editingLesson.presentationUrl,
-      externalUrl: editingLesson.externalUrl,
-      attachments: editingLesson.attachments,
-      contentByLanguage: {
-        en: {
-          ...editingLesson.contents.en,
-          text: editingLesson.contents.en.richContent || editingLesson.contents.en.overview || '',
-        },
-        hi: {
-          ...editingLesson.contents.hi,
-          text: editingLesson.contents.hi.richContent || editingLesson.contents.hi.overview || '',
-        },
-        mr: {
-          ...editingLesson.contents.mr,
-          text: editingLesson.contents.mr.richContent || editingLesson.contents.mr.overview || '',
-        },
-      },
-    };
+      let savedLesson: Lesson;
+      if (editingLesson.isNew) {
+        savedLesson = await api.curriculum.createLesson(targetMod.id, payload);
+      } else {
+        savedLesson = await api.curriculum.updateLesson(editingLesson.id, payload, targetMod.id);
+      }
 
-    if (editingLesson.isNew) {
-      newLessons.push(savedLesson);
-    } else if (editingLesson.lessonIndex !== undefined) {
-      newLessons[editingLesson.lessonIndex] = savedLesson;
+      const newModules = [...workingCourse.modules];
+      const targetModCopy = { ...newModules[editingLesson.moduleIndex] };
+      const newLessons = [...targetModCopy.lessons];
+
+      if (editingLesson.isNew) {
+        newLessons.push(savedLesson);
+      } else if (editingLesson.lessonIndex !== undefined) {
+        newLessons[editingLesson.lessonIndex] = savedLesson;
+      }
+
+      targetModCopy.lessons = newLessons;
+      newModules[editingLesson.moduleIndex] = targetModCopy;
+      const updated = { ...workingCourse, modules: newModules };
+      setWorkingCourse(updated);
+      addNewCourse(updated);
+      setEditingLesson(null);
+      showToast(editingLesson.isNew ? 'Lesson created and saved.' : 'Lesson updated successfully.');
+    } catch (err: any) {
+      console.error('Failed to save lesson:', err);
+      showToast(`Unable to save lesson: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    targetMod.lessons = newLessons;
-    newModules[editingLesson.moduleIndex] = targetMod;
-    updateWorkingCourse({ ...workingCourse, modules: newModules });
-    setEditingLesson(null);
-    showToast(editingLesson.isNew ? 'Lesson created and saved.' : 'Lesson updated successfully.');
   };
 
-  // Move Lesson Up/Down
-  const moveLesson = (moduleIndex: number, lessonIndex: number, direction: 'up' | 'down') => {
-    if (!workingCourse) return;
+  // Move Lesson Up/Down (Database Persistent)
+  const moveLesson = async (moduleIndex: number, lessonIndex: number, direction: 'up' | 'down') => {
+    if (!workingCourse || isSaving) return;
     const targetMod = workingCourse.modules[moduleIndex];
     const targetLessonIndex = direction === 'up' ? lessonIndex - 1 : lessonIndex + 1;
     if (targetLessonIndex < 0 || targetLessonIndex >= targetMod.lessons.length) return;
@@ -526,7 +640,15 @@ export const CourseBuilder: React.FC = () => {
 
     modCopy.lessons = newLessons;
     newModules[moduleIndex] = modCopy;
-    updateWorkingCourse({ ...workingCourse, modules: newModules });
+    const updated = { ...workingCourse, modules: newModules };
+    setWorkingCourse(updated);
+    addNewCourse(updated);
+
+    try {
+      await api.curriculum.reorderLessons(targetMod.id, newLessons.map(l => l.id));
+    } catch (err) {
+      console.error('Failed to persist lesson reordering:', err);
+    }
   };
 
   // Assessment Operations
@@ -590,16 +712,29 @@ export const CourseBuilder: React.FC = () => {
     setModalLang('en');
   };
 
-  const handleSaveQuiz = (e: React.FormEvent) => {
+  const handleSaveQuiz = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workingCourse || !editingQuiz) return;
-    const newModules = [...workingCourse.modules];
-    const targetMod = { ...newModules[editingQuiz.moduleIndex] };
-    targetMod.quiz = editingQuiz.quiz;
-    newModules[editingQuiz.moduleIndex] = targetMod;
-    updateWorkingCourse({ ...workingCourse, modules: newModules });
-    setEditingQuiz(null);
-    showToast('Assessment saved.');
+    if (!workingCourse || !editingQuiz || isSaving) return;
+    setIsSaving(true);
+    try {
+      const targetMod = workingCourse.modules[editingQuiz.moduleIndex];
+      const savedQuiz = await api.curriculum.saveQuiz(targetMod.id, editingQuiz.quiz);
+
+      const newModules = [...workingCourse.modules];
+      const targetModCopy = { ...newModules[editingQuiz.moduleIndex] };
+      targetModCopy.quiz = savedQuiz;
+      newModules[editingQuiz.moduleIndex] = targetModCopy;
+      const updated = { ...workingCourse, modules: newModules };
+      setWorkingCourse(updated);
+      addNewCourse(updated);
+      setEditingQuiz(null);
+      showToast('Assessment saved.');
+    } catch (err: any) {
+      console.error('Failed to save assessment:', err);
+      showToast(`Unable to save assessment: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Add question to quiz
@@ -868,64 +1003,36 @@ export const CourseBuilder: React.FC = () => {
     });
   };
 
-  // Create new course form submit
-  const handleSaveNewCourse = (e: React.FormEvent) => {
+  // Create new course form submit (Database Persistent)
+  const handleSaveNewCourse = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCourseObj: Course = {
-      id: `crs-${Date.now()}`,
-      title: newTitleEn,
-      titleHi: newTitleHi || newTitleEn,
-      titleMr: newTitleMr || newTitleEn,
-      description: newDescEn,
-      descriptionHi: newDescEn,
-      descriptionMr: newDescEn,
-      thumbnail: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=600&auto=format&fit=crop&q=80',
-      instituteId: currentUser.instituteId || 'inst-vamnicom',
-      durationHours: 36,
-      level: 'Intermediate',
-      category: newCategory as any,
-      modules: [
-        {
-          id: `mod-${Date.now()}-1`,
-          courseId: `crs-${Date.now()}`,
-          order: 1,
-          title: 'Module 1: National PACS ERP Architecture & Navigation',
-          titleHi: 'मॉड्यूल 1: राष्ट्रीय पैक्स ई-आरपी संरचना एवं नेविगेशन',
-          titleMr: 'विभाग १: राष्ट्रीय पॅक्स ई-आरपी रचना आणि वापर',
-          lessons: [
-            {
-              id: `les-${Date.now()}-1-1`,
-              moduleId: `mod-${Date.now()}-1`,
-              order: 1,
-              title: '1.1 Overview of MoC PACS Digitalization Mandate',
-              titleHi: '1.1 सहकारिता मंत्रालय का पैक्स डिजिटलीकरण विजन',
-              titleMr: '1.1 सहकार मंत्रालयाचे पॅक्स संगणकीकरण धोरण',
-              durationMinutes: 25,
-              contentType: 'text',
-              contentByLanguage: {
-                en: {
-                  text: 'Comprehensive module on bylaws, voting rights, and audit trails in cooperative societies.',
-                  keyTakeaways: ['Democracy in cooperative decision making', 'Audit compliance with NABARD'],
-                },
-                hi: {
-                  text: 'सहकारी समितियों में उप-नियम, मताधिकार एवं ऑडिट ट्रेल पर व्यापक अध्ययन।',
-                  keyTakeaways: ['निर्णय लेने में लोकतांत्रिक प्रक्रिया', 'नाबार्ड के साथ ऑडिट अनुपालन'],
-                },
-                mr: {
-                  text: 'सहकारी संस्थांचे पोटनियम, मतदान हक्क आणि ऑडिट नियमावली.',
-                  keyTakeaways: ['लोकशाही निर्णय पद्धती', 'नाबार्ड नियमांची पूर्तता'],
-                },
-              },
-            },
-          ],
-        },
-      ],
-    };
+    if (isSaving) return;
+    setIsSaving(true);
+    try {
+      const created = await api.curriculum.createCourse({
+        title: newTitleEn,
+        titleHi: newTitleHi || newTitleEn,
+        titleMr: newTitleMr || newTitleEn,
+        description: newDescEn,
+        descriptionHi: newDescEn,
+        descriptionMr: newDescEn,
+        thumbnail: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=600&auto=format&fit=crop&q=80',
+        instituteId: currentUser.instituteId || 'inst-vamnicom',
+        durationHours: 36,
+        level: 'Intermediate',
+        category: newCategory,
+      });
 
-    addNewCourse(newCourseObj);
-    setSelectedCourseId(newCourseObj.id);
-    setIsNewCourseModalOpen(false);
-    showToast(`Course "${newCourseObj.title}" created successfully!`);
+      addNewCourse(created);
+      setSelectedCourseId(created.id);
+      setIsNewCourseModalOpen(false);
+      showToast(`Course "${created.title}" created successfully in database!`);
+    } catch (err: any) {
+      console.error('Failed to create course:', err);
+      showToast(`Unable to create course: ${err.message || 'Please try again.'}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const activeCourse = workingCourse || originalCourse;
@@ -1053,15 +1160,19 @@ export const CourseBuilder: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveCourse}
-                disabled={!hasUnsavedChanges}
+                disabled={!hasUnsavedChanges || isSaving}
                 className={`w-full md:w-auto px-5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all min-h-[44px] ${
-                  hasUnsavedChanges
+                  hasUnsavedChanges && !isSaving
                     ? 'bg-[#0B6E4F] hover:bg-[#085A40] text-white shadow-xs cursor-pointer active:scale-95'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                 }`}
               >
-                <Save className="w-4 h-4" />
-                <span>Save Course Updates</span>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>{isSaving ? 'Saving...' : 'Save Course Updates'}</span>
               </button>
             </div>
           </div>
@@ -1119,6 +1230,14 @@ export const CourseBuilder: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Loading Curriculum State */}
+          {isLoadingCurriculum && (
+            <div className="flex items-center justify-center py-8 gap-3 text-govText-muted bg-emerald-50/60 rounded-2xl border border-emerald-200 animate-pulse">
+              <Loader2 className="w-5 h-5 animate-spin text-[#0B6E4F]" />
+              <span className="text-xs font-bold text-emerald-900">Loading curriculum from database...</span>
+            </div>
+          )}
 
           {/* 4, 5, 6. Modules & Lessons List */}
           <div className="space-y-4">
@@ -1545,9 +1664,11 @@ export const CourseBuilder: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#0B6E4F] hover:bg-[#085A40] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                    disabled={isSaving}
+                    className="px-5 py-2 bg-[#0B6E4F] hover:bg-[#085A40] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                   >
-                    Save Changes
+                    {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{isSaving ? 'Saving...' : 'Save Changes'}</span>
                   </button>
                 </div>
               </form>
@@ -2538,10 +2659,15 @@ export const CourseBuilder: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-[#0B6E4F] hover:bg-[#085A40] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
+                    disabled={isSaving}
+                    className="px-6 py-2.5 bg-[#0B6E4F] hover:bg-[#085A40] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer transition-all active:scale-95 flex items-center gap-1.5"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>Save Lesson</span>
+                    {isSaving ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
+                    <span>{isSaving ? 'Saving Lesson...' : 'Save Lesson'}</span>
                   </button>
                 </div>
               </form>
@@ -2852,9 +2978,11 @@ export const CourseBuilder: React.FC = () => {
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 bg-[#EA580C] hover:bg-[#C2410C] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                    disabled={isSaving}
+                    className="px-5 py-2 bg-[#EA580C] hover:bg-[#C2410C] disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer inline-flex items-center gap-1.5"
                   >
-                    Save Assessment
+                    {isSaving && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    <span>{isSaving ? 'Saving Assessment...' : 'Save Assessment'}</span>
                   </button>
                 </div>
               </form>

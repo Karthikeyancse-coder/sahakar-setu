@@ -38,6 +38,7 @@ export interface FacultyCourseItem {
   quizPassRate: number;
   status: string;
   lastUpdated: string;
+  modules?: any[];
 }
 
 export interface AtRiskTraineeItem {
@@ -303,6 +304,7 @@ export class FacultyService {
         quizPassRate,
         status: 'Published',
         lastUpdated: 'Live Database Curriculum',
+        modules: course.modules || [],
       };
     });
 

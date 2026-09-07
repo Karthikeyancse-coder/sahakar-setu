@@ -24,12 +24,17 @@ export const courseService = {
   },
 
   getCourseById: async (id: string) => {
-    const course = await courseRepository.findById(id);
-    if (!course) throw createError(404, 'Course not found');
-    return {
-      ...course,
-      modules: (course as any).modulesJson || [],
-    };
+    try {
+      const { curriculumService } = await import('./curriculumService');
+      return await curriculumService.getCourseCurriculum(id);
+    } catch {
+      const course = await courseRepository.findById(id);
+      if (!course) throw createError(404, 'Course not found');
+      return {
+        ...course,
+        modules: (course as any).modulesJson || [],
+      };
+    }
   },
 
   getEnrollments: async (userId: string) => {

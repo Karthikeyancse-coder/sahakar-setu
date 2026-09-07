@@ -71,6 +71,8 @@ async function request<T = any>(
 const get = <T>(path: string, auth = true) => request<T>('GET', path, undefined, auth);
 const post = <T>(path: string, body?: unknown, auth = true) => request<T>('POST', path, body, auth);
 const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, body);
+const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);
+const del = <T>(path: string) => request<T>('DELETE', path);
 
 // ─── Auth ──────────────────────────────────────────────────────────────────────
 
@@ -228,6 +230,33 @@ export const api = {
     getDashboard: () => get<any>('/api/faculty/dashboard'),
     getCourses: () => get<any[]>('/api/faculty/courses'),
     getCourseRoster: (courseId: string) => get<any[]>(`/api/faculty/courses/${courseId}/roster`),
+  },
+
+  // ─── Curriculum Management (Persistent Database) ───────────────────────────
+
+  curriculum: {
+    getCurriculum: (courseId: string) => get<any>(`/api/courses/${courseId}/curriculum`),
+    createModule: (courseId: string, data: any) => post<any>(`/api/courses/${courseId}/modules`, data),
+    updateModule: (moduleId: string, data: any, courseId?: string) =>
+      patch<any>(courseId ? `/api/courses/${courseId}/modules/${moduleId}` : `/api/modules/${moduleId}`, data),
+    deleteModule: (moduleId: string, courseId?: string) =>
+      del<any>(courseId ? `/api/courses/${courseId}/modules/${moduleId}` : `/api/modules/${moduleId}`),
+    reorderModules: (courseId: string, moduleIds: string[]) =>
+      put<any>(`/api/courses/${courseId}/modules/reorder`, { moduleIds }),
+    createLesson: (moduleId: string, data: any) =>
+      post<any>(`/api/modules/${moduleId}/lessons`, data),
+    updateLesson: (lessonId: string, data: any, moduleId?: string) =>
+      patch<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`, data),
+    deleteLesson: (lessonId: string, moduleId?: string) =>
+      del<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`),
+    reorderLessons: (moduleId: string, lessonIds: string[]) =>
+      put<any>(`/api/modules/${moduleId}/lessons/reorder`, { lessonIds }),
+    saveQuiz: (moduleId: string, quizData: any) =>
+      post<any>(`/api/modules/${moduleId}/quiz`, quizData),
+    deleteQuiz: (quizId: string, moduleId?: string) =>
+      del<any>(moduleId ? `/api/modules/${moduleId}/quiz/${quizId}` : `/api/quizzes/${quizId}`),
+    createCourse: (data: any) => post<any>('/api/courses', data),
+    updateCourse: (courseId: string, data: any) => put<any>(`/api/courses/${courseId}`, data),
   },
 
   // ─── NCCT Digital Skill Card ───────────────────────────────────────────────

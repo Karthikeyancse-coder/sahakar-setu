@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   Edit3,
@@ -35,6 +35,7 @@ interface FacultyCourseItem {
   quizPassRate: number;
   status: string;
   lastUpdated: string;
+  modules?: any[];
 }
 
 interface RosterTraineeItem {
@@ -48,7 +49,7 @@ interface RosterTraineeItem {
   status: 'completed' | 'in_progress';
 }
 
-// â”€â”€â”€ Helper: adapt FacultyCourseItem â†’ Course (for FacultyCourseCard) â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Helper: adapt FacultyCourseItem → Course (for FacultyCourseCard) ────────
 
 function adaptToCourse(item: FacultyCourseItem): Course {
   return {
@@ -64,7 +65,7 @@ function adaptToCourse(item: FacultyCourseItem): Course {
     durationHours: item.durationHours,
     level: (item.level as Course['level']) || 'Beginner',
     category: (item.category as Course['category']) || 'PACS Digitalization',
-    modules: [],
+    modules: item.modules || [],
   };
 }
 

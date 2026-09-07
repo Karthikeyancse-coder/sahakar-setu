@@ -202,6 +202,9 @@ export interface CourseModule {
   title: string;
   titleHi: string;
   titleMr: string;
+  description?: string;
+  descriptionHi?: string;
+  descriptionMr?: string;
   lessons: Lesson[];
   quiz?: Quiz;
 }

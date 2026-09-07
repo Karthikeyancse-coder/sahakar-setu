@@ -18,6 +18,7 @@ import learningRoutes from './routes/learning';
 import skillCardRoutes from './routes/skillCard';
 import traineeRoutes from './routes/trainee';
 import facultyRoutes from './routes/faculty';
+import curriculumRoutes from './routes/curriculum';
 import { learningController } from './controllers/learningController';
 import { requireAuth } from './middleware/auth';
 
@@ -81,6 +82,7 @@ app.post('/api/lessons/:lessonId/progress', requireAuth, learningController.save
 app.get('/api/lessons/:lessonId/progress', requireAuth, learningController.getProgress);
 app.use('/api/trainee', traineeRoutes);
 app.use('/api/faculty', facultyRoutes);
+app.use('/api', curriculumRoutes);
 app.use('/api', skillCardRoutes);
 
 // ─── Error handler (must be last) ─────────────────────────────────────────────
