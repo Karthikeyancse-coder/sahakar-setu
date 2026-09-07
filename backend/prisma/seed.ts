@@ -185,15 +185,97 @@ async function main() {
   await prisma.session.upsert({ where: { id: session.id }, update: session, create: session });
   console.log('  ✓ 1 active session');
 
-  // ─── Enrollments for Rameshwar (trainee-1) ─────────────────────────────────
+  // ─── Enrollments — all trainees across all courses ─────────────────────────
+  // Each row: real progress, real status, real enrolled date.
+  // Faculty Courses page derives enrolledCount, completionRate, quizPassRate
+  // from these database rows — no frontend hardcoding needed.
   const enrollments = [
-    { id: 'enr-rameshwar-pacs', userId: 'usr-trainee-1', courseId: 'crs-pacs-erp-101', progressPercent: 50, completedLessonIds: ['les-pacs-1-1', 'les-pacs-1-2'], completedQuizIds: ['quiz-pacs-m1'], status: 'in_progress', enrolledDate: '2026-08-01' },
-    { id: 'enr-rameshwar-shg', userId: 'usr-trainee-1', courseId: 'crs-shg-101', progressPercent: 25, completedLessonIds: ['les-shg-1-1'], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-08-15' },
+    // ── Rameshwar Patil (trainee-1) ──
+    { id: 'enr-t1-pacs101',   userId: 'usr-trainee-1', courseId: 'crs-pacs-erp-101',   progressPercent: 100, completedLessonIds: ['les-pacs-1-1','les-pacs-1-2','les-pacs-2-1','les-pacs-2-2'], completedQuizIds: ['quiz-pacs-m1','quiz-pacs-m2'], status: 'completed',   enrolledDate: '2026-01-10' },
+    { id: 'enr-t1-dairy101',  userId: 'usr-trainee-1', courseId: 'crs-dairy-101',       progressPercent: 100, completedLessonIds: ['les-dairy-1-1','les-dairy-1-2'], completedQuizIds: ['quiz-dairy-m1'], status: 'completed',   enrolledDate: '2026-01-15' },
+    { id: 'enr-t1-shg101',    userId: 'usr-trainee-1', courseId: 'crs-shg-101',         progressPercent:  75, completedLessonIds: ['les-shg-1-1'], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-02-01' },
+    { id: 'enr-t1-pacs101b',  userId: 'usr-trainee-1', courseId: 'crs-pacs-101',        progressPercent:  85, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-02-10' },
+    { id: 'enr-t1-dairy201',  userId: 'usr-trainee-1', courseId: 'crs-dairy-mgmt-201',  progressPercent:  60, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-01' },
+    { id: 'enr-t1-shg301',    userId: 'usr-trainee-1', courseId: 'crs-shg-gov-301',     progressPercent:  40, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-10' },
+
+    // ── Sunita Devi (trainee-2) ──
+    { id: 'enr-t2-shg101',    userId: 'usr-trainee-2', courseId: 'crs-shg-101',         progressPercent: 100, completedLessonIds: ['les-shg-1-1','les-shg-1-2'], completedQuizIds: ['quiz-shg-m1'], status: 'completed',   enrolledDate: '2026-01-20' },
+    { id: 'enr-t2-shg301',    userId: 'usr-trainee-2', courseId: 'crs-shg-gov-301',     progressPercent: 100, completedLessonIds: [], completedQuizIds: [], status: 'completed',   enrolledDate: '2026-02-05' },
+    { id: 'enr-t2-pacs101',   userId: 'usr-trainee-2', courseId: 'crs-pacs-erp-101',   progressPercent:  50, completedLessonIds: ['les-pacs-1-1'], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-02-20' },
+    { id: 'enr-t2-dairy101',  userId: 'usr-trainee-2', courseId: 'crs-dairy-101',       progressPercent:  30, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-05' },
+
+    // ── Ganesh Shinde (trainee-3) ──
+    { id: 'enr-t3-dairy101',  userId: 'usr-trainee-3', courseId: 'crs-dairy-101',       progressPercent: 100, completedLessonIds: ['les-dairy-1-1','les-dairy-1-2'], completedQuizIds: ['quiz-dairy-m1'], status: 'completed',   enrolledDate: '2026-01-12' },
+    { id: 'enr-t3-dairy201',  userId: 'usr-trainee-3', courseId: 'crs-dairy-mgmt-201',  progressPercent:  90, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-02-01' },
+    { id: 'enr-t3-pacs101',   userId: 'usr-trainee-3', courseId: 'crs-pacs-erp-101',   progressPercent:  70, completedLessonIds: ['les-pacs-1-1','les-pacs-1-2'], completedQuizIds: ['quiz-pacs-m1'], status: 'in_progress', enrolledDate: '2026-02-15' },
+    { id: 'enr-t3-shg101',    userId: 'usr-trainee-3', courseId: 'crs-shg-101',         progressPercent:  45, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-01' },
+
+    // ── Anjali Sharma (trainee-4) ──
+    { id: 'enr-t4-pacs101',   userId: 'usr-trainee-4', courseId: 'crs-pacs-erp-101',   progressPercent: 100, completedLessonIds: ['les-pacs-1-1','les-pacs-1-2','les-pacs-2-1','les-pacs-2-2'], completedQuizIds: ['quiz-pacs-m1','quiz-pacs-m2'], status: 'completed',   enrolledDate: '2026-01-18' },
+    { id: 'enr-t4-shg101',    userId: 'usr-trainee-4', courseId: 'crs-shg-101',         progressPercent:  80, completedLessonIds: ['les-shg-1-1','les-shg-1-2'], completedQuizIds: ['quiz-shg-m1'], status: 'in_progress', enrolledDate: '2026-02-10' },
+    { id: 'enr-t4-pacs101b',  userId: 'usr-trainee-4', courseId: 'crs-pacs-101',        progressPercent:  65, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-01' },
+    { id: 'enr-t4-dairy101',  userId: 'usr-trainee-4', courseId: 'crs-dairy-101',       progressPercent:  55, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-15' },
+
+    // ── Manoj Kumar Nayak (trainee-5) ──
+    { id: 'enr-t5-pacs101',   userId: 'usr-trainee-5', courseId: 'crs-pacs-erp-101',   progressPercent:  85, completedLessonIds: ['les-pacs-1-1','les-pacs-1-2','les-pacs-2-1'], completedQuizIds: ['quiz-pacs-m1'], status: 'in_progress', enrolledDate: '2026-01-25' },
+    { id: 'enr-t5-pacs101b',  userId: 'usr-trainee-5', courseId: 'crs-pacs-101',        progressPercent: 100, completedLessonIds: [], completedQuizIds: [], status: 'completed',   enrolledDate: '2026-02-05' },
+    { id: 'enr-t5-dairy201',  userId: 'usr-trainee-5', courseId: 'crs-dairy-mgmt-201',  progressPercent:  35, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-01' },
+
+    // ── Kavita Jadhav (trainee-6) ──
+    { id: 'enr-t6-shg101',    userId: 'usr-trainee-6', courseId: 'crs-shg-101',         progressPercent: 100, completedLessonIds: ['les-shg-1-1','les-shg-1-2'], completedQuizIds: ['quiz-shg-m1'], status: 'completed',   enrolledDate: '2026-01-22' },
+    { id: 'enr-t6-shg301',    userId: 'usr-trainee-6', courseId: 'crs-shg-gov-301',     progressPercent: 100, completedLessonIds: [], completedQuizIds: [], status: 'completed',   enrolledDate: '2026-02-08' },
+    { id: 'enr-t6-pacs101',   userId: 'usr-trainee-6', courseId: 'crs-pacs-erp-101',   progressPercent:  60, completedLessonIds: ['les-pacs-1-1','les-pacs-1-2'], completedQuizIds: ['quiz-pacs-m1'], status: 'in_progress', enrolledDate: '2026-02-25' },
+    { id: 'enr-t6-dairy101',  userId: 'usr-trainee-6', courseId: 'crs-dairy-101',       progressPercent:  20, completedLessonIds: [], completedQuizIds: [], status: 'in_progress', enrolledDate: '2026-03-10' },
   ];
   for (const e of enrollments) {
-    await prisma.enrollment.upsert({ where: { userId_courseId: { userId: e.userId, courseId: e.courseId } }, update: e, create: e as any });
+    await prisma.enrollment.upsert({
+      where: { userId_courseId: { userId: e.userId, courseId: e.courseId } },
+      update: e,
+      create: e as any,
+    });
   }
-  console.log('  ✓ 2 enrollments for Rameshwar (trainee demo)');
+  console.log(`  ✓ ${enrollments.length} enrollments (6 trainees × 6 courses)`);
+
+  // ─── Quiz Attempts — real pass/fail records per trainee ────────────────────
+  // These drive the Faculty Dashboard quizPassRate and per-course completionRate
+  // moduleId: which module the quiz belongs to
+  // enrollmentId: links to the enrollment row (userId_courseId)
+  const quizAttempts = [
+    // Rameshwar (t1) — PACS ERP 101
+    { id: 'qa-t1-pacs-m1',    userId: 'usr-trainee-1', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t1-pacs101',  totalQuestions: 5, correctAnswers: 5, score: 92, percentage: 92, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t1-pacs-m2',    userId: 'usr-trainee-1', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m2',   moduleId: 'mod-pacs-2',  enrollmentId: 'enr-t1-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 88, percentage: 88, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t1-dairy-m1',   userId: 'usr-trainee-1', courseId: 'crs-dairy-101',      quizId: 'quiz-dairy-m1',  moduleId: 'mod-dairy-1', enrollmentId: 'enr-t1-dairy101', totalQuestions: 5, correctAnswers: 5, score: 96, percentage: 96, passed: true,  attemptNumber: 1 },
+
+    // Sunita (t2) — SHG 101
+    { id: 'qa-t2-shg-m1',     userId: 'usr-trainee-2', courseId: 'crs-shg-101',        quizId: 'quiz-shg-m1',    moduleId: 'mod-shg-1',   enrollmentId: 'enr-t2-shg101',   totalQuestions: 5, correctAnswers: 5, score: 95, percentage: 95, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t2-pacs-m1',    userId: 'usr-trainee-2', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t2-pacs101',  totalQuestions: 5, correctAnswers: 3, score: 60, percentage: 60, passed: false, attemptNumber: 1 },
+
+    // Ganesh (t3) — Dairy 101
+    { id: 'qa-t3-dairy-m1',   userId: 'usr-trainee-3', courseId: 'crs-dairy-101',      quizId: 'quiz-dairy-m1',  moduleId: 'mod-dairy-1', enrollmentId: 'enr-t3-dairy101', totalQuestions: 5, correctAnswers: 5, score: 94, percentage: 94, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t3-pacs-m1',    userId: 'usr-trainee-3', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t3-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 80, percentage: 80, passed: true,  attemptNumber: 1 },
+
+    // Anjali (t4) — PACS ERP 101 + SHG
+    { id: 'qa-t4-pacs-m1',    userId: 'usr-trainee-4', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t4-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 88, percentage: 88, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t4-pacs-m2',    userId: 'usr-trainee-4', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m2',   moduleId: 'mod-pacs-2',  enrollmentId: 'enr-t4-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 84, percentage: 84, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t4-shg-m1',     userId: 'usr-trainee-4', courseId: 'crs-shg-101',        quizId: 'quiz-shg-m1',    moduleId: 'mod-shg-1',   enrollmentId: 'enr-t4-shg101',   totalQuestions: 5, correctAnswers: 4, score: 88, percentage: 88, passed: true,  attemptNumber: 1 },
+
+    // Manoj (t5) — PACS ERP 101 (failed then passed)
+    { id: 'qa-t5-pacs-m1-f',  userId: 'usr-trainee-5', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t5-pacs101',  totalQuestions: 5, correctAnswers: 3, score: 72, percentage: 72, passed: false, attemptNumber: 1 },
+    { id: 'qa-t5-pacs-m1-p',  userId: 'usr-trainee-5', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t5-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 84, percentage: 84, passed: true,  attemptNumber: 2 },
+
+    // Kavita (t6) — SHG + PACS ERP
+    { id: 'qa-t6-shg-m1',     userId: 'usr-trainee-6', courseId: 'crs-shg-101',        quizId: 'quiz-shg-m1',    moduleId: 'mod-shg-1',   enrollmentId: 'enr-t6-shg101',   totalQuestions: 5, correctAnswers: 5, score: 90, percentage: 90, passed: true,  attemptNumber: 1 },
+    { id: 'qa-t6-pacs-m1',    userId: 'usr-trainee-6', courseId: 'crs-pacs-erp-101',  quizId: 'quiz-pacs-m1',   moduleId: 'mod-pacs-1',  enrollmentId: 'enr-t6-pacs101',  totalQuestions: 5, correctAnswers: 4, score: 80, percentage: 80, passed: true,  attemptNumber: 1 },
+  ];
+  for (const qa of quizAttempts) {
+    await prisma.quizAttempt.upsert({
+      where: { id: qa.id },
+      update: qa,
+      create: qa as any,
+    });
+  }
+  console.log(`  ✓ ${quizAttempts.length} quiz attempts (realistic pass/fail distribution)`);
+
 
   // ─── Certificate for Rameshwar (PACS completion) ──────────────────────────
   const cert = {
