@@ -415,6 +415,10 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({
         url: b.attachment!.fileUrl,
       }));
 
+    // Extract video URL if video blocks exist
+    const videoBlock = blocks.find(b => b.type === 'video');
+    const extractedVideoUrl = videoBlock?.video?.[activeLang]?.videoUrl || videoBlock?.video?.en?.videoUrl || initialLesson.videoUrl || '';
+
     return {
       id: initialLesson.id || `les-${Date.now()}`,
       moduleId: initialLesson.moduleId,
@@ -425,12 +429,14 @@ export const LessonEditor: React.FC<LessonEditorProps> = ({
       durationMinutes,
       contentType: contentType as any,
       status: finalStatus,
+      videoUrl: extractedVideoUrl || undefined,
       blocks: JSON.parse(JSON.stringify(blocks)),
       attachments: dynamicAttachments,
       contentByLanguage: {
         en: {
           text: overviewEn.trim() || titleEn,
           overview: overviewEn.trim(),
+          videoUrl: extractedVideoUrl || '',
           keyTakeaways: [
             'Standardized operational compliance under Ministry of Cooperation',
             'Verifiable audit trail and digital reconciliation',

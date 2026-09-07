@@ -179,9 +179,10 @@ export const CoursePlayer: React.FC = () => {
     'les-shg-1-2': 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
   };
 
+  const lessonDbVideoUrl = currentLesson?.videoUrl || currentLesson?.contentByLanguage?.[contentLang]?.videoUrl || currentLesson?.contentByLanguage?.en?.videoUrl;
   const resolvedVideoUrl =
-    (currentLesson?.videoUrl && !currentLesson.videoUrl.includes('ysz5S6PUM-U'))
-      ? currentLesson.videoUrl
+    (lessonDbVideoUrl && !lessonDbVideoUrl.includes('ysz5S6PUM-U'))
+      ? lessonDbVideoUrl
       : (currentLesson?.id ? defaultLessonVideos[currentLesson.id] : null) || 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
 
   return (

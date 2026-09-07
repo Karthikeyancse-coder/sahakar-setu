@@ -83,6 +83,22 @@ router.put(
 );
 
 // ─── Lesson Operations ────────────────────────────────────────────────────────
+const handleGetLesson = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const lesson = await curriculumService.getLesson(req.params.lessonId);
+    res.json({
+      ...lesson,
+      success: true,
+      lesson,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+router.get('/modules/:moduleId/lessons/:lessonId', requireAuth, handleGetLesson);
+router.get('/lessons/:lessonId', requireAuth, handleGetLesson);
+
 router.post(
   '/modules/:moduleId/lessons',
   requireAuth,
@@ -93,7 +109,11 @@ router.post(
         req.body,
         req.user!
       );
-      res.status(201).json(newLesson);
+      res.status(201).json({
+        ...newLesson,
+        success: true,
+        lesson: newLesson,
+      });
     } catch (err) {
       next(err);
     }
@@ -107,7 +127,11 @@ const handleUpdateLesson = async (req: Request, res: Response, next: NextFunctio
       req.body,
       req.user!
     );
-    res.json(updated);
+    res.json({
+      ...updated,
+      success: true,
+      lesson: updated,
+    });
   } catch (err) {
     next(err);
   }
@@ -115,6 +139,8 @@ const handleUpdateLesson = async (req: Request, res: Response, next: NextFunctio
 
 router.patch('/modules/:moduleId/lessons/:lessonId', requireAuth, handleUpdateLesson);
 router.patch('/lessons/:lessonId', requireAuth, handleUpdateLesson);
+router.put('/modules/:moduleId/lessons/:lessonId', requireAuth, handleUpdateLesson);
+router.put('/lessons/:lessonId', requireAuth, handleUpdateLesson);
 
 const handleDeleteLesson = async (req: Request, res: Response, next: NextFunction) => {
   try {

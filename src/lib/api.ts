@@ -243,10 +243,18 @@ export const api = {
       del<any>(courseId ? `/api/courses/${courseId}/modules/${moduleId}` : `/api/modules/${moduleId}`),
     reorderModules: (courseId: string, moduleIds: string[]) =>
       put<any>(`/api/courses/${courseId}/modules/reorder`, { moduleIds }),
-    createLesson: (moduleId: string, data: any) =>
-      post<any>(`/api/modules/${moduleId}/lessons`, data),
-    updateLesson: (lessonId: string, data: any, moduleId?: string) =>
-      patch<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`, data),
+    getLesson: async (lessonId: string, moduleId?: string) => {
+      const res = await get<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`);
+      return res.lesson || res;
+    },
+    createLesson: async (moduleId: string, data: any) => {
+      const res = await post<any>(`/api/modules/${moduleId}/lessons`, data);
+      return res.lesson || res;
+    },
+    updateLesson: async (lessonId: string, data: any, moduleId?: string) => {
+      const res = await patch<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`, data);
+      return res.lesson || res;
+    },
     deleteLesson: (lessonId: string, moduleId?: string) =>
       del<any>(moduleId ? `/api/modules/${moduleId}/lessons/${lessonId}` : `/api/lessons/${lessonId}`),
     reorderLessons: (moduleId: string, lessonIds: string[]) =>

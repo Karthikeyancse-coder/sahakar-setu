@@ -230,7 +230,7 @@ export const CourseBuilder: React.FC = () => {
       order: lesson.order || 1,
       durationMinutes: lesson.durationMinutes || 25,
       contentType: (lesson.contentType as any) || 'text',
-      videoUrl: lesson.videoUrl || lesson.contentByLanguage?.en?.videoUrl || 'https://www.youtube.com/watch?v=sample-pacs-erp',
+      videoUrl: lesson.videoUrl || lesson.contentByLanguage?.en?.videoUrl || '',
       documentName: lesson.documentName || 'PACS_ERP_Training_Guide.pdf',
       documentUrl: lesson.documentUrl || '',
       presentationName: lesson.presentationName || 'National_PACS_Architecture_Slides.pptx',
@@ -564,7 +564,7 @@ export const CourseBuilder: React.FC = () => {
         order: editingLesson.order,
         durationMinutes: editingLesson.durationMinutes,
         contentType: editingLesson.contentType,
-        videoUrl: editingLesson.videoUrl,
+        videoUrl: editingLesson.videoUrl && editingLesson.videoUrl.trim() ? editingLesson.videoUrl.trim() : null,
         documentName: editingLesson.documentName,
         documentUrl: editingLesson.documentUrl,
         presentationName: editingLesson.presentationName,
@@ -574,6 +574,7 @@ export const CourseBuilder: React.FC = () => {
         contentByLanguage: {
           en: {
             ...editingLesson.contents.en,
+            videoUrl: editingLesson.videoUrl && editingLesson.videoUrl.trim() ? editingLesson.videoUrl.trim() : '',
             text: editingLesson.contents.en.richContent || editingLesson.contents.en.overview || '',
           },
           hi: {
@@ -2082,7 +2083,7 @@ export const CourseBuilder: React.FC = () => {
                             <div className="flex items-center gap-2">
                               <span className="font-bold text-xs truncate">Video Preview</span>
                               <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 rounded text-[9px] uppercase tracking-wider font-bold">
-                                {editingLesson.videoUrl.includes('youtube')
+                                {editingLesson.videoUrl.includes('youtube') || editingLesson.videoUrl.includes('youtu.be')
                                   ? 'YouTube'
                                   : editingLesson.videoUrl.includes('vimeo')
                                   ? 'Vimeo'

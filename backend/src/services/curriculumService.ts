@@ -465,6 +465,17 @@ export class CurriculumService {
       keyTakeaways: [],
     };
 
+    let resolvedVideoUrl: string | null = null;
+    if (typeof data.videoUrl === 'string') {
+      const trimmed = data.videoUrl.trim();
+      resolvedVideoUrl = trimmed.length > 0 ? trimmed : null;
+    } else if (typeof data.contentByLanguage?.en?.videoUrl === 'string') {
+      const trimmed = data.contentByLanguage.en.videoUrl.trim();
+      resolvedVideoUrl = trimmed.length > 0 ? trimmed : null;
+    }
+
+    contentEn.videoUrl = resolvedVideoUrl || '';
+
     const created = await prisma.lesson.create({
       data: {
         id: lessonId,
@@ -482,8 +493,10 @@ export class CurriculumService {
         contentEn: contentEn as any,
         contentHi: contentHi as any,
         contentMr: contentMr as any,
-        videoUrl: data.videoUrl || contentEn.videoUrl || null,
-        videoProvider: 'youtube',
+        videoUrl: resolvedVideoUrl,
+        videoProvider: resolvedVideoUrl
+          ? (resolvedVideoUrl.includes('vimeo') ? 'vimeo' : resolvedVideoUrl.includes('.mp4') ? 'mp4' : 'youtube')
+          : null,
         attachmentUrl: data.documentUrl || (data.attachments && data.attachments[0]?.url) || null,
         resourceUrl: data.presentationUrl || data.externalUrl || null,
         isPublished: true,
@@ -493,6 +506,21 @@ export class CurriculumService {
     await this.syncCourseModulesJson(moduleItem.courseId);
 
     return formatLessonToFrontend(created);
+  }
+
+  /**
+   * Get a single Lesson by ID from database.
+   */
+  async getLesson(lessonId: string) {
+    const lesson = await prisma.lesson.findUnique({
+      where: { id: lessonId },
+    });
+
+    if (!lesson) {
+      throw createError(404, `Lesson '${lessonId}' not found.`);
+    }
+
+    return formatLessonToFrontend(lesson);
   }
 
   /**
@@ -514,6 +542,31 @@ export class CurriculumService {
     const existingContentHi = (existing.contentHi as any) || {};
     const existingContentMr = (existing.contentMr as any) || {};
 
+    // Distinguish between:
+    // - undefined: field omitted, keep existing
+    // - null or empty/whitespace string: user intentionally cleared the URL -> set NULL
+    // - string: user set a new URL -> trim and persist string
+    let resolvedVideoUrl: string | null | undefined = undefined;
+
+    if (data.videoUrl !== undefined) {
+      if (typeof data.videoUrl === 'string') {
+        const trimmed = data.videoUrl.trim();
+        resolvedVideoUrl = trimmed.length > 0 ? trimmed : null;
+      } else if (data.videoUrl === null) {
+        resolvedVideoUrl = null;
+      }
+    } else if (data.contentByLanguage?.en?.videoUrl !== undefined) {
+      const v = data.contentByLanguage.en.videoUrl;
+      if (typeof v === 'string') {
+        const trimmed = v.trim();
+        resolvedVideoUrl = trimmed.length > 0 ? trimmed : null;
+      } else if (v === null) {
+        resolvedVideoUrl = null;
+      }
+    }
+
+    const finalVideoUrl = resolvedVideoUrl !== undefined ? resolvedVideoUrl : existing.videoUrl;
+
     const contentEn = data.contentByLanguage?.en || {
       ...existingContentEn,
       text: data.text || existingContentEn.text || '',
@@ -521,6 +574,7 @@ export class CurriculumService {
       richContent: data.richContent || existingContentEn.richContent || '',
       learningObjectives: data.learningObjectives || existingContentEn.learningObjectives || [],
       keyTakeaways: data.keyTakeaways || existingContentEn.keyTakeaways || [],
+      transcript: data.transcript !== undefined ? data.transcript : (existingContentEn.transcript || ''),
       documentName: data.documentName ?? existingContentEn.documentName,
       documentUrl: data.documentUrl ?? existingContentEn.documentUrl,
       presentationName: data.presentationName ?? existingContentEn.presentationName,
@@ -528,6 +582,14 @@ export class CurriculumService {
       externalUrl: data.externalUrl ?? existingContentEn.externalUrl,
       attachments: data.attachments ?? existingContentEn.attachments,
     };
+
+    // Keep videoUrl and transcript synced in contentEn JSON
+    contentEn.videoUrl = finalVideoUrl || '';
+    if (data.transcript !== undefined) {
+      contentEn.transcript = data.transcript;
+    } else if (data.contentByLanguage?.en?.transcript !== undefined) {
+      contentEn.transcript = data.contentByLanguage.en.transcript;
+    }
 
     const contentHi = data.contentByLanguage?.hi || {
       ...existingContentHi,
@@ -545,12 +607,16 @@ export class CurriculumService {
         title: data.title !== undefined ? data.title : existing.title,
         titleHi: data.titleHi !== undefined ? data.titleHi : existing.titleHi,
         titleMr: data.titleMr !== undefined ? data.titleMr : existing.titleMr,
+        description: contentEn.overview || contentEn.text || (data.description !== undefined ? data.description : existing.description),
         contentType: data.contentType ? data.contentType.toUpperCase() : existing.contentType,
         durationMinutes: data.durationMinutes !== undefined ? Number(data.durationMinutes) : existing.durationMinutes,
         contentEn: contentEn as any,
         contentHi: contentHi as any,
         contentMr: contentMr as any,
-        videoUrl: data.videoUrl !== undefined ? data.videoUrl : existing.videoUrl,
+        videoUrl: finalVideoUrl,
+        videoProvider: finalVideoUrl
+          ? (finalVideoUrl.includes('vimeo') ? 'vimeo' : finalVideoUrl.includes('.mp4') ? 'mp4' : 'youtube')
+          : (existing.videoProvider || 'youtube'),
         attachmentUrl: data.documentUrl !== undefined ? data.documentUrl : existing.attachmentUrl,
         resourceUrl: data.presentationUrl !== undefined ? data.presentationUrl : (data.externalUrl !== undefined ? data.externalUrl : existing.resourceUrl),
         orderIndex: data.order !== undefined ? data.order : existing.orderIndex,
