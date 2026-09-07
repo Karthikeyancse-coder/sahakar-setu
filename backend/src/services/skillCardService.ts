@@ -127,7 +127,7 @@ export const skillCardService = {
 
     // Calculate completed courses
     const completedCourses = enrollments
-      .filter((e) => e.status === 'completed' || e.progressPercent === 100 || e.completedQuizIds?.length > 0)
+      .filter((e) => e.status === 'completed' || e.progressPercent === 100 || (Array.isArray(e.completedQuizIds) && (e.completedQuizIds as any[]).length > 0))
       .map((e) => ({
         id: e.course.id,
         title: e.course.title,

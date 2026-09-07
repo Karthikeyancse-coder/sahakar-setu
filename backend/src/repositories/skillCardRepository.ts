@@ -4,6 +4,21 @@ export const skillCardRepository = {
   findByUserId: async (userId: string) => {
     return prisma.traineePublicProfile.findUnique({
       where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            nameHi: true,
+            avatarUrl: true,
+            cooperativeAffiliation: true,
+            instituteId: true,
+            languagePreference: true,
+            isKycVerified: true,
+            status: true,
+          },
+        },
+      },
     });
   },
 
@@ -39,6 +54,21 @@ export const skillCardRepository = {
         publicToken: data.publicToken,
         registrationId: data.registrationId || 'NCCT-TRN-2026-MH-44091',
         isActive: true,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            nameHi: true,
+            avatarUrl: true,
+            cooperativeAffiliation: true,
+            instituteId: true,
+            languagePreference: true,
+            isKycVerified: true,
+            status: true,
+          },
+        },
       },
     });
   },

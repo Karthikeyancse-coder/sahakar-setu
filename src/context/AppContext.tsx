@@ -61,7 +61,7 @@ interface AppContextType {
   activeViewParams: any;
 
   // Actions
-  login: (email: string, password: string) => Promise<void>;
+  login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
   switchUser: (userId: string) => void;
   logout: () => void;
   setLanguage: (lang: Language) => void;
@@ -103,15 +103,25 @@ export const ROLE_PREFIXES: Record<UserRole, string> = {
   employer: '/employer',
 };
 
-export const getRolePrefix = (role?: UserRole): string => {
-  if (!role) return '/trainee';
-  return ROLE_PREFIXES[role] || '/trainee';
+export const normalizeRole = (role?: string): UserRole => {
+  if (!role) return 'trainee';
+  const r = role.toLowerCase().trim();
+  if (r === 'super_admin' || r === 'superadmin') return 'super_admin';
+  if (r === 'institute_admin' || r === 'instituteadmin') return 'institute_admin';
+  if (r === 'faculty') return 'faculty';
+  if (r === 'employer') return 'employer';
+  return 'trainee';
+};
+
+export const getRolePrefix = (role?: string): string => {
+  const norm = normalizeRole(role);
+  return ROLE_PREFIXES[norm] || '/trainee';
 };
 
 export const getRoleFromPrefix = (path: string): UserRole | null => {
   if (path.startsWith('/trainee')) return 'trainee';
   if (path.startsWith('/institute-admin')) return 'institute_admin';
-  if (path.startsWith('/super-admin')) return 'super_admin';
+  if (path.startsWith('/super-admin') || path.startsWith('/admin')) return 'super_admin';
   if (path.startsWith('/faculty')) return 'faculty';
   if (path.startsWith('/employer')) return 'employer';
   return null;
@@ -200,6 +210,17 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/' || path === '/dashboard' || path === '/home') {
     const target = `${rolePrefix}/dashboard`;
     window.history.replaceState({}, '', target);
+    return { view: 'home', params: null };
+  }
+
+  // Support /admin/dashboard - route guard verifies super_admin role
+  if (path === '/admin/dashboard' || path === '/admin') {
+    if (role === 'super_admin') {
+      window.history.replaceState({}, '', '/super-admin/dashboard');
+      return { view: 'home', params: null };
+    }
+    // Deny non-admin and redirect to their own dashboard
+    window.history.replaceState({}, '', `${rolePrefix}/dashboard`);
     return { view: 'home', params: null };
   }
 
@@ -396,7 +417,7 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Persistence / Initial State
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const saved = localStorage.getItem('ss_user');
+    const saved = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { }
     }
@@ -404,7 +425,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('ss_auth') === 'true';
+    const hasAuth = localStorage.getItem('ss_auth') === 'true' || sessionStorage.getItem('ss_auth') === 'true';
+    const hasToken = Boolean(localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt'));
+    return hasAuth && hasToken;
   });
 
   const [currentLanguage, setCurrentLanguageState] = useState<Language>(() => {
@@ -570,10 +593,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser.role]);
 
+  // Session verification and restoration on startup
+  useEffect(() => {
+    const token = localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
+    if (token) {
+      api.auth.me()
+        .then(dbUser => {
+          if (dbUser) {
+            const normRole = normalizeRole(dbUser.role);
+            const fullUser = { ...dbUser, role: normRole };
+            setCurrentUser(fullUser);
+            setIsAuthenticated(true);
+            const isPersistent = Boolean(localStorage.getItem('ss_jwt'));
+            const storage = isPersistent ? localStorage : sessionStorage;
+            storage.setItem('ss_auth', 'true');
+            storage.setItem('ss_user', JSON.stringify(fullUser));
+          }
+        })
+        .catch(() => {
+          // Token expired or invalid
+          setIsAuthenticated(false);
+          clearToken();
+          localStorage.removeItem('ss_auth');
+          sessionStorage.removeItem('ss_auth');
+          localStorage.removeItem('ss_user');
+          sessionStorage.removeItem('ss_user');
+          setActiveView('login');
+        });
+    } else {
+      setIsAuthenticated(false);
+      localStorage.removeItem('ss_auth');
+      sessionStorage.removeItem('ss_auth');
+    }
+  }, []);
+
   const logout = () => {
     setIsAuthenticated(false);
     localStorage.removeItem('ss_auth');
-    clearToken(); // Clear JWT for Trainee backend sessions
+    sessionStorage.removeItem('ss_auth');
+    localStorage.removeItem('ss_user');
+    sessionStorage.removeItem('ss_user');
+    clearToken();
+    api.auth.logout();
     setActiveView('login');
     setActiveViewParams(null);
     if (window.location.pathname !== '/') {
@@ -583,23 +644,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
-   * login — real API authentication for Trainee (and other roles when backend is ready).
-   * On success: stores JWT via api.ts, sets currentUser from DB response.
-   * Other roles: falls back to SEED_USERS via switchUser.
+   * login — Database-backed authentication for all roles.
+   * On success: stores JWT via api.ts, sets currentUser from DB response with verified role.
    */
-  const login = async (email: string, password: string): Promise<void> => {
-    const { user } = await api.auth.login(email, password); // stores JWT internally
-    setCurrentUser(user);
+  const login = async (identifier: string, password: string, rememberMe = true): Promise<void> => {
+    const { user } = await api.auth.login(identifier, password, rememberMe);
+    const normRole = normalizeRole(user.role);
+    const fullUser = { ...user, role: normRole };
+    setCurrentUser(fullUser);
     setIsAuthenticated(true);
-    localStorage.setItem('ss_auth', 'true');
-    localStorage.setItem('ss_user', JSON.stringify(user));
-    if (user.languagePreference) {
-      setCurrentLanguageState(user.languagePreference);
-      localStorage.setItem('ss_lang', user.languagePreference);
+
+    const storage = rememberMe ? localStorage : sessionStorage;
+    const otherStorage = rememberMe ? sessionStorage : localStorage;
+    otherStorage.removeItem('ss_auth');
+    otherStorage.removeItem('ss_user');
+
+    storage.setItem('ss_auth', 'true');
+    storage.setItem('ss_user', JSON.stringify(fullUser));
+    if (fullUser.languagePreference) {
+      setCurrentLanguageState(fullUser.languagePreference);
+      storage.setItem('ss_lang', fullUser.languagePreference);
     }
     setActiveView('home');
     setActiveViewParams(null);
-    const targetPath = `${getRolePrefix(user.role)}/dashboard`;
+    const targetPath = `${getRolePrefix(fullUser.role)}/dashboard`;
     if (window.location.pathname !== targetPath) {
       window.history.pushState({}, '', targetPath);
     }

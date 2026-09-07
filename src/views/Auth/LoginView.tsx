@@ -20,8 +20,7 @@ import {
   TreePine,
   Check
 } from 'lucide-react';
-import { useApp, getRolePrefix } from '../../context/AppContext';
-import { SEED_USERS } from '../../data/seedData';
+import { useApp } from '../../context/AppContext';
 import { Language } from '../../types';
 import TextType from '../../components/TextType/TextType';
 
@@ -163,7 +162,6 @@ interface LoginCardProps {
   isSubmitting: boolean;
   errorMessage: string;
   onSubmit: (e: React.FormEvent) => void;
-  onDemoSelect: (roleKey: 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer') => void;
   onForgotPassword: () => void;
   onSignup: () => void;
 }
@@ -180,7 +178,6 @@ export const LoginCard: React.FC<LoginCardProps> = ({
   isSubmitting,
   errorMessage,
   onSubmit,
-  onDemoSelect,
   onForgotPassword,
   onSignup,
 }) => (
@@ -218,7 +215,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({
     )}
 
     {/* Form */}
-    <form onSubmit={onSubmit} className="space-y-3">
+    <form onSubmit={onSubmit} className="space-y-3.5">
       {/* Email / Employee ID (height 46-50px) */}
       <div>
         <label className="block text-[11px] font-bold tracking-wider text-[#073D32] uppercase mb-1">
@@ -232,7 +229,8 @@ export const LoginCard: React.FC<LoginCardProps> = ({
             type="text"
             value={email}
             onChange={e => setEmail(e.target.value)}
-            placeholder="rameshwar.pacs@gmail.com"
+            placeholder="name@example.com or Employee ID"
+            autoComplete="username"
             className="w-full h-[46px] pl-10 pr-3.5 rounded-xl border border-[#DCE4DE] bg-[#FBFCFA] focus:bg-white text-xs font-semibold text-[#1E2523] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#005B46]/20 focus:border-[#005B46] transition-all"
           />
         </div>
@@ -261,11 +259,13 @@ export const LoginCard: React.FC<LoginCardProps> = ({
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="••••••••••••"
+            autoComplete="current-password"
             className="w-full h-[46px] pl-10 pr-10 rounded-xl border border-[#DCE4DE] bg-[#FBFCFA] focus:bg-white text-xs font-semibold text-[#1E2523] placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#005B46]/20 focus:border-[#005B46] transition-all"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
+            aria-label={showPassword ? "Hide password" : "Show password"}
             className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
           >
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -292,128 +292,15 @@ export const LoginCard: React.FC<LoginCardProps> = ({
       <button
         type="submit"
         disabled={isSubmitting}
-        className="w-full h-[48px] rounded-xl bg-[#087A5B] hover:bg-[#00664F] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group mt-1"
+        className="w-full h-[48px] rounded-xl bg-[#087A5B] hover:bg-[#00664F] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-sm hover:shadow-md transition-all cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed group mt-2"
       >
-        <span>{isSubmitting ? 'Signing in...' : 'Sign In to Sahakar Setu'}</span>
+        <span>{isSubmitting ? 'Signing In...' : 'Sign In to Sahakar Setu'}</span>
         <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
       </button>
     </form>
 
-    {/* Demo Account Divider */}
-    <div className="relative my-3.5 text-center">
-      <div className="absolute inset-0 flex items-center">
-        <div className="w-full border-t border-[#E1E6E2]" />
-      </div>
-      <span className="relative bg-white px-2.5 text-[10px] font-bold text-[#8A9690] uppercase tracking-wider">
-        OR TRY A DEMO ACCOUNT
-      </span>
-    </div>
-
-    {/* Demo Buttons */}
-    {/* Mobile 2-column grid layout (<640px) */}
-    <div className="sm:hidden grid grid-cols-2 gap-1.5">
-      <button
-        type="button"
-        onClick={() => onDemoSelect('trainee')}
-        className="h-[38px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-      >
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-        <span className="truncate">Trainee</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onDemoSelect('institute_admin')}
-        className="h-[38px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-      >
-        <Building2 className="w-3.5 h-3.5 text-[#005B46] flex-shrink-0" />
-        <span className="truncate">Inst. Admin</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onDemoSelect('super_admin')}
-        className="h-[38px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-      >
-        <ShieldCheck className="w-3.5 h-3.5 text-[#005B46] flex-shrink-0" />
-        <span className="truncate">Super Admin</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onDemoSelect('faculty')}
-        className="h-[38px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-      >
-        <BookOpen className="w-3.5 h-3.5 text-[#005B46] flex-shrink-0" />
-        <span className="truncate">Faculty</span>
-      </button>
-
-      <button
-        type="button"
-        onClick={() => onDemoSelect('employer')}
-        className="col-span-2 h-[38px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
-      >
-        <BriefcaseBusiness className="w-3.5 h-3.5 text-[#005B46] flex-shrink-0" />
-        <span>Employer Partner</span>
-      </button>
-    </div>
-
-    {/* Desktop / Tablet Layout (>=640px) */}
-    <div className="hidden sm:block space-y-1.5">
-      {/* Row 1: Trainee | Institute Admin | Super Admin */}
-      <div className="grid grid-cols-3 gap-1.5">
-        <button
-          type="button"
-          onClick={() => onDemoSelect('trainee')}
-          className="h-[34px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1 transition-all shadow-2xs cursor-pointer"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="truncate">Trainee</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onDemoSelect('institute_admin')}
-          className="h-[34px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1 transition-all shadow-2xs cursor-pointer"
-        >
-          <Building2 className="w-3 h-3 text-[#005B46] flex-shrink-0" />
-          <span className="truncate">Inst. Admin</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onDemoSelect('super_admin')}
-          className="h-[34px] px-2 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1 transition-all shadow-2xs cursor-pointer"
-        >
-          <ShieldCheck className="w-3 h-3 text-[#005B46] flex-shrink-0" />
-          <span className="truncate">Super Admin</span>
-        </button>
-      </div>
-
-      {/* Row 2: Faculty | Employer */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <button
-          type="button"
-          onClick={() => onDemoSelect('faculty')}
-          className="h-[34px] px-3 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-        >
-          <BookOpen className="w-3 h-3 text-[#005B46] flex-shrink-0" />
-          <span>Faculty</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onDemoSelect('employer')}
-          className="h-[34px] px-3 rounded-lg border border-[#E1E6E2] bg-white hover:bg-emerald-50/70 hover:border-[#005B46] text-[11px] font-bold text-[#1E2523] flex items-center justify-center gap-1.5 transition-all shadow-2xs cursor-pointer"
-        >
-          <BriefcaseBusiness className="w-3 h-3 text-[#005B46] flex-shrink-0" />
-          <span>Employer</span>
-        </button>
-      </div>
-    </div>
-
     {/* Create Account Link */}
-    <div className="text-center mt-3.5 pt-0.5">
+    <div className="text-center mt-5 pt-1 border-t border-[#E9EEEB]">
       <p className="text-[12px] sm:text-[13px] text-[#536A65]">
         New candidate or society member?{' '}
         <button
@@ -426,7 +313,7 @@ export const LoginCard: React.FC<LoginCardProps> = ({
     </div>
 
     {/* Security Message */}
-    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 text-center mt-3">
+    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-400 text-center mt-3.5">
       <ShieldCheck className="w-3.5 h-3.5 text-[#087A5B]" />
       <span>Your learning records and credentials are securely managed.</span>
     </div>
@@ -559,29 +446,21 @@ export const Footer: React.FC = () => (
 // MASTER AUTHENTICATION PAGE (Main Hero Height 640-660px, Two-Column, Background Visual)
 // =========================================================================
 export const AuthPage: React.FC = () => {
-  const { login, switchUser, navigate, currentLanguage, setLanguage } = useApp();
+  const { login, navigate, currentLanguage, setLanguage } = useApp();
 
-  const [email, setEmail] = useState('rameshwar.pacs@gmail.com');
-  const [password, setPassword] = useState('Demo@1234');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Real demo credentials that match the seeded users in Supabase
-  const DEMO_CREDENTIALS: Record<string, { email: string; password: string }> = {
-    trainee:         { email: 'rameshwar.pacs@gmail.com', password: 'Demo@1234' },
-    institute_admin: { email: 'admin.vamnicom@ncct.gov.in', password: 'Admin@1234' },
-    super_admin:     { email: 'superadmin@ncct.gov.in', password: 'Super@1234' },
-    faculty:         { email: 'faculty@ncct.gov.in', password: 'Faculty@1234' },
-    employer:        { email: 'employer@ncct.gov.in', password: 'Employer@1234' },
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
 
-    if (!email.trim()) {
+    const cleanIdentifier = email.trim();
+    if (!cleanIdentifier) {
       setErrorMessage('Enter your email or employee ID.');
       return;
     }
@@ -592,37 +471,10 @@ export const AuthPage: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      // Real API auth (works for all seeded users in Supabase)
-      await login(email.trim(), password);
+      await login(cleanIdentifier, password, rememberMe);
     } catch (apiErr: any) {
-      // Backend unreachable — degrade gracefully to local seed data
-      const matched =
-        SEED_USERS.find(u => u.email.toLowerCase() === email.trim().toLowerCase()) ||
-        SEED_USERS[0];
-      switchUser(matched.id);
-      navigate(`${getRolePrefix(matched.role)}/dashboard`);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleDemoSelect = async (roleKey: 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer') => {
-    const creds = DEMO_CREDENTIALS[roleKey];
-    setEmail(creds.email);
-    setPassword(creds.password);
-    setIsSubmitting(true);
-    setErrorMessage('');
-    try {
-      // Call real API login with the demo credentials
-      await login(creds.email, creds.password);
-    } catch {
-      // Backend unreachable — fall back to local seed data
-      const targetUser =
-        SEED_USERS.find(u => u.email === creds.email) ||
-        SEED_USERS.find(u => u.role === roleKey) ||
-        SEED_USERS[0];
-      switchUser(targetUser.id);
-      navigate(`${getRolePrefix(targetUser.role)}/dashboard`);
+      const msg = apiErr?.message || 'Invalid email/employee ID or password.';
+      setErrorMessage(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -862,7 +714,6 @@ export const AuthPage: React.FC = () => {
               isSubmitting={isSubmitting}
               errorMessage={errorMessage}
               onSubmit={handleSubmit}
-              onDemoSelect={handleDemoSelect}
               onForgotPassword={() => navigate('/forgot-password')}
               onSignup={() => navigate('/register')}
             />

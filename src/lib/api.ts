@@ -6,11 +6,22 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const getToken = () => localStorage.getItem('ss_jwt');
+const getToken = () => localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
 
-const setToken = (token: string) => localStorage.setItem('ss_jwt', token);
+const setToken = (token: string, rememberMe = true) => {
+  if (rememberMe) {
+    localStorage.setItem('ss_jwt', token);
+    sessionStorage.removeItem('ss_jwt');
+  } else {
+    sessionStorage.setItem('ss_jwt', token);
+    localStorage.removeItem('ss_jwt');
+  }
+};
 
-export const clearToken = () => localStorage.removeItem('ss_jwt');
+export const clearToken = () => {
+  localStorage.removeItem('ss_jwt');
+  sessionStorage.removeItem('ss_jwt');
+};
 
 // ─── Core fetch wrapper ────────────────────────────────────────────────────────
 
@@ -51,9 +62,13 @@ const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, bod
 
 export const api = {
   auth: {
-    login: async (email: string, password: string) => {
-      const result = await post<{ token: string; user: any }>('/api/auth/login', { email, password }, false);
-      setToken(result.token);
+    login: async (identifier: string, password: string, rememberMe = true) => {
+      const result = await post<{ token: string; user: any }>(
+        '/api/auth/login',
+        { identifier, password, rememberMe },
+        false
+      );
+      setToken(result.token, rememberMe);
       return result;
     },
     me: () => get<any>('/api/auth/me'),

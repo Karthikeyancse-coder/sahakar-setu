@@ -60,6 +60,7 @@ export const learningRepository = {
       include: {
         course: true,
         lessonProgress: true,
+        quizAttempts: true,
       },
     });
   },

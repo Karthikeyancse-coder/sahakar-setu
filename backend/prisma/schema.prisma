@@ -30,6 +30,7 @@ model User {
   name                   String
   nameHi                 String?
   email                  String  @unique
+  employeeId             String? @unique
   passwordHash           String
   phone                  String
   role                   String  // trainee | institute_admin | super_admin | faculty | employer

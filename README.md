@@ -6,7 +6,7 @@
 
 ## 📋 Table of Contents
 1. [Overview & Problem Statement](#overview--problem-statement)
-2. [Demo Credentials Table](#demo-credentials-table)
+2. [Database Authentication & Test Users](#-database-authentication--test-users-production-flow)
 3. [Architecture Diagram](#architecture-diagram)
 4. [What's Real vs. Simulated](#whats-real-vs-simulated)
 5. [Key Feature Loops](#key-feature-loops)
@@ -28,18 +28,22 @@ NCCT coordinates capacity building for millions of cooperative personnel (PACS s
 
 ---
 
-## 🔑 Demo Credentials Table (Instant 1-Click Login)
-The platform features an **Instant Demo Switcher** in the top navbar. You can test all 5 roles without entering passwords:
+## 🔑 Database Authentication & Test Users (Production Flow)
+The platform authenticates against a secure PostgreSQL database using **bcrypt password hashing** and JWT session tokens. You can log in using either **Email Address** OR **Employee ID**:
 
-| Role | Name | Demo Email | Affiliation / Institute | Key Capabilities to Test |
-| :--- | :--- | :--- | :--- | :--- |
-| **Trainee** *(Default)* | Rameshwar Patil | `rameshwar.pacs@gmail.com` | Shri Datta PACS, Niphad | Trilingual LMS, Quiz Assessment, QR Check-in, PDF Certificate, Career AI |
-| **Trainee** | Sunita Devi | `sunita.shg@yahoo.com` | Prerna Mahila SHG, Barabanki | SHG Panchasutra Course, Certificate download, Job interest |
-| **Institute Admin** | Dr. Rajesh Deshmukh | `admin.vamnicom@ncct.gov.in` | VAMNICOM, Pune | ERP Programmes, Bulk CSV Nominations, QR & WebCam Face Kiosk, Hostel Grid |
-| **Institute Admin** | Shri Anand Tripathi | `admin.lko@ncct.gov.in` | ICM Lucknow | Batch Management, Timetable grid, Attendance audit |
-| **Super Admin** | Dr. Vivek Swaroop | `secretary@ncct.gov.in` | NCCT Central Office, New Delhi | National Recharts Analytics across all 20 institutes, Registry audit |
-| **Faculty** | Prof. Meenakshi Sundaram | `faculty.erp@vamnicom.gov.in` | VAMNICOM | LMS Studio, Course/Module/Lesson builder with multilingual editor |
-| **Employer** | K. Patel | `careers@amul.coop` | GCMMF (AMUL), Anand | Search certified trainees by skill/institute, Post openings, Review candidates |
+| Role | User Name | Email Address | Employee ID / Identifier | Development Password | Destination Dashboard |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Trainee** | Rameshwar Patil | `rameshwar.pacs@gmail.com` | `NCCT-TRN-2026-MH-44091` | `Demo@1234` | `/trainee/dashboard` |
+| **Faculty** | Prof. Meenakshi Sundaram | `faculty@ncct.gov.in`<br>`faculty.demo@example.com` | `NCCT-FAC-2026-MH-101` | `Faculty@1234` | `/faculty/dashboard` |
+| **Institute Admin** | Dr. Rajesh Deshmukh | `admin.vamnicom@ncct.gov.in`<br>`admin.demo@example.com` | `NCCT-ADM-2026-MH-001` | `Admin@1234` | `/institute-admin/dashboard` |
+| **Super Admin** | Shri Arvind Mehta | `superadmin@ncct.gov.in`<br>`superadmin.demo@example.com` | `NCCT-HQ-2026-DL-001` | `Super@1234` | `/super-admin/dashboard` |
+| **Employer Partner** | Shri Vikram Nair | `employer@ncct.gov.in`<br>`employer.demo@example.com` | `NCCT-EMP-2026-KA-501` | `Employer@1234` | `/employer/dashboard` |
+
+> [!NOTE]
+> - **Identifier flexibility:** You can enter either the email address or the Employee ID in the "Email Address or Employee ID" field.
+> - **Anti-enumeration:** Invalid passwords and nonexistent accounts return the exact same generic error message: *"Invalid email/employee ID or password."*
+> - **Remember Me:** Checking *"Remember this device for 30 days"* retains your authenticated session in local storage for up to 30 days. Unchecked sessions expire when the browser session closes.
+> - **Role Route Protection:** Protected dashboard routes strictly enforce the role saved in the database record. Trainees attempting to access `/admin/dashboard` will be redirected to `/trainee/dashboard`.
 
 ---
 
