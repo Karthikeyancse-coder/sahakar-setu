@@ -1,0 +1,43 @@
+{
+  "name": "Sahakar Setu — NCCT Training Portal",
+  "short_name": "SahakarSetu",
+  "description": "Federated Training-ERP, Multilingual LMS, Hardware-Linked Attendance & Skill-to-Employment Bridge for NCCT cooperative training centres",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F0F4F8",
+  "theme_color": "#0B6E4F",
+  "lang": "en-IN",
+  "categories": ["education", "productivity", "government"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "My Courses",
+      "short_name": "Courses",
+      "description": "Jump to your enrolled courses",
+      "url": "/trainee/my-courses",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Attendance",
+      "short_name": "Attendance",
+      "description": "Mark or view session attendance",
+      "url": "/trainee/attendance",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
