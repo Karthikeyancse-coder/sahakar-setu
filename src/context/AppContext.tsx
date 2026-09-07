@@ -993,12 +993,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markLessonComplete = (courseId: string, lessonId: string) => {
+    const isAliasMatch = (c1: string, c2: string) => {
+      if (c1 === c2) return true;
+      const aliases: Record<string, string[]> = {
+        'crs-shg-101': ['crs-shg-101', 'crs-shg-gov-301'],
+        'crs-shg-gov-301': ['crs-shg-gov-301', 'crs-shg-101'],
+        'crs-dairy-101': ['crs-dairy-101', 'crs-dairy-mgmt-201'],
+        'crs-dairy-mgmt-201': ['crs-dairy-mgmt-201', 'crs-dairy-101'],
+        'crs-pacs-101': ['crs-pacs-101', 'crs-pacs-erp-101'],
+        'crs-pacs-erp-101': ['crs-pacs-erp-101', 'crs-pacs-101'],
+      };
+      return aliases[c1]?.includes(c2) || false;
+    };
+
     setEnrollments(prev => {
       return prev.map(e => {
-        if (e.userId === currentUser.id && (e.courseId === courseId || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301')) {
+        if (e.userId === currentUser.id && isAliasMatch(e.courseId, courseId)) {
           if (!e.completedLessonIds.includes(lessonId)) {
             const updatedLessons = [...e.completedLessonIds, lessonId];
-            const course = courses.find(c => c.id === courseId);
+            const course = courses.find(c => isAliasMatch(c.id, courseId));
             const totalLessons = course?.modules.reduce((acc, m) => acc + m.lessons.length, 0) || 1;
             const progress = Math.min(100, Math.round((updatedLessons.length / totalLessons) * 100));
 
@@ -1016,9 +1029,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // Persist to database
     if (currentUser.role === 'trainee') {
-      api.learning.completeLesson(lessonId).catch(err =>
-        console.warn('[API] completeLesson failed:', err.message)
-      );
+      api.learning.completeLesson(lessonId)
+        .then(() => {
+          api.enrollments.mine().then(enrs => {
+            if (Array.isArray(enrs)) setEnrollments(enrs);
+          }).catch(() => {});
+        })
+        .catch(err =>
+          console.warn('[API] completeLesson failed:', err.message)
+        );
     }
 
     if (isOffline) {
@@ -1039,8 +1058,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const result = await api.learning.submitQuiz(quizId, payloadAnswers);
         if (result.passed) {
           // Update local enrollment state to reflect server result
+          const isMatchingEnrollment = (e: any) =>
+            e.userId === currentUser.id &&
+            (e.courseId === courseId ||
+              (courseId.includes('dairy') && e.courseId.includes('dairy')) ||
+              (courseId.includes('pacs') && e.courseId.includes('pacs')) ||
+              (courseId.includes('shg') && e.courseId.includes('shg')));
+
           setEnrollments(prev => prev.map(e => {
-            if (e.userId === currentUser.id && (e.courseId === courseId || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301')) {
+            if (isMatchingEnrollment(e)) {
               const updatedQuizIds = Array.from(new Set([...e.completedQuizIds, quizId]));
               return {
                 ...e,
@@ -1051,13 +1077,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
             return e;
           }));
-          // If server issued a certificate, add it to local state
-          const certId = result.certificate?.id || result.certId;
-          if (certId) {
-            api.certificates.mine().then(certs => {
-              if (Array.isArray(certs) && certs.length > 0) setCertificates(certs);
-            }).catch(() => {});
+
+          // If server issued a certificate, add it to local state immediately
+          if (result.certificate) {
+            setCertificates(prev => {
+              const exists = prev.some(c => c.id === result.certificate.id);
+              if (exists) {
+                return prev.map(c => c.id === result.certificate.id ? { ...c, ...result.certificate } : c);
+              }
+              return [result.certificate, ...prev];
+            });
           }
+          api.certificates.mine().then(certs => {
+            if (Array.isArray(certs) && certs.length > 0) setCertificates(certs);
+          }).catch(() => {});
+          api.enrollments.mine().then(enrs => {
+            if (Array.isArray(enrs) && enrs.length > 0) setEnrollments(enrs);
+          }).catch(() => {});
         }
         return {
           passed: result.passed,

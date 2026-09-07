@@ -116,6 +116,8 @@ model Lesson {
   contentHi       Json?    // { text: string, keyTakeaways: string[] }
   contentMr       Json?    // { text: string, keyTakeaways: string[] }
   videoUrl        String?
+  videoProvider   String   @default("youtube")
+  isRequired      Boolean  @default(true)
   attachmentUrl   String?
   resourceUrl     String?
   isPublished     Boolean  @default(true)
@@ -203,17 +205,21 @@ model Enrollment {
 }
 
 model LessonProgress {
-  id           String    @id
-  enrollmentId String
-  courseId     String
-  moduleId     String
-  lessonId     String
-  userId       String
-  status       String    @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | COMPLETED
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String    @id
+  enrollmentId    String
+  courseId        String
+  moduleId        String
+  lessonId        String
+  userId          String
+  status          String    @default("NOT_STARTED") // NOT_STARTED | IN_PROGRESS | COMPLETED
+  progressSeconds Int       @default(0)
+  progressPercent Int       @default(0)
+  completed       Boolean   @default(false)
+  startedAt       DateTime?
+  completedAt     DateTime?
+  lastWatchedAt   DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   enrollment Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
   course     Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -222,6 +228,7 @@ model LessonProgress {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([enrollmentId, lessonId])
+  @@unique([userId, lessonId])
 }
 
 model QuizAttempt {
@@ -324,31 +331,42 @@ model Certificate {
 }
 
 model JobPosting {
-  id             String  @id
-  employerId     String
-  employerName   String
-  employerLogo   String?
-  title          String
-  description    String
-  requiredSkills Json    // string[]
-  location       String
-  salaryRange    String
-  type           String  // Full-time | Apprenticeship | Contract
-  postedDate     String
-  openingsCount  Int
+  id                    String  @id
+  employerId            String
+  employerName          String
+  employerLogo          String?
+  title                 String
+  description           String
+  requiredSkills        Json    // string[]
+  preferredSkills       Json    @default("[]") // string[]
+  requiredQualification String  @default("Graduation / Diploma")
+  minimumExperience     Int     @default(0)
+  requiredCertificates  Json    @default("[]") // string[]
+  location              String
+  salaryRange           String
+  type                  String  // Full-time | Apprenticeship | Contract
+  postedDate            String
+  openingsCount         Int
+  status                String  @default("ACTIVE") // ACTIVE | CLOSED
 
   interests JobInterest[]
 }
 
 model JobInterest {
-  id            String @id
-  jobPostingId  String
-  userId        String
-  traineeName   String
-  traineeEmail  String
-  traineeSkills Json   // string[]
-  timestamp     String
-  status        String @default("submitted") // submitted | reviewed | shortlisted
+  id                   String   @id
+  jobPostingId         String
+  userId               String
+  traineeName          String
+  traineeEmail         String
+  traineeSkills        Json     // string[]
+  matchedSkills        Json     @default("[]") // string[]
+  missingSkills        Json     @default("[]") // string[]
+  matchScore           Int      @default(0)
+  eligibilityStatus    String   @default("ELIGIBLE") // ELIGIBLE | NOT_ELIGIBLE
+  ineligibilityReasons Json     @default("[]") // string[]
+  timestamp            String
+  appliedAt            DateTime @default(now())
+  status               String   @default("APPLIED") // APPLIED | UNDER_REVIEW | SHORTLISTED | INTERVIEW | SELECTED | REJECTED
 
   user User       @relation(fields: [userId], references: [id])
   job  JobPosting @relation(fields: [jobPostingId], references: [id])
@@ -381,13 +399,21 @@ model ChatMessage {
 }
 
 model TraineePublicProfile {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  publicToken    String   @unique
-  registrationId String?  @default("NCCT-TRN-2026-MH-44091")
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                      String   @id @default(cuid())
+  userId                  String   @unique
+  publicToken             String   @unique
+  registrationId          String?  @default("NCCT-TRN-2026-MH-44091")
+  qualification           String?  @default("Graduate (B.Com)")
+  education               String?  @default("Bachelor Degree in Commerce (B.Com)")
+  location                String?  @default("Anand, Gujarat")
+  experienceYears         Float    @default(1.0)
+  preferredLocation       String?  @default("Gujarat")
+  preferredEmploymentType String?  @default("Full-time")
+  availability            String?  @default("Immediate")
+  skills                  Json?    @default("[]")
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

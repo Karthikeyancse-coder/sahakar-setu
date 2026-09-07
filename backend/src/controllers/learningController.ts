@@ -29,6 +29,32 @@ export const learningController = {
     }
   },
 
+  saveProgress: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { progressSeconds, progressPercent, completed } = req.body;
+      const result = await learningService.saveLessonProgress(
+        req.user!.userId,
+        req.params.lessonId,
+        { progressSeconds, progressPercent, completed }
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
+  getProgress: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await learningService.getLessonProgress(
+        req.user!.userId,
+        req.params.lessonId
+      );
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   getModuleQuiz: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const result = await learningService.getModuleQuiz(req.user!.userId, req.params.moduleId);

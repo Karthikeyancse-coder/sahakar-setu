@@ -87,7 +87,7 @@ async function main() {
         { id: 'les-pacs-1-2', moduleId: 'mod-pacs-1', order: 2, title: 'Benefits of PACS Digitalization', titleHi: 'पैक्स डिजिटलाइजेशन के लाभ', titleMr: 'PACS डिजिटलायझेशनचे फायदे', durationMinutes: 25, contentType: 'text', contentByLanguage: { en: { text: 'Digitalization of PACS enables real-time transaction tracking, financial transparency, and integration with national banking systems like CBS (Core Banking Solution).', keyTakeaways: ['Real-time transaction visibility', 'Reduced fraud and errors', 'Integration with national banking infrastructure', 'Faster loan processing'] }, hi: { text: 'पैक्स का डिजिटलीकरण वास्तविक समय लेनदेन ट्रैकिंग सक्षम करता है।', keyTakeaways: ['वास्तविक समय लेनदेन दृश्यता', 'ऋण प्रसंस्करण में तेजी'] }, mr: { text: 'PACS चे डिजिटलीकरण रिअल-टाइम व्यवहार ट्रॅकिंग सक्षम करते.', keyTakeaways: ['रिअल-टाइम व्यवहार दृश्यमानता'] } } },
       ],
       quiz: {
-        id: 'quiz-pacs-m1', moduleId: 'mod-pacs-1', title: 'PACS Basics Assessment', titleHi: 'पैक्स मूल्यांकन', titleMr: 'PACS मूल्यांकन', passThreshold: 70,
+        id: 'quiz-pacs-m1', moduleId: 'mod-pacs-1', title: 'PACS Basics Assessment', titleHi: 'पैक्स मूल्यांकन', titleMr: 'PACS मूल्यांकन', passThreshold: 75,
         questions: [
           { id: 'qq-p1-1', question: 'What does PACS stand for?', questionHi: 'PACS का पूर्ण रूप क्या है?', questionMr: 'PACS चे पूर्ण नाव काय आहे?', options: { en: ['Primary Agricultural Credit Society', 'Primary Agricultural Co-operative Service', 'Public Agricultural Credit Scheme', 'Primary Agricultural Credit Scheme'], hi: ['प्राथमिक कृषि ऋण सोसायटी', 'प्राथमिक कृषि सहकारी सेवा', 'सार्वजनिक कृषि ऋण योजना', 'प्राथमिक कृषि ऋण योजना'], mr: ['प्राथमिक कृषी पतसंस्था', 'प्राथमिक कृषी सहकारी सेवा', 'सार्वजनिक कृषी पत योजना', 'प्राथमिक कृषी पत योजना'] }, correctOptionIndex: 0, explanation: { en: 'PACS stands for Primary Agricultural Credit Society — the grassroots unit of rural cooperative credit.', hi: 'PACS का अर्थ है प्राथमिक कृषि ऋण सोसायटी।', mr: 'PACS म्हणजे प्राथमिक कृषी पतसंस्था.' } },
           { id: 'qq-p1-2', question: 'Which ministry oversees NCCT?', questionHi: 'NCCT किस मंत्रालय के अधीन है?', questionMr: 'NCCT कोणत्या मंत्रालयाच्या अंतर्गत आहे?', options: { en: ['Ministry of Agriculture', 'Ministry of Finance', 'Ministry of Cooperation', 'Ministry of Rural Development'], hi: ['कृषि मंत्रालय', 'वित्त मंत्रालय', 'सहकारिता मंत्रालय', 'ग्रामीण विकास मंत्रालय'], mr: ['कृषी मंत्रालय', 'वित्त मंत्रालय', 'सहकार मंत्रालय', 'ग्रामीण विकास मंत्रालय'] }, correctOptionIndex: 2, explanation: { en: 'NCCT is under the Ministry of Cooperation, established in 2021.', hi: 'NCCT सहकारिता मंत्रालय के अधीन है।', mr: 'NCCT सहकार मंत्रालयाच्या अंतर्गत आहे.' } },
@@ -105,7 +105,7 @@ async function main() {
         { id: 'les-pacs-2-2', moduleId: 'mod-pacs-2', order: 2, title: 'Data Entry & Audit Workflow', titleHi: 'डेटा एंट्री और ऑडिट वर्कफ्लो', titleMr: 'डेटा एंट्री आणि ऑडिट वर्कफ्लो', durationMinutes: 35, contentType: 'text', contentByLanguage: { en: { text: 'Accurate data entry and regular audit workflows are mandatory for PACS compliance under the Multi-State Cooperative Societies Act.', keyTakeaways: ['Annual audit is mandatory for all PACS', 'AMCS handles automated management and control', 'Data entry must follow prescribed formats'] }, hi: { text: 'सटीक डेटा एंट्री और नियमित ऑडिट वर्कफ्लो PACS अनुपालन के लिए अनिवार्य है।', keyTakeaways: ['सभी PACS के लिए वार्षिक ऑडिट अनिवार्य है'] }, mr: { text: 'अचूक डेटा एंट्री आणि नियमित ऑडिट वर्कफ्लो PACS अनुपालनासाठी अनिवार्य आहे.', keyTakeaways: ['सर्व PACS साठी वार्षिक ऑडिट अनिवार्य आहे'] } } },
       ],
       quiz: {
-        id: 'quiz-pacs-m2', moduleId: 'mod-pacs-2', title: 'ERP Operations Assessment', titleHi: 'ERP संचालन मूल्यांकन', titleMr: 'ERP संचालन मूल्यांकन', passThreshold: 70,
+        id: 'quiz-pacs-m2', moduleId: 'mod-pacs-2', title: 'ERP Operations Assessment', titleHi: 'ERP संचालन मूल्यांकन', titleMr: 'ERP संचालन मूल्यांकन', passThreshold: 75,
         questions: [
           { id: 'qq-p2-1', question: 'What does ERP stand for?', questionHi: 'ERP का पूर्ण रूप क्या है?', questionMr: 'ERP चे पूर्ण नाव काय आहे?', options: { en: ['Enterprise Resource Planning', 'Electronic Resource Processing', 'Enterprise Revenue Platform', 'Electronic Reporting Process'], hi: ['उद्यम संसाधन नियोजन', 'इलेक्ट्रॉनिक संसाधन प्रसंस्करण', 'उद्यम राजस्व मंच', 'इलेक्ट्रॉनिक रिपोर्टिंग प्रक्रिया'], mr: ['एंटरप्राइझ रिसोर्स प्लानिंग', 'इलेक्ट्रॉनिक रिसोर्स प्रोसेसिंग', 'एंटरप्राइझ रेव्हेन्यू प्लॅटफॉर्म', 'इलेक्ट्रॉनिक रिपोर्टिंग प्रोसेस'] }, correctOptionIndex: 0, explanation: { en: 'ERP stands for Enterprise Resource Planning — integrated management of core business processes.', hi: 'ERP का अर्थ है उद्यम संसाधन नियोजन।', mr: 'ERP म्हणजे एंटरप्राइझ रिसोर्स प्लानिंग.' } },
           { id: 'qq-p2-2', question: 'In PACS ERP, which module handles member savings accounts?', questionHi: 'PACS ERP में कौन सा मॉड्यूल सदस्य बचत खातों को संभालता है?', questionMr: 'PACS ERP मध्ये कोणता मॉड्यूल सदस्यांच्या बचत खात्यांची काळजी घेतो?', options: { en: ['Procurement Module', 'Savings & Deposits Module', 'Payroll Module', 'Analytics Module'], hi: ['खरीद मॉड्यूल', 'बचत और जमा मॉड्यूल', 'पेरोल मॉड्यूल', 'विश्लेषण मॉड्यूल'], mr: ['खरेदी मॉड्यूल', 'बचत आणि ठेवी मॉड्यूल', 'पेरोल मॉड्यूल', 'विश्लेषण मॉड्यूल'] }, correctOptionIndex: 1, explanation: { en: 'The Savings & Deposits module manages all member savings accounts and fixed deposits.', hi: 'बचत और जमा मॉड्यूल सभी सदस्य बचत खातों का प्रबंधन करता है।', mr: 'बचत आणि ठेवी मॉड्यूल सर्व सदस्य बचत खात्यांचे व्यवस्थापन करते.' } },
@@ -126,7 +126,7 @@ async function main() {
         { id: 'les-dairy-1-2', moduleId: 'mod-dairy-1', order: 2, title: 'Milk Quality Testing', titleHi: 'दूध गुणवत्ता परीक्षण', titleMr: 'दूध गुणवत्ता चाचणी', durationMinutes: 30, contentType: 'text', contentByLanguage: { en: { text: 'Fat (FAT) and Solids Not Fat (SNF) are the two key parameters measured for milk quality and procurement pricing at village collection centers.', keyTakeaways: ['FAT and SNF determine milk price', 'Lactometers and milk analyzers are used', 'Quality testing ensures fair payment to farmers'] }, hi: { text: 'वसा (FAT) और वसा रहित ठोस (SNF) दूध गुणवत्ता के लिए दो प्रमुख मापदंड हैं।', keyTakeaways: ['FAT और SNF दूध की कीमत निर्धारित करते हैं'] }, mr: { text: 'फॅट (FAT) आणि सॉलिड्स नॉट फॅट (SNF) दूध गुणवत्तेचे दोन प्रमुख मापदंड आहेत.', keyTakeaways: ['FAT आणि SNF दुधाची किंमत ठरवतात'] } } },
       ],
       quiz: {
-        id: 'quiz-dairy-m1', moduleId: 'mod-dairy-1', title: 'Dairy Cooperative Assessment', titleHi: 'डेयरी सहकारी मूल्यांकन', titleMr: 'डेअरी सहकारी मूल्यांकन', passThreshold: 70,
+        id: 'quiz-dairy-m1', moduleId: 'mod-dairy-1', title: 'Dairy Cooperative Assessment', titleHi: 'डेयरी सहकारी मूल्यांकन', titleMr: 'डेअरी सहकारी मूल्यांकन', passThreshold: 75,
         questions: [
           { id: 'qq-d1-1', question: 'What is the primary function of a Dairy Cooperative Union?', questionHi: 'डेयरी सहकारी संघ का प्राथमिक कार्य क्या है?', questionMr: 'डेअरी सहकारी संघाचे प्राथमिक कार्य काय आहे?', options: { en: ['Selling fertilizers', 'Procuring, processing and marketing milk and dairy products', 'Managing housing for farmers', 'Providing crop insurance'], hi: ['उर्वरक बेचना', 'दूध और डेयरी उत्पादों की खरीद, प्रसंस्करण और विपणन', 'किसानों के लिए आवास प्रबंधन', 'फसल बीमा प्रदान करना'], mr: ['खते विकणे', 'दूध आणि दुग्धजन्य पदार्थांची खरेदी, प्रक्रिया आणि विपणन', 'शेतकऱ्यांसाठी घरांचे व्यवस्थापन', 'पीक विमा देणे'] }, correctOptionIndex: 1, explanation: { en: 'Dairy Cooperative Unions procure milk from village societies, process it, and market it under brands like Amul.', hi: 'डेयरी सहकारी संघ गांव समितियों से दूध की खरीद करता है।', mr: 'डेअरी सहकारी संघ गाव समित्यांकडून दूध खरेदी करतो.' } },
           { id: 'qq-d1-2', question: 'What does the Amul model represent?', questionHi: 'अमूल मॉडल क्या दर्शाता है?', questionMr: 'अमूल मॉडेल काय दर्शवतो?', options: { en: ['Government-owned dairy company', 'Three-tier cooperative structure for dairy', 'Foreign dairy investment model', 'Single-tier milk procurement'], hi: ['सरकारी स्वामित्व वाली डेयरी कंपनी', 'डेयरी के लिए तीन-स्तरीय सहकारी संरचना', 'विदेशी डेयरी निवेश मॉडल', 'एकल-स्तरीय दूध खरीद'], mr: ['सरकारी मालकीची डेअरी कंपनी', 'डेअरीसाठी तीन-स्तरीय सहकारी रचना', 'परदेशी डेअरी गुंतवणूक मॉडेल', 'एकल-स्तरीय दूध खरेदी'] }, correctOptionIndex: 1, explanation: { en: 'The Amul model is a three-tier structure: village societies → district union → state federation.', hi: 'अमूल मॉडल तीन-स्तरीय संरचना है।', mr: 'अमूल मॉडेल तीन-स्तरीय रचना आहे.' } },
@@ -147,7 +147,7 @@ async function main() {
         { id: 'les-shg-1-2', moduleId: 'mod-shg-1', order: 2, title: 'DAY-NRLM Linkage', titleHi: 'DAY-NRLM संबंध', titleMr: 'DAY-NRLM जोडणी', durationMinutes: 25, contentType: 'text', contentByLanguage: { en: { text: 'Deen Dayal Antyodaya Yojana - National Rural Livelihoods Mission (DAY-NRLM) is India\'s flagship programme linking SHGs to formal banking institutions.', keyTakeaways: ['DAY-NRLM links SHGs to banks', 'Credit Guarantee Fund provides security', 'Revolving fund supports SHG activities'] }, hi: { text: 'DAY-NRLM भारत का प्रमुख कार्यक्रम है जो SHG को बैंकों से जोड़ता है।', keyTakeaways: ['DAY-NRLM SHG को बैंकों से जोड़ता है'] }, mr: { text: 'DAY-NRLM हा भारताचा प्रमुख कार्यक्रम आहे जो SHG ला बँकांशी जोडतो.', keyTakeaways: ['DAY-NRLM SHG ला बँकांशी जोडतो'] } } },
       ],
       quiz: {
-        id: 'quiz-shg-m1', moduleId: 'mod-shg-1', title: 'SHG Governance Assessment', titleHi: 'SHG शासन मूल्यांकन', titleMr: 'SHG प्रशासन मूल्यांकन', passThreshold: 70,
+        id: 'quiz-shg-m1', moduleId: 'mod-shg-1', title: 'SHG Governance Assessment', titleHi: 'SHG शासन मूल्यांकन', titleMr: 'SHG प्रशासन मूल्यांकन', passThreshold: 75,
         questions: [
           { id: 'qq-s1-1', question: 'What does SHG stand for?', questionHi: 'SHG का पूर्ण रूप क्या है?', questionMr: 'SHG चे पूर्ण नाव काय आहे?', options: { en: ['Savings & Help Group', 'Self-Help Group', 'Society for Housing Growth', 'Sustainable Harvest Group'], hi: ['बचत और सहायता समूह', 'स्वयं सहायता समूह', 'आवास विकास समिति', 'सतत फसल समूह'], mr: ['बचत आणि सहाय्य गट', 'स्वयं-सहाय्यता गट', 'गृहनिर्माण विकास संस्था', 'शाश्वत कापणी गट'] }, correctOptionIndex: 1, explanation: { en: 'SHG stands for Self-Help Group — voluntary associations for mutual savings and microfinance.', hi: 'SHG का अर्थ है स्वयं सहायता समूह।', mr: 'SHG म्हणजे स्वयं-सहाय्यता गट.' } },
           { id: 'qq-s1-2', question: 'What is the typical size of a Self-Help Group?', questionHi: 'स्वयं सहायता समूह का सामान्य आकार क्या होता है?', questionMr: 'स्वयं-सहाय्यता गटाचा सामान्य आकार किती असतो?', options: { en: ['50-100 members', '10-20 members', '200-500 members', '2-5 members'], hi: ['50-100 सदस्य', '10-20 सदस्य', '200-500 सदस्य', '2-5 सदस्य'], mr: ['50-100 सदस्य', '10-20 सदस्य', '200-500 सदस्य', '2-5 सदस्य'] }, correctOptionIndex: 1, explanation: { en: 'A standard SHG has 10-20 members from similar socio-economic backgrounds.', hi: 'एक मानक SHG में 10-20 सदस्य होते हैं।', mr: 'एका मानक SHG मध्ये 10-20 सदस्य असतात.' } },
@@ -219,14 +219,68 @@ async function main() {
 
   // ─── Job postings ──────────────────────────────────────────────────────────
   const jobs = [
-    { id: 'job-001', employerId: 'usr-employer-1', employerName: 'Karnataka Cooperative Milk Producers Federation (KMF)', employerLogo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Nandini_Logo.svg/200px-Nandini_Logo.svg.png', title: 'PACS ERP Data Entry Operator', description: 'Manage day-to-day ERP data entry, loan documentation, and KCC disbursement records for 12 affiliated PACS in Bengaluru district.', requiredSkills: ['PACS Digitalization', 'ERP Operations', 'KCC Management'], location: 'Bengaluru, Karnataka', salaryRange: '₹18,000 – ₹24,000 / month', type: 'Full-time', postedDate: '2026-09-01', openingsCount: 4 },
-    { id: 'job-002', employerId: 'usr-employer-1', employerName: 'Mahanand Dairy Cooperative Ltd.', employerLogo: null, title: 'Dairy Cooperative Field Officer', description: 'Coordinate milk procurement, quality testing, and farmer liaison for Dairy Cooperative Union affiliated village societies in Kolhapur.', requiredSkills: ['Dairy & Livestock', 'Cooperative Management', 'Quality Testing'], location: 'Kolhapur, Maharashtra', salaryRange: '₹20,000 – ₹28,000 / month', type: 'Full-time', postedDate: '2026-09-03', openingsCount: 2 },
-    { id: 'job-003', employerId: 'usr-employer-1', employerName: 'National Federation of State Cooperative Banks (NAFSCOB)', employerLogo: null, title: 'SHG Livelihood Coordinator', description: 'Facilitate SHG meetings, thrift collection, loan documentation, and DAY-NRLM reporting for 50+ groups in Barabanki district.', requiredSkills: ['SHG Governance', 'Microfinance', 'DAY-NRLM'], location: 'Barabanki, Uttar Pradesh', salaryRange: '₹15,000 – ₹20,000 / month', type: 'Apprenticeship', postedDate: '2026-09-05', openingsCount: 6 },
+    {
+      id: 'job-001',
+      employerId: 'usr-employer-amul',
+      employerName: 'Gujarat Cooperative Milk Marketing Federation (GCMMF / AMUL)',
+      employerLogo: 'https://images.unsplash.com/photo-1527153857715-3908f2ae5e81?w=80&auto=format&fit=crop&q=80',
+      title: 'Assistant Milk Procurement & AMCS Officer',
+      description: 'Responsible for overseeing 15 village-level Automatic Milk Collection Stations (AMCS), maintaining FAT/SNF calibration standards, and ensuring clean cold chain logistics to district chilling centres.',
+      requiredSkills: ['Dairy Cold Chain', 'AMCS Operations', 'FAT/SNF Testing', 'Milk Procurement'],
+      preferredSkills: ['NDDB Standards', 'Dairy ERP'],
+      requiredQualification: 'Graduation / Diploma (B.Com / B.Sc / Dairy Diploma)',
+      minimumExperience: 0,
+      requiredCertificates: ['Dairy Cooperative Management', 'Dairy & Livestock Cooperative Management'],
+      location: 'Anand / Vadodara, Gujarat',
+      salaryRange: '₹3.2 - ₹4.5 Lakh / annum',
+      type: 'Full-time',
+      postedDate: '2026-02-25',
+      openingsCount: 12,
+      status: 'ACTIVE',
+    },
+    {
+      id: 'job-002',
+      employerId: 'usr-employer-amul',
+      employerName: 'Gujarat Cooperative Milk Marketing Federation (GCMMF / AMUL)',
+      employerLogo: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=80&auto=format&fit=crop&q=80',
+      title: 'PACS Digital Business Associate (CSC & Dairy Network)',
+      description: 'Drive milk society ERP integration, supply chain digitization, and manage PACS-to-Dairy cooperative touchpoints across regional chilling units.',
+      requiredSkills: ['PACS Digitalization', 'AMCS Operations', 'Dairy ERP', 'KCC Accounting'],
+      preferredSkills: ['Double-Entry ERP', 'CSC Operations'],
+      requiredQualification: 'Graduation / Diploma / B.Com / BCA',
+      minimumExperience: 0,
+      requiredCertificates: ['PACS Computerization & ERP Operations'],
+      location: 'Anand / Surat, Gujarat',
+      salaryRange: '₹2.8 - ₹3.8 Lakh / annum',
+      type: 'Full-time',
+      postedDate: '2026-02-28',
+      openingsCount: 20,
+      status: 'ACTIVE',
+    },
+    {
+      id: 'job-003',
+      employerId: 'usr-employer-amul',
+      employerName: 'Gujarat Cooperative Milk Marketing Federation (GCMMF / AMUL)',
+      employerLogo: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=80&auto=format&fit=crop&q=80',
+      title: 'Cooperative Banking & PACS Credit Auditor Trainee',
+      description: 'Assist in statutory inspection, KCC interest subvention reconciliation, and computerized ledger verification across DCCB branches and primary credit societies.',
+      requiredSkills: ['KCC Management', 'Cooperative Audit', 'Double-Entry ERP', 'NABARD Guidelines'],
+      preferredSkills: ['Statutory Inspection', 'Banking Regulations'],
+      requiredQualification: 'B.Com / M.Com / Cooperative Diploma / CA Inter',
+      minimumExperience: 1,
+      requiredCertificates: ['Cooperative Banking & Audit'],
+      location: 'Pune / Nashik, Maharashtra',
+      salaryRange: '₹25,000 / month (Apprenticeship)',
+      type: 'Apprenticeship',
+      postedDate: '2026-03-01',
+      openingsCount: 8,
+      status: 'ACTIVE',
+    },
   ];
   for (const j of jobs) {
     await prisma.jobPosting.upsert({ where: { id: j.id }, update: j, create: j as any });
   }
-  console.log('  ✓ 3 job postings');
+  console.log('  ✓ 3 job postings (GCMMF / AMUL & Banking)');
 
   // ─── Notifications for Rameshwar ──────────────────────────────────────────
   const notifications = [

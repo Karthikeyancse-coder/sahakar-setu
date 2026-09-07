@@ -30,21 +30,28 @@ export const MyCourses: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'all' | 'in_progress' | 'completed'>('all');
   const [dbEnrollments, setDbEnrollments] = useState<Enrollment[]>([]);
+  const [dbCerts, setDbCerts] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch real enrollments from PostgreSQL via backend API on mount
+  // Fetch real enrollments and certificates from PostgreSQL via backend API on mount
   const fetchMyEnrollments = async () => {
     try {
       setLoading(true);
-      const data = await api.enrollments.mine();
-      if (Array.isArray(data)) {
-        setDbEnrollments(data);
+      const [enrRes, certRes] = await Promise.allSettled([
+        api.enrollments.mine(),
+        api.certificates.mine(),
+      ]);
+      if (enrRes.status === 'fulfilled' && Array.isArray(enrRes.value)) {
+        setDbEnrollments(enrRes.value);
         if (setContextEnrollments) {
-          setContextEnrollments(data);
+          setContextEnrollments(enrRes.value);
         }
       }
+      if (certRes.status === 'fulfilled' && Array.isArray(certRes.value)) {
+        setDbCerts(certRes.value);
+      }
     } catch (err) {
-      console.warn('[MyCourses] Failed to fetch enrollments from DB:', err);
+      console.warn('[MyCourses] Failed to fetch enrollments or certificates from DB:', err);
     } finally {
       setLoading(false);
     }
@@ -76,11 +83,29 @@ export const MyCourses: React.FC = () => {
       ? enrollment.completedLessonIds
       : [];
     const completedCount = completedList.length;
+
+    const cert = dbCerts.find(
+      (c: any) =>
+        c.courseId === enrollment.courseId ||
+        (enrollment.courseId.includes('dairy') && c.courseId?.includes('dairy')) ||
+        (enrollment.courseId.includes('pacs') && c.courseId?.includes('pacs')) ||
+        (enrollment.courseId.includes('shg') && c.courseId?.includes('shg'))
+    );
+    const hasCertificate = Boolean(cert);
+
+    const completedQuizIds = Array.isArray(enrollment.completedQuizIds) ? enrollment.completedQuizIds : [];
+    const hasPassedAssessment = completedQuizIds.length > 0 || hasCertificate;
+    const allLessonsDone = totalLessons > 0 && completedCount >= totalLessons;
+    const lessonProgress = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+
     const statusLower = (enrollment.status || '').toLowerCase();
-    const isCompleted = statusLower === 'completed' || (enrollment.progressPercent || 0) >= 100;
-    const progress = isCompleted
-      ? 100
-      : Math.min(100, Math.max(0, enrollment.progressPercent || (totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0)));
+    const isCompleted =
+      hasCertificate ||
+      statusLower === 'completed' ||
+      (allLessonsDone && hasPassedAssessment) ||
+      (enrollment.progressPercent || 0) >= 100;
+
+    const progress = isCompleted ? 100 : lessonProgress;
 
     return {
       enrollment,
@@ -96,6 +121,11 @@ export const MyCourses: React.FC = () => {
       },
       totalLessons: totalLessons || Math.max(completedCount, 2),
       completedCount,
+      lessonProgress,
+      allLessonsDone,
+      hasPassedAssessment,
+      hasCertificate,
+      cert,
       progress,
       isCompleted,
     };
@@ -221,7 +251,7 @@ export const MyCourses: React.FC = () => {
       ) : (
         /* 6. Course Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredData.map(({ course, completedCount, totalLessons, progress, isCompleted }) => {
+          {filteredData.map(({ course, completedCount, totalLessons, progress, isCompleted, allLessonsDone, hasPassedAssessment, hasCertificate, cert, lessonProgress }) => {
             const title = currentLanguage === 'hi' ? course.titleHi || course.title : currentLanguage === 'mr' ? course.titleMr || course.title : course.title;
             const description = currentLanguage === 'hi' ? course.descriptionHi || course.description : currentLanguage === 'mr' ? course.descriptionMr || course.description : course.description;
 
@@ -268,22 +298,51 @@ export const MyCourses: React.FC = () => {
                       {description}
                     </p>
 
-                    {/* Progress Bar */}
-                    <div className="space-y-1.5 pt-2">
+                    {/* Progress Bar & Status */}
+                    <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-govText-secondary font-medium">
-                          {isCompleted ? 'All curriculum completed' : `${completedCount} of ${totalLessons} lessons`}
+                          Lessons: {completedCount} of {totalLessons} completed
                         </span>
-                        <span className="font-bold text-govTeal-800">{progress}%</span>
+                        <span className="font-bold text-govTeal-800">
+                          {totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0}%
+                        </span>
                       </div>
                       <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all duration-500 ${
-                            isCompleted ? 'bg-emerald-600' : 'bg-govTeal-600'
+                            allLessonsDone ? 'bg-emerald-600' : 'bg-govTeal-600'
                           }`}
-                          style={{ width: `${progress}%` }}
+                          style={{ width: `${totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0}%` }}
                         />
                       </div>
+
+                      {isCompleted ? (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Course Completed
+                          </span>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-100 text-teal-800">
+                            <CheckCircle2 className="w-3 h-3 text-teal-600" /> Assessment Passed
+                          </span>
+                          {hasCertificate && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-saffron-100 text-saffron-900">
+                              <Award className="w-3 h-3 text-saffron-600" /> Certificate Earned
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between text-[11px] text-govText-muted pt-0.5">
+                          <span>Assessment:</span>
+                          {hasPassedAssessment ? (
+                            <span className="text-emerald-700 font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Passed (≥75%)
+                            </span>
+                          ) : (
+                            <span className="text-govText-secondary font-medium">Pending Assessment</span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -298,10 +357,10 @@ export const MyCourses: React.FC = () => {
                     <span>{isCompleted ? 'Review Content' : (t.myCourses?.resume || 'Resume Learning')}</span>
                   </button>
 
-                  {isCompleted && (
+                  {hasCertificate && (
                     <button
-                      onClick={() => navigate('certificates')}
-                      className="px-3 py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                      onClick={() => navigate('certificates', { certId: cert?.id })}
+                      className="px-3 py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-300 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                       title="View Official Certificate"
                     >
                       <Award className="w-4 h-4 text-saffron-600" />

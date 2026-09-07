@@ -45,3 +45,21 @@ export const requireTrainee = (req: Request, res: Response, next: NextFunction) 
   }
   next();
 };
+
+/**
+ * optionalAuth — attaches decoded JWT to req.user if present, but does not reject if absent.
+ */
+export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = header.slice(7);
+  try {
+    const payload = jwt.verify(token, process.env.JWT_SECRET!) as AuthPayload;
+    req.user = payload;
+  } catch {}
+  next();
+};
+

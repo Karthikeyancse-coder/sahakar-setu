@@ -280,6 +280,8 @@ export interface Certificate {
   status?: string;
   candidateName?: string;
   issueDate?: string;
+  completionDate?: string;
+  score?: number;
   cooperative?: string;
 }
 
@@ -291,11 +293,28 @@ export interface JobPosting {
   title: string;
   description: string;
   requiredSkills: string[];
+  preferredSkills?: string[];
+  requiredQualification?: string;
+  minimumExperience?: number;
+  requiredCertificates?: string[];
   location: string;
   salaryRange: string;
-  type: 'Full-time' | 'Apprenticeship' | 'Contract';
+  type: 'Full-time' | 'Apprenticeship' | 'Contract' | string;
   postedDate: string;
   openingsCount: number;
+  status?: string;
+
+  // Dynamic Trainee Match properties
+  matchScore?: number | null;
+  matchLabel?: 'Excellent Match' | 'Strong Match' | 'Good Match' | 'Moderate Match' | 'Low Match' | string | null;
+  eligibilityStatus?: 'ELIGIBLE' | 'NOT_ELIGIBLE' | string | null;
+  ineligibilityReasons?: string[];
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  hasRequiredCertificate?: boolean;
+  hasApplied?: boolean;
+  applicationStatus?: string | null;
+  applicationId?: string | null;
 }
 
 export interface JobInterest {
@@ -305,8 +324,16 @@ export interface JobInterest {
   traineeName: string;
   traineeEmail: string;
   traineeSkills: string[];
+  matchedSkills?: string[];
+  missingSkills?: string[];
+  matchScore?: number;
+  eligibilityStatus?: 'ELIGIBLE' | 'NOT_ELIGIBLE' | string;
+  ineligibilityReasons?: string[];
   timestamp: string;
-  status: 'submitted' | 'reviewed' | 'shortlisted';
+  appliedAt?: string;
+  status: 'APPLIED' | 'UNDER_REVIEW' | 'SHORTLISTED' | 'INTERVIEW' | 'SELECTED' | 'REJECTED' | 'submitted' | 'reviewed' | 'shortlisted' | string;
+  job?: JobPosting;
+  user?: User;
 }
 
 export interface HostelBed {

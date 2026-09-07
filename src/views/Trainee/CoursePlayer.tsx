@@ -1,23 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
   PlayCircle,
   CheckCircle2,
+  Circle,
   BookOpen,
-  Award,
   Globe,
   Sparkles,
-  Download,
   FileText,
   Menu,
   X,
-  Volume2,
-  RotateCcw
+  Lock,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Language, Lesson, CourseModule } from '../../types';
+import { YouTubeLessonPlayer } from '../../components/common/YouTubeLessonPlayer';
+import api from '../../lib/api';
 
 export const CoursePlayer: React.FC = () => {
   const {
@@ -33,69 +35,154 @@ export const CoursePlayer: React.FC = () => {
 
   const courseId = activeViewParams?.courseId || courses[0]?.id;
   const course = courses.find(c => c.id === courseId) || courses[0];
-  const enrollment = enrollments.find(e => e.userId === currentUser.id && e.courseId === course.id);
+  const enrollment = enrollments.find(e => e.userId === currentUser.id && (e.courseId === course.id || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301'));
 
   const [activeModIdx, setActiveModIdx] = useState(0);
   const [activeLesIdx, setActiveLesIdx] = useState(0);
   const [contentLang, setContentLang] = useState<Language>(currentLanguage);
   const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' ? window.innerWidth >= 1024 : false);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [liveLearningData, setLiveLearningData] = useState<any>(null);
+  const [locallyCompletedLessons, setLocallyCompletedLessons] = useState<string[]>([]);
+  const [quizLockNotice, setQuizLockNotice] = useState<string | null>(null);
 
   useEffect(() => {
     setContentLang(currentLanguage);
   }, [currentLanguage]);
 
-  const currentModule: CourseModule | undefined = course?.modules[activeModIdx] || course?.modules[0];
-  const currentLesson: Lesson | undefined = currentModule?.lessons[activeLesIdx] || currentModule?.lessons[0];
+  // ─── Fetch live course learning data from backend ──────────────────────
+  const fetchLearningData = useCallback(() => {
+    if (currentUser?.id && course?.id) {
+      api.learning.getCourse(course.id)
+        .then(res => {
+          if (res && res.modules) {
+            setLiveLearningData(res);
+          }
+        })
+        .catch(err => {
+          console.warn('[CoursePlayer] Could not fetch live learning data:', err.message);
+        });
+    }
+  }, [course?.id, currentUser?.id]);
 
-  const totalLessons = course ? course.modules.reduce((acc, m) => acc + m.lessons.length, 0) : 0;
-  const completedLessons = enrollment?.completedLessonIds || [];
+  useEffect(() => {
+    fetchLearningData();
+  }, [fetchLearningData]);
+
+  // Combine modules: prefer live learning modules with videoUrls & database fields
+  const modulesList: CourseModule[] = useMemo(() => {
+    if (liveLearningData?.modules && Array.isArray(liveLearningData.modules) && liveLearningData.modules.length > 0) {
+      return liveLearningData.modules;
+    }
+    return course?.modules || [];
+  }, [liveLearningData, course?.modules]);
+
+  const currentModule: CourseModule | undefined = modulesList[activeModIdx] || modulesList[0];
+  const currentLesson: (Lesson & { videoUrl?: string; completed?: boolean; progressPercent?: number; progressSeconds?: number }) | undefined =
+    currentModule?.lessons[activeLesIdx] || currentModule?.lessons[0];
+
+  // Completed lessons set: union of enrollment completed IDs, live database flags, and local completions
+  const completedLessons = useMemo(() => {
+    const set = new Set<string>();
+    if (enrollment?.completedLessonIds) {
+      enrollment.completedLessonIds.forEach(id => set.add(id));
+    }
+    if (liveLearningData?.modules) {
+      liveLearningData.modules.forEach((m: any) => {
+        m.lessons?.forEach((l: any) => {
+          if (l.isCompleted || l.completed) set.add(l.id);
+        });
+      });
+    }
+    locallyCompletedLessons.forEach(id => set.add(id));
+    return Array.from(set);
+  }, [enrollment?.completedLessonIds, liveLearningData, locallyCompletedLessons]);
+
+  const totalLessons = useMemo(() => {
+    return modulesList.reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
+  }, [modulesList]);
+
   const completedCount = completedLessons.length;
-  const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+  const overallProgressPercent = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
 
   const isCurrentCompleted = currentLesson ? completedLessons.includes(currentLesson.id) : false;
 
   const isFirstLesson = activeModIdx === 0 && activeLesIdx === 0;
   const isLastLessonInModule = currentModule ? activeLesIdx === currentModule.lessons.length - 1 : false;
-  const isLastLessonInCourse = course ? activeModIdx === course.modules.length - 1 && isLastLessonInModule : false;
+  const isLastLessonInCourse = activeModIdx === modulesList.length - 1 && isLastLessonInModule;
 
+  // Module quiz lock calculation: ALL lessons in this module must be completed
+  const currentModuleLessonIds = currentModule ? currentModule.lessons.map(l => l.id) : [];
+  const isCurrentModuleQuizUnlocked =
+    currentModuleLessonIds.length > 0 &&
+    currentModuleLessonIds.every(id => completedLessons.includes(id));
+
+  // Handle lesson selection
   const handleSelectLesson = (modIdx: number, lesIdx: number) => {
     setActiveModIdx(modIdx);
     setActiveLesIdx(lesIdx);
+    setQuizLockNotice(null);
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       setSidebarOpen(false);
     }
   };
 
   const handlePreviousLesson = () => {
+    setQuizLockNotice(null);
     if (activeLesIdx > 0) {
       setActiveLesIdx(prev => prev - 1);
     } else if (activeModIdx > 0) {
-      const prevMod = course.modules[activeModIdx - 1];
+      const prevMod = modulesList[activeModIdx - 1];
       setActiveModIdx(prev => prev - 1);
       setActiveLesIdx(prevMod.lessons.length - 1);
     }
   };
 
-  const handleCompleteAndNext = () => {
-    if (currentLesson) {
-      markLessonComplete(course.id, currentLesson.id);
-    }
-
+  // Continue to Next: advances playback WITHOUT auto-completing next lesson!
+  const handleNextLesson = () => {
+    setQuizLockNotice(null);
     if (!isLastLessonInModule) {
       setActiveLesIdx(prev => prev + 1);
     } else if (currentModule?.quiz) {
-      navigate('quiz', { courseId: course.id, moduleId: currentModule.id });
-    } else if (activeModIdx < course.modules.length - 1) {
+      if (isCurrentModuleQuizUnlocked) {
+        navigate('quiz', { courseId: course.id, moduleId: currentModule.id });
+      } else {
+        setQuizLockNotice('Please finish all lessons in this module before taking the assessment quiz.');
+      }
+    } else if (activeModIdx < modulesList.length - 1) {
       setActiveModIdx(prev => prev + 1);
       setActiveLesIdx(0);
     }
   };
 
+  // Callback when YouTube player reaches >= 90% threshold
+  const handleLessonCompleted = (completedLessonId: string) => {
+    setLocallyCompletedLessons(prev => (prev.includes(completedLessonId) ? prev : [...prev, completedLessonId]));
+    markLessonComplete(course.id, completedLessonId);
+    // Background sync
+    fetchLearningData();
+  };
+
   const lessonTitle = contentLang === 'hi' ? currentLesson?.titleHi : contentLang === 'mr' ? currentLesson?.titleMr : currentLesson?.title || '';
-  const lessonContent = currentLesson?.contentByLanguage[contentLang]?.text || currentLesson?.contentByLanguage?.en?.text || '';
+  const lessonContent = currentLesson?.contentByLanguage?.[contentLang]?.text || currentLesson?.contentByLanguage?.en?.text || (currentLesson as any)?.contentEn?.text || '';
   const courseTitle = contentLang === 'hi' ? course?.titleHi : contentLang === 'mr' ? course?.titleMr : course?.title || '';
   const moduleTitle = contentLang === 'hi' ? currentModule?.titleHi : contentLang === 'mr' ? currentModule?.titleMr : currentModule?.title || '';
+
+  // Fallback video URL mapping for lessons
+  const defaultLessonVideos: Record<string, string> = {
+    'les-dairy-1-1': 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    'les-dairy-1-2': 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    'les-pacs-1-1': 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    'les-pacs-1-2': 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+    'les-pacs-2-1': 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    'les-pacs-2-2': 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+    'les-shg-1-1': 'https://www.youtube.com/watch?v=M7lc1UVf-VE',
+    'les-shg-1-2': 'https://www.youtube.com/watch?v=aqz-KE-bpKQ',
+  };
+
+  const resolvedVideoUrl =
+    (currentLesson?.videoUrl && !currentLesson.videoUrl.includes('ysz5S6PUM-U'))
+      ? currentLesson.videoUrl
+      : (currentLesson?.id ? defaultLessonVideos[currentLesson.id] : null) || 'https://www.youtube.com/watch?v=aqz-KE-bpKQ';
 
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col bg-gray-50">
@@ -150,13 +237,13 @@ export const CoursePlayer: React.FC = () => {
             </button>
           </div>
 
-          {/* Progress Indicator */}
+          {/* Overall Course Progress */}
           <div className="hidden sm:flex items-center gap-2 text-xs">
-            <span className="text-govTeal-300 font-semibold">{progressPercent}%</span>
+            <span className="text-govTeal-300 font-semibold">{overallProgressPercent}%</span>
             <div className="w-20 bg-govTeal-900 h-2 rounded-full overflow-hidden border border-govTeal-800">
               <div
                 className="bg-saffron-400 h-full rounded-full transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
+                style={{ width: `${overallProgressPercent}%` }}
               />
             </div>
           </div>
@@ -189,22 +276,28 @@ export const CoursePlayer: React.FC = () => {
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } lg:translate-x-0 transition-transform duration-300 ease-in-out fixed lg:static inset-y-0 left-0 z-40 w-80 max-w-[85vw] bg-white border-r border-gray-200 flex flex-col h-[calc(100vh-7.5rem)] shadow-xl lg:shadow-none`}
         >
+          {/* Sidebar Header with Progress Counter */}
           <div className="p-4 border-b border-gray-100 bg-govBg/50 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <BookOpen className="w-4 h-4 text-govTeal-700" />
               <span className="text-xs font-bold text-govText-primary uppercase tracking-wider">
-                {t.courseDetail?.syllabus || 'Course Curriculum'}
+                {t.courseDetail?.syllabus || 'Curriculum & Syllabus'}
               </span>
             </div>
-            <span className="text-[11px] font-bold text-govTeal-800 bg-govTeal-100 px-2 py-0.5 rounded-md">
+            <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
               {completedCount}/{totalLessons} Done
             </span>
           </div>
 
+          {/* Modules and Lessons List */}
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
-            {course.modules.map((module, mIdx) => {
+            {modulesList.map((module, mIdx) => {
               const mTitle = contentLang === 'hi' ? module.titleHi : contentLang === 'mr' ? module.titleMr : module.title;
               const isModActive = activeModIdx === mIdx;
+
+              // Check if all lessons in this module are completed
+              const modLessonIds = module.lessons.map(l => l.id);
+              const isModUnlocked = modLessonIds.length > 0 && modLessonIds.every(id => completedLessons.includes(id));
 
               return (
                 <div key={module.id} className="space-y-1">
@@ -226,15 +319,22 @@ export const CoursePlayer: React.FC = () => {
                             isLesActive
                               ? 'bg-govTeal-700 text-white font-bold shadow-xs'
                               : isDone
-                              ? 'text-govText-secondary hover:bg-gray-100 font-medium'
+                              ? 'text-emerald-900 bg-emerald-50/60 hover:bg-emerald-100/60 font-medium'
                               : 'text-govText-primary hover:bg-gray-100 font-medium'
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 pr-2">
+                            {/* Required sidebar icon states:
+                                ✓ 1.1 The Amul Model (when completed)
+                                ▶ 1.1 The Amul Model (when active)
+                                ○ 1.2 Milk Quality Testing (when pending)
+                            */}
                             {isDone ? (
                               <CheckCircle2 className={`w-3.5 h-3.5 flex-shrink-0 ${isLesActive ? 'text-white' : 'text-emerald-600'}`} />
+                            ) : isLesActive ? (
+                              <PlayCircle className="w-3.5 h-3.5 flex-shrink-0 text-saffron-300" />
                             ) : (
-                              <PlayCircle className={`w-3.5 h-3.5 flex-shrink-0 ${isLesActive ? 'text-saffron-300' : 'text-govText-muted'}`} />
+                              <Circle className="w-3.5 h-3.5 flex-shrink-0 text-gray-300" />
                             )}
                             <span className="truncate">{mIdx + 1}.{lIdx + 1} {lTitle}</span>
                           </div>
@@ -245,22 +345,39 @@ export const CoursePlayer: React.FC = () => {
                       );
                     })}
 
-                    {/* Module Assessment Quiz Button */}
+                    {/* Module Assessment Quiz Button with Lock Status */}
                     {module.quiz && (
                       <button
-                        onClick={() => navigate('quiz', { courseId: course.id, moduleId: module.id })}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer mt-1 border ${
-                          activeModIdx === mIdx && isLastLessonInModule
-                            ? 'bg-saffron-50 border-saffron-300 text-saffron-900 font-bold'
-                            : 'bg-gray-50 border-dashed border-gray-200 text-govText-secondary hover:bg-gray-100'
+                        onClick={() => {
+                          if (isModUnlocked) {
+                            navigate('quiz', { courseId: course.id, moduleId: module.id });
+                          } else {
+                            setQuizLockNotice(`Module ${mIdx + 1} Quiz is locked. Complete all required lessons in this module to unlock.`);
+                          }
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all mt-1 border ${
+                          isModUnlocked
+                            ? 'bg-saffron-50 border-saffron-300 text-saffron-900 font-bold hover:bg-saffron-100 cursor-pointer shadow-xs'
+                            : 'bg-gray-50 border-gray-200 text-gray-400 cursor-not-allowed opacity-80'
                         }`}
+                        title={isModUnlocked ? 'Take module assessment' : 'Complete all lessons in this module to unlock quiz'}
                       >
                         <div className="flex items-center gap-2 min-w-0">
-                          <Sparkles className="w-3.5 h-3.5 text-saffron-600 flex-shrink-0" />
+                          {isModUnlocked ? (
+                            <Sparkles className="w-3.5 h-3.5 text-saffron-600 flex-shrink-0" />
+                          ) : (
+                            <Lock className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                          )}
                           <span className="truncate">Module {mIdx + 1} Quiz</span>
                         </div>
-                        <span className="text-[10px] bg-saffron-100 text-saffron-900 px-1.5 py-0.5 rounded font-bold">
-                          {module.quiz.passThreshold}% Pass
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                            isModUnlocked
+                              ? 'bg-saffron-200 text-saffron-900'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}
+                        >
+                          {isModUnlocked ? `${module.quiz.passThreshold}% Pass` : '🔒 Locked'}
                         </span>
                       </button>
                     )}
@@ -278,7 +395,9 @@ export const CoursePlayer: React.FC = () => {
             {/* Mobile In-flow Module Selector */}
             <div className="lg:hidden flex items-center justify-between p-3 bg-govBg rounded-xl border border-gray-200 gap-2">
               <div className="min-w-0">
-                <span className="text-[10px] font-bold text-govTeal-800 uppercase tracking-wider block">Module {activeModIdx + 1} of {course?.modules.length}</span>
+                <span className="text-[10px] font-bold text-govTeal-800 uppercase tracking-wider block">
+                  Module {activeModIdx + 1} of {modulesList.length}
+                </span>
                 <p className="text-xs font-bold text-govText-primary truncate">{moduleTitle}</p>
               </div>
               <button
@@ -292,14 +411,23 @@ export const CoursePlayer: React.FC = () => {
 
             {/* Lesson Title Header */}
             <div className="border-b border-gray-200 pb-4">
-              <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
-                Module {activeModIdx + 1} • Lesson {activeLesIdx + 1}
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
+                  Module {activeModIdx + 1} • Lesson {activeLesIdx + 1}
+                </span>
+                {isCurrentCompleted && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full border border-emerald-300">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Completed</span>
+                  </span>
+                )}
+              </div>
+
               <h1 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1">
                 {lessonTitle}
               </h1>
               <div className="flex items-center gap-4 mt-2 text-xs text-govText-secondary">
-                <span>Estimated duration: {currentLesson?.durationMinutes || 10} minutes</span>
+                <span>Estimated duration: {currentLesson?.durationMinutes || 15} minutes</span>
                 <span>•</span>
                 <span className="flex items-center gap-1">
                   <Globe className="w-3.5 h-3.5 text-govTeal-600" />
@@ -308,42 +436,39 @@ export const CoursePlayer: React.FC = () => {
               </div>
             </div>
 
-            {/* Multimedia Simulation Player */}
-            <div className="relative aspect-video rounded-2xl bg-govTeal-950 overflow-hidden shadow-lg border border-govTeal-900 flex flex-col justify-between p-6">
-              <div className="flex items-center justify-between text-white/80 text-xs">
-                <span className="bg-white/10 px-2.5 py-1 rounded-md backdrop-blur-sm font-semibold">
-                  National Cooperative Training Video Simulation
-                </span>
-                <span className="text-xs font-mono">1080p HD • Audio EN / HI</span>
-              </div>
-
-              {/* Center Play Button Overlay */}
-              <div className="flex flex-col items-center justify-center space-y-3 my-auto">
+            {/* Quiz Locked Banner Notice (if student clicked locked quiz) */}
+            {quizLockNotice && (
+              <div className="p-3.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 flex items-center justify-between animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>{quizLockNotice}</span>
+                </div>
                 <button
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-16 h-16 rounded-full bg-saffron-500 hover:bg-saffron-600 text-white flex items-center justify-center shadow-2xl transition-transform hover:scale-105 cursor-pointer"
+                  onClick={() => setQuizLockNotice(null)}
+                  className="text-amber-700 hover:text-amber-900 font-bold ml-2 cursor-pointer"
                 >
-                  <PlayCircle className="w-8 h-8" />
+                  <X className="w-4 h-4" />
                 </button>
-                <p className="text-xs text-white/90 font-medium">
-                  {isPlaying ? 'Playing lesson demonstration...' : 'Click to start interactive video walkthrough'}
-                </p>
               </div>
+            )}
 
-              {/* Bottom Progress Bar & Controls */}
-              <div className="space-y-2">
-                <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-saffron-400 h-full w-2/5 rounded-full" />
-                </div>
-                <div className="flex items-center justify-between text-[11px] text-white/70">
-                  <span>04:12 / {currentLesson?.durationMinutes || 10}:00</span>
-                  <div className="flex items-center gap-3">
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>NCCT Standard LMS</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            {/* REAL YOUTUBE IFRAME PLAYER WITH TRACKING & COMPLETION */}
+            {currentLesson && (
+              <YouTubeLessonPlayer
+                key={currentLesson.id}
+                lessonId={currentLesson.id}
+                courseId={course.id}
+                userId={currentUser.id}
+                videoUrl={resolvedVideoUrl}
+                lessonTitle={lessonTitle}
+                durationMinutes={currentLesson.durationMinutes || 15}
+                initialProgressSeconds={currentLesson.progressSeconds || 0}
+                initialProgressPercent={currentLesson.progressPercent || (isCurrentCompleted ? 100 : 0)}
+                initialIsCompleted={isCurrentCompleted}
+                completionThresholdPercent={90}
+                onLessonCompleted={handleLessonCompleted}
+              />
+            )}
 
             {/* Lesson Body Content */}
             <div className="bg-white rounded-2xl p-6 sm:p-8 border border-govText-border shadow-sm space-y-4">
@@ -353,7 +478,7 @@ export const CoursePlayer: React.FC = () => {
               </h2>
 
               <div className="text-sm text-govText-secondary leading-relaxed space-y-3">
-                <p>{lessonContent}</p>
+                <p>{lessonContent || 'This lesson covers key principles and operational best practices in cooperative dairy governance and milk procurement.'}</p>
               </div>
 
               {/* Practical Guidance Callout */}
@@ -385,17 +510,32 @@ export const CoursePlayer: React.FC = () => {
               <span>{t.player?.previousLesson || 'Previous Lesson'}</span>
             </button>
 
-            <button
-              onClick={handleCompleteAndNext}
-              className="w-full sm:w-auto px-6 py-2.5 min-h-[44px] bg-govTeal-600 hover:bg-govTeal-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer"
-            >
-              <span>
-                {isLastLessonInModule && currentModule?.quiz
-                  ? (t.player?.startQuiz || 'Complete Lesson & Take Module Quiz')
-                  : (t.player?.markComplete || 'Mark Complete & Continue')}
-              </span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-3">
+              {isCurrentCompleted && (
+                <span className="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>Lesson Completed</span>
+                </span>
+              )}
+
+              <button
+                onClick={handleNextLesson}
+                className={`w-full sm:w-auto px-6 py-2.5 min-h-[44px] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer ${
+                  isCurrentCompleted
+                    ? 'bg-emerald-600 hover:bg-emerald-700'
+                    : 'bg-govTeal-600 hover:bg-govTeal-700'
+                }`}
+              >
+                <span>
+                  {isLastLessonInModule && currentModule?.quiz
+                    ? isCurrentModuleQuizUnlocked
+                      ? (t.player?.startQuiz || 'Take Module Quiz →')
+                      : 'Complete Lessons to Unlock Quiz 🔒'
+                    : 'Continue to Next Lesson →'}
+                </span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
         </div>

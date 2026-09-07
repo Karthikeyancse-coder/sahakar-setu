@@ -24,6 +24,7 @@ import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { GlobalModal } from '../../components/common/GlobalModal';
 import { JobPosting, JobInterest, User } from '../../types';
+import api from '../../lib/api';
 
 interface EmployerJobsViewProps {
   initialOpenNewModal?: boolean;
@@ -54,10 +55,21 @@ export const EmployerJobsView: React.FC<EmployerJobsViewProps> = ({ initialOpenN
   const [jobType, setJobType] = useState<'Full-time' | 'Apprenticeship' | 'Contract'>('Full-time');
   const [jobOpenings, setJobOpenings] = useState<number>(10);
 
+  const [liveCandidates, setLiveCandidates] = useState<any[]>([]);
+
   useEffect(() => {
     if (initialOpenNewModal) {
       setIsNewJobModalOpen(true);
     }
+
+    api.jobs
+      .recruiterCandidates()
+      .then(candidates => {
+        if (Array.isArray(candidates) && candidates.length > 0) {
+          setLiveCandidates(candidates);
+        }
+      })
+      .catch(console.warn);
   }, [initialOpenNewModal]);
 
   // Employer's postings (matched by employerId or GCMMF/Amul association)
@@ -70,10 +82,42 @@ export const EmployerJobsView: React.FC<EmployerJobsViewProps> = ({ initialOpenN
   // Candidate interests scoped strictly to this employer's postings
   const employerInterests = jobInterests.filter(ji => employerJobIds.has(ji.jobPostingId));
 
+  // Merge live server candidates with employerInterests
+  const allCandidatesMap = new Map<string, any>();
+  liveCandidates.forEach(c => allCandidatesMap.set(c.id, c));
+  employerInterests.forEach(ei => {
+    if (!allCandidatesMap.has(ei.id)) {
+      allCandidatesMap.set(ei.id, {
+        ...ei,
+        matchScore: ei.matchScore ?? 80,
+        eligibilityStatus: ei.eligibilityStatus ?? 'ELIGIBLE',
+      });
+    }
+  });
+
+  // Sort candidates: ELIGIBLE first, then matchScore descending
+  const sortedCandidates = Array.from(allCandidatesMap.values()).sort((a: any, b: any) => {
+    if (a.eligibilityStatus === 'ELIGIBLE' && b.eligibilityStatus !== 'ELIGIBLE') return -1;
+    if (a.eligibilityStatus !== 'ELIGIBLE' && b.eligibilityStatus === 'ELIGIBLE') return 1;
+    return (b.matchScore || 0) - (a.matchScore || 0);
+  });
+
   // Filtered candidate interests if filter is applied
   const filteredInterests = filterJobId === 'all'
-    ? employerInterests
-    : employerInterests.filter(ji => ji.jobPostingId === filterJobId);
+    ? sortedCandidates
+    : sortedCandidates.filter(ji => ji.jobPostingId === filterJobId);
+
+  const handleStatusChange = async (interestId: string, newStatus: string) => {
+    updateJobInterestStatus(interestId, newStatus as any);
+    setLiveCandidates(prev =>
+      prev.map(c => (c.id === interestId ? { ...c, status: newStatus } : c))
+    );
+    try {
+      await api.jobs.updateStatus(interestId, newStatus);
+    } catch (e) {
+      console.warn('Backend status update failed:', e);
+    }
+  };
 
   // Handle Create Job Submit
   const handleCreateJob = (e: React.FormEvent) => {
@@ -395,17 +439,20 @@ export const EmployerJobsView: React.FC<EmployerJobsViewProps> = ({ initialOpenN
                   <thead>
                     <tr className="bg-govBg text-govText-secondary uppercase font-semibold border-b border-gray-200">
                       <th className="p-3.5">Candidate Name</th>
-                      <th className="p-3.5">Cooperative Affiliation</th>
                       <th className="p-3.5">Applied Opening</th>
-                      <th className="p-3.5">Date & Time</th>
+                      <th className="p-3.5">Match Score</th>
+                      <th className="p-3.5">Eligibility</th>
+                      <th className="p-3.5">Cooperative Affiliation</th>
                       <th className="p-3.5">Review Status</th>
                       <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredInterests.map(interest => {
-                      const job = jobs.find(j => j.id === interest.jobPostingId);
-                      const traineeUser = SEED_USERS.find(u => u.id === interest.userId);
+                      const job = interest.job || jobs.find(j => j.id === interest.jobPostingId);
+                      const traineeUser = interest.user || SEED_USERS.find(u => u.id === interest.userId);
+                      const matchScore = interest.matchScore ?? 80;
+                      const isEligible = (interest.eligibilityStatus || 'ELIGIBLE') === 'ELIGIBLE';
 
                       return (
                         <tr key={interest.id} className="hover:bg-govBg/50 transition-colors">
@@ -428,13 +475,6 @@ export const EmployerJobsView: React.FC<EmployerJobsViewProps> = ({ initialOpenN
                             </div>
                           </td>
 
-                          {/* Cooperative Affiliation */}
-                          <td className="p-3.5">
-                            <span className="text-xs font-semibold text-govTeal-800">
-                              {traineeUser?.cooperativeAffiliation || 'Primary Agricultural Cooperative Society'}
-                            </span>
-                          </td>
-
                           {/* Applied Job */}
                           <td className="p-3.5">
                             <span className="font-bold text-govText-primary block">
@@ -445,24 +485,57 @@ export const EmployerJobsView: React.FC<EmployerJobsViewProps> = ({ initialOpenN
                             </span>
                           </td>
 
-                          {/* Date */}
-                          <td className="p-3.5 text-govText-muted whitespace-nowrap">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5" />
-                              <span>{interest.timestamp}</span>
-                            </div>
+                          {/* Match Score */}
+                          <td className="p-3.5">
+                            <span
+                              className={`px-2.5 py-1 rounded-lg border text-xs font-extrabold inline-flex items-center gap-1 ${
+                                matchScore >= 80
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : matchScore >= 70
+                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
+                                  : 'bg-amber-50 text-amber-800 border-amber-300'
+                              }`}
+                            >
+                              <Sparkles className="w-3 h-3 text-emerald-600" />
+                              <span>{matchScore}%</span>
+                            </span>
+                          </td>
+
+                          {/* Eligibility */}
+                          <td className="p-3.5">
+                            {isEligible ? (
+                              <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold text-[11px] inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                <span>Eligible</span>
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-md bg-rose-50 text-rose-800 border border-rose-200 font-bold text-[11px] inline-flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3 text-rose-600" />
+                                <span>Not Eligible</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Cooperative Affiliation */}
+                          <td className="p-3.5">
+                            <span className="text-xs font-semibold text-govTeal-800">
+                              {traineeUser?.cooperativeAffiliation || 'Primary Agricultural Cooperative Society'}
+                            </span>
                           </td>
 
                           {/* Status */}
                           <td className="p-3.5">
                             <select
-                              value={interest.status}
-                              onChange={(e) => updateJobInterestStatus(interest.id, e.target.value as any)}
+                              value={(interest.status || 'APPLIED').toUpperCase()}
+                              onChange={(e) => handleStatusChange(interest.id, e.target.value)}
                               className="text-xs font-bold uppercase rounded-lg border border-gray-200 px-2 py-1 bg-white focus:ring-1 focus:ring-govTeal-600 cursor-pointer"
                             >
-                              <option value="submitted">Submitted</option>
-                              <option value="reviewed">Reviewed</option>
-                              <option value="shortlisted">Shortlisted</option>
+                              <option value="APPLIED">Applied</option>
+                              <option value="UNDER_REVIEW">Under Review</option>
+                              <option value="SHORTLISTED">Shortlisted</option>
+                              <option value="INTERVIEW">Interview</option>
+                              <option value="SELECTED">Selected</option>
+                              <option value="REJECTED">Rejected</option>
                             </select>
                           </td>
 

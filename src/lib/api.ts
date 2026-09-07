@@ -115,6 +115,12 @@ export const api = {
     enroll: (courseId: string) => post<any>(`/api/learning/courses/${courseId}/enroll`),
     getCourse: (courseId: string) => get<any>(`/api/learning/courses/${courseId}`),
     completeLesson: (lessonId: string) => post<any>(`/api/learning/lessons/${lessonId}/complete`),
+    saveLessonProgress: (
+      lessonId: string,
+      data: { progressSeconds: number; progressPercent: number; completed?: boolean }
+    ) => post<any>(`/api/learning/lessons/${lessonId}/progress`, data),
+    getLessonProgress: (lessonId: string) =>
+      get<any>(`/api/learning/lessons/${lessonId}/progress`),
     getQuiz: (quizOrModuleId: string) => get<any>(`/api/learning/quizzes/${quizOrModuleId}`),
     getModuleQuiz: (moduleId: string) => get<any>(`/api/learning/modules/${moduleId}/quiz`),
     submitQuiz: (
@@ -158,10 +164,14 @@ export const api = {
   // ─── Jobs ──────────────────────────────────────────────────────────────────
 
   jobs: {
-    list: () => get<any[]>('/api/jobs', false),
-    get: (id: string) => get<any>(`/api/jobs/${id}`, false),
+    list: () => get<any[]>('/api/jobs'),
+    get: (id: string) => get<any>(`/api/jobs/${id}`),
+    getMatch: (jobId: string) => get<any>(`/api/jobs/${jobId}/match`),
     apply: (jobId: string) => post<any>(`/api/jobs/${jobId}/apply`),
     myApplications: () => get<any[]>('/api/jobs/applications/me'),
+    recruiterCandidates: () => get<any[]>('/api/jobs/recruiter/candidates'),
+    updateStatus: (id: string, status: string) =>
+      patch<any>(`/api/jobs/applications/${id}/status`, { status }),
   },
 
   // ─── Notifications ─────────────────────────────────────────────────────────

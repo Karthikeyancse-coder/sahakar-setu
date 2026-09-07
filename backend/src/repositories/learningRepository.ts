@@ -115,6 +115,14 @@ export const learningRepository = {
     });
   },
 
+  findLessonProgressByUser: async (userId: string, lessonId: string) => {
+    return prisma.lessonProgress.findUnique({
+      where: {
+        userId_lessonId: { userId, lessonId },
+      },
+    });
+  },
+
   upsertLessonProgress: async (data: {
     id: string;
     enrollmentId: string;
@@ -123,13 +131,17 @@ export const learningRepository = {
     lessonId: string;
     userId: string;
     status: string;
+    progressSeconds?: number;
+    progressPercent?: number;
+    completed?: boolean;
     completedAt?: Date;
     startedAt?: Date;
+    lastWatchedAt?: Date;
   }) => {
     return prisma.lessonProgress.upsert({
       where: {
-        enrollmentId_lessonId: {
-          enrollmentId: data.enrollmentId,
+        userId_lessonId: {
+          userId: data.userId,
           lessonId: data.lessonId,
         },
       },
@@ -141,12 +153,20 @@ export const learningRepository = {
         lessonId: data.lessonId,
         userId: data.userId,
         status: data.status,
+        progressSeconds: data.progressSeconds ?? 0,
+        progressPercent: data.progressPercent ?? 0,
+        completed: data.completed ?? false,
         startedAt: data.startedAt || new Date(),
         completedAt: data.completedAt,
+        lastWatchedAt: data.lastWatchedAt || new Date(),
       },
       update: {
         status: data.status,
-        completedAt: data.completedAt,
+        ...(data.progressSeconds !== undefined ? { progressSeconds: data.progressSeconds } : {}),
+        ...(data.progressPercent !== undefined ? { progressPercent: data.progressPercent } : {}),
+        ...(data.completed !== undefined ? { completed: data.completed } : {}),
+        ...(data.completedAt !== undefined ? { completedAt: data.completedAt } : {}),
+        lastWatchedAt: data.lastWatchedAt || new Date(),
       },
     });
   },
