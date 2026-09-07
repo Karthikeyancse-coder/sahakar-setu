@@ -91,6 +91,8 @@ interface AppContextType {
   users: User[];
   addUser: (user: Omit<User, 'id'>) => User;
   toggleUserStatus: (userId: string) => void;
+  setEnrollments?: React.Dispatch<React.SetStateAction<Enrollment[]>>;
+  setCourses?: React.Dispatch<React.SetStateAction<Course[]>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -609,6 +611,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             storage.setItem('ss_auth', 'true');
             storage.setItem('ss_user', JSON.stringify(fullUser));
 
+            api.courses.list().then(crs => {
+              if (Array.isArray(crs) && crs.length > 0) {
+                const mapped = crs.map((c: any) => ({
+                  ...c,
+                  modules: c.modules || c.modulesJson || [],
+                }));
+                setCourses(mapped);
+              }
+            }).catch(() => {});
+
             if (normRole === 'trainee') {
               api.enrollments.mine().then(enrs => {
                 if (Array.isArray(enrs)) setEnrollments(enrs);
@@ -674,6 +686,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentLanguageState(fullUser.languagePreference);
       storage.setItem('ss_lang', fullUser.languagePreference);
     }
+    api.courses.list().then(crs => {
+      if (Array.isArray(crs) && crs.length > 0) {
+        const mapped = crs.map((c: any) => ({
+          ...c,
+          modules: c.modules || c.modulesJson || [],
+        }));
+        setCourses(mapped);
+      }
+    }).catch(() => {});
+
     if (fullUser.role === 'trainee') {
       api.enrollments.mine().then(enrs => {
         if (Array.isArray(enrs)) setEnrollments(enrs);
@@ -944,31 +966,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const enrollInCourse = (courseId: string) => {
-    const existing = enrollments.find(e => e.userId === currentUser.id && e.courseId === courseId);
-    if (!existing) {
-      const newEnrollment: Enrollment = {
-        id: `enr-${Date.now()}`,
-        userId: currentUser.id,
-        courseId,
-        progressPercent: 0,
-        completedLessonIds: [],
-        completedQuizIds: [],
-        status: 'in_progress',
-        enrolledDate: new Date().toISOString().split('T')[0],
-      };
-      setEnrollments(prev => [newEnrollment, ...prev]);
-    }
-    // Persist to backend for Trainee
-    if (currentUser.role === 'trainee') {
-      api.learning.enroll(courseId)
-        .then(() => api.enrollments.mine())
-        .then(enrs => {
-          if (Array.isArray(enrs)) setEnrollments(enrs);
-        })
-        .catch(err =>
-          console.warn('[API] enrollInCourse failed:', err.message)
-        );
-    }
+    // Persist to database via POST /api/enrollments
+    api.enrollments.enroll(courseId)
+      .then(() => api.enrollments.mine())
+      .then(enrs => {
+        if (Array.isArray(enrs)) setEnrollments(enrs);
+      })
+      .catch(err => {
+        console.warn('[API] enrollInCourse failed:', err.message);
+        // Optimistic fallback
+        const existing = enrollments.find(e => e.userId === currentUser.id && e.courseId === courseId);
+        if (!existing) {
+          const newEnrollment: Enrollment = {
+            id: `enr-${Date.now()}`,
+            userId: currentUser.id,
+            courseId,
+            progressPercent: 0,
+            completedLessonIds: [],
+            completedQuizIds: [],
+            status: 'in_progress',
+            enrolledDate: new Date().toISOString().split('T')[0],
+          };
+          setEnrollments(prev => [newEnrollment, ...prev]);
+        }
+      });
   };
 
   const markLessonComplete = (courseId: string, lessonId: string) => {
@@ -1364,6 +1385,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         users,
         addUser,
         toggleUserStatus,
+        setEnrollments,
+        setCourses,
       }}
     >
       {children}

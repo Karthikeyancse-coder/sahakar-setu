@@ -1,5 +1,7 @@
 import { enrollmentRepository } from '../repositories/enrollmentRepository';
 import { courseRepository } from '../repositories/courseRepository';
+import { certificateRepository } from '../repositories/certificateRepository';
+import { userRepository } from '../repositories/userRepository';
 import { createError } from '../middleware/errorHandler';
 
 // Helper to calculate progress given completed lesson IDs vs total lessons in course
@@ -13,56 +15,143 @@ const calcProgress = (completedLessonIds: string[], modulesJson: any[]): number 
 };
 
 export const courseService = {
-  getAllCourses: () => courseRepository.findAll(),
+  getAllCourses: async () => {
+    const courses = await courseRepository.findAll();
+    return courses.map((c: any) => ({
+      ...c,
+      modules: c.modulesJson || [],
+    }));
+  },
 
   getCourseById: async (id: string) => {
     const course = await courseRepository.findById(id);
     if (!course) throw createError(404, 'Course not found');
-    return course;
+    return {
+      ...course,
+      modules: (course as any).modulesJson || [],
+    };
   },
 
-  getEnrollments: (userId: string) => enrollmentRepository.findByUser(userId),
+  getEnrollments: async (userId: string) => {
+    const enrollments = await enrollmentRepository.findByUser(userId);
+    return enrollments.map((e: any) => ({
+      ...e,
+      course: e.course
+        ? {
+            ...e.course,
+            modules: e.course.modulesJson || [],
+          }
+        : undefined,
+    }));
+  },
+
+  getEnrollmentById: async (enrollmentId: string, userId: string) => {
+    const list = await enrollmentRepository.findByUser(userId);
+    const enrollment = list.find((e) => e.id === enrollmentId || e.courseId === enrollmentId);
+    if (!enrollment) throw createError(404, 'Enrollment not found');
+    return {
+      ...enrollment,
+      course: (enrollment as any).course
+        ? {
+            ...(enrollment as any).course,
+            modules: (enrollment as any).course.modulesJson || [],
+          }
+        : undefined,
+    };
+  },
 
   enrollInCourse: async (userId: string, courseId: string) => {
+    const user = await userRepository.findById(userId);
+    if (!user) throw createError(404, 'User not found');
+    const roleLower = (user.role || '').toLowerCase();
+    if (roleLower !== 'trainee' && roleLower !== 'learner') {
+      throw createError(403, 'Only registered trainees can enroll in national curriculum courses');
+    }
+
     const course = await courseRepository.findById(courseId);
     if (!course) throw createError(404, 'Course not found');
 
-    const existing = await enrollmentRepository.findByUserAndCourse(userId, courseId);
-    if (existing) return existing; // idempotent
+    const existing = await enrollmentRepository.findByUserAndCourse(userId, course.id);
+    if (existing) return existing; // idempotent duplicate prevention
 
     return enrollmentRepository.create({
-      id: `enr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: `enr-${userId}-${course.id}`,
       userId,
-      courseId,
+      courseId: course.id,
       enrolledDate: new Date().toISOString().split('T')[0],
+      status: 'IN_PROGRESS',
+      progressPercent: 0,
+      completedLessonIds: [],
+      completedQuizIds: [],
     });
   },
 
-  markLessonComplete: async (userId: string, enrollmentId: string, lessonId: string) => {
-    const enrollment = await enrollmentRepository.findByUser(userId)
-      .then(list => list.find(e => e.id === enrollmentId));
+  markLessonComplete: async (userId: string, enrollmentIdOrCourseId: string, lessonId: string) => {
+    const list = await enrollmentRepository.findByUser(userId);
+    const enrollment = list.find(
+      (e) => e.id === enrollmentIdOrCourseId || e.courseId === enrollmentIdOrCourseId
+    );
 
     if (!enrollment) throw createError(404, 'Enrollment not found');
     if (enrollment.userId !== userId) throw createError(403, 'Forbidden');
 
-    const completed = enrollment.completedLessonIds as string[];
+    const completed = (enrollment.completedLessonIds as string[]) || [];
     if (completed.includes(lessonId)) return enrollment; // already done
 
     const updatedCompleted = [...completed, lessonId];
-    const modules = enrollment.course?.modulesJson as any[] || [];
-    const progress = calcProgress(updatedCompleted, modules);
-    const isFullyDone =
-      progress === 100 &&
-      (enrollment.completedQuizIds as string[]).length >=
-        modules.filter((m: any) => m.quiz).length;
+    const modules = (enrollment.course?.modulesJson as any[]) || [];
+    const totalLessons = (modules as any[]).reduce(
+      (acc: number, m: any) => acc + (m.lessons?.length || 0),
+      0
+    );
+    const totalQuizzes = modules.filter((m: any) => m.quiz).length;
+    const completedQuizzes = (enrollment.completedQuizIds as string[]) || [];
 
-    return enrollmentRepository.update(enrollmentId, {
+    const totalTrackableItems = totalLessons + totalQuizzes;
+    const completedItems = updatedCompleted.length + completedQuizzes.length;
+    const progress = totalTrackableItems > 0
+      ? Math.min(100, Math.round((completedItems / totalTrackableItems) * 100))
+      : 100;
+
+    const isFullyDone =
+      updatedCompleted.length >= totalLessons &&
+      (totalQuizzes === 0 || completedQuizzes.length >= totalQuizzes) &&
+      totalTrackableItems > 0;
+
+    const updated = await enrollmentRepository.update(enrollment.id, {
       completedLessonIds: updatedCompleted,
-      progressPercent: progress,
+      progressPercent: isFullyDone ? 100 : progress,
       lastAccessedLessonId: lessonId,
-      ...(isFullyDone && enrollment.status !== 'completed'
-        ? { status: 'completed', completionDate: new Date().toISOString().split('T')[0] }
-        : {}),
+      ...(isFullyDone && enrollment.status.toLowerCase() !== 'completed'
+        ? { status: 'COMPLETED', completionDate: new Date().toISOString().split('T')[0], completedAt: new Date() }
+        : progress > 0 && enrollment.status !== 'COMPLETED' ? { status: 'IN_PROGRESS' } : {}),
     });
+
+    // If fully complete and certificate not yet created, create it
+    if (isFullyDone) {
+      const existingCert = await certificateRepository.findByUserAndCourse(userId, enrollment.courseId);
+      if (!existingCert) {
+        const user = await userRepository.findById(userId);
+        const certId = `NCCT-CERT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+        await certificateRepository.create({
+          id: certId,
+          userId,
+          userName: user?.name || 'Trainee',
+          userAadhaarMock: user?.aadhaarMock || undefined,
+          courseId: enrollment.courseId,
+          courseTitle: enrollment.course.title,
+          courseTitleHi: enrollment.course.titleHi,
+          instituteId: enrollment.course.instituteId,
+          instituteName: 'NCCT National Training Institute',
+          issuedDate: new Date().toISOString().split('T')[0],
+          certificateHash:
+            '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join(''),
+          grade: 'Passed',
+          status: 'ISSUED',
+        }).catch(() => {});
+      }
+    }
+
+    return updated;
   },
 };

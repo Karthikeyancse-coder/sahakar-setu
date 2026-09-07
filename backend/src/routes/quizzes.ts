@@ -7,8 +7,8 @@ import { z } from 'zod';
 const router = Router();
 
 const submitSchema = z.object({
-  courseId: z.string().min(1, 'courseId required'),
-  answers: z.array(z.number().int().min(0)).min(1, 'answers array required'),
+  courseId: z.string().optional(),
+  answers: z.union([z.array(z.any()), z.record(z.any())]),
 });
 
 router.post('/:quizId/submit', requireAuth, validate(submitSchema), quizController.submit);

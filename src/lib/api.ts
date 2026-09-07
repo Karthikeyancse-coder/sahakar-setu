@@ -101,8 +101,11 @@ export const api = {
   },
 
   enrollments: {
-    mine: () => get<any[]>('/api/enrollments/me'),
+    mine: () => get<any[]>('/api/enrollments/my'),
     enroll: (courseId: string) => post<any>('/api/enrollments', { courseId }),
+    get: (id: string) => get<any>(`/api/enrollments/${id}`),
+    updateProgress: (enrollmentId: string, lessonId: string) =>
+      patch<any>(`/api/enrollments/${enrollmentId}/progress`, { lessonId }),
     markLesson: (enrollmentId: string, lessonId: string) =>
       patch<any>(`/api/enrollments/${enrollmentId}/lesson`, { lessonId }),
   },

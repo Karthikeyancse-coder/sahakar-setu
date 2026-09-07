@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -20,6 +20,56 @@ import {
 } from '../../lib/assessmentEngine';
 import { api } from '../../lib/api';
 
+/**
+ * Validates and normalizes raw quiz payload from database or course curriculum.
+ * Ensures data is an object, has an id, and contains a non-empty array of valid questions.
+ */
+function validateAndExtractQuiz(raw: any): any | null {
+  if (!raw || typeof raw !== 'object') return null;
+  if (!raw.id) return null;
+
+  let questions = raw.questions;
+  // Handle database JSON string serialization
+  if (typeof questions === 'string') {
+    try {
+      questions = JSON.parse(questions);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!Array.isArray(questions) || questions.length === 0) {
+    return null;
+  }
+
+  // Ensure questions have prompt and options
+  const validQuestions = questions.filter((q: any) => {
+    if (!q || typeof q !== 'object') return false;
+    const hasPrompt = Boolean(
+      q.question ||
+      q.questionText ||
+      q.title ||
+      q.questionHi ||
+      q.questionTextHi ||
+      q.questionMr ||
+      q.questionTextMr
+    );
+    const hasOptions =
+      (Array.isArray(q.options) && q.options.length > 0) ||
+      (Array.isArray(q.optionList) && q.optionList.length > 0) ||
+      (q.options && typeof q.options === 'object' && Object.keys(q.options).length > 0);
+
+    return hasPrompt && hasOptions;
+  });
+
+  if (validQuestions.length === 0) return null;
+
+  return {
+    ...raw,
+    questions: validQuestions,
+  };
+}
+
 export const QuizView: React.FC = () => {
   const {
     courses,
@@ -33,54 +83,130 @@ export const QuizView: React.FC = () => {
   const courseId = activeViewParams?.courseId || courses[0]?.id;
   const moduleId = activeViewParams?.moduleId;
 
-  const course = courses.find(c => c.id === courseId) || courses[0];
-  const currentModule = (moduleId ? course?.modules.find(m => m.id === moduleId) : null) || course?.modules[0];
+  // Resolve course safely with fallback and alias resolution
+  const course = useMemo(() => {
+    return (
+      courses.find(
+        (c) =>
+          c.id === courseId ||
+          (courseId?.includes('dairy') && c.id?.includes('dairy')) ||
+          (courseId?.includes('pacs') && c.id?.includes('pacs')) ||
+          (courseId?.includes('shg') && c.id?.includes('shg'))
+      ) || courses[0]
+    );
+  }, [courses, courseId]);
+
+  const currentModule = useMemo(() => {
+    if (!course?.modules || course.modules.length === 0) return null;
+    if (moduleId) {
+      const found = course.modules.find((m) => m.id === moduleId);
+      if (found) return found;
+    }
+    return course.modules[0];
+  }, [course, moduleId]);
+
   const localQuiz = currentModule?.quiz;
 
-  const [dbQuiz, setDbQuiz] = useState<any>(null);
-  const [loadingQuiz, setLoadingQuiz] = useState<boolean>(false);
+  // Single authoritative quiz state
+  const [quiz, setQuiz] = useState<any>(() => {
+    return validateAndExtractQuiz(localQuiz);
+  });
+  const [loadingQuiz, setLoadingQuiz] = useState<boolean>(() => !validateAndExtractQuiz(localQuiz));
 
-  // Fetch complete assessment from database so all questions (e.g. 5 questions) are loaded
+  // Ref to always track latest valid quiz state without race condition
+  const quizRef = useRef<any>(quiz);
+  quizRef.current = quiz;
+
+  // Derive stable quiz identifier
+  const quizIdentifier = useMemo(() => {
+    if (activeViewParams?.quizId) return activeViewParams.quizId;
+    if (localQuiz?.id) return localQuiz.id;
+    if (moduleId) return moduleId;
+    if (courseId) {
+      if (courseId.includes('dairy')) return 'quiz-dairy-m1';
+      if (courseId.includes('pacs')) return 'quiz-pacs-m1';
+      if (courseId.includes('shg')) return 'quiz-shg-m1';
+    }
+    return 'quiz-dairy-m1';
+  }, [activeViewParams?.quizId, localQuiz?.id, moduleId, courseId]);
+
+  // Authoritative quiz data loading lifecycle
   useEffect(() => {
-    let quizIdentifier = localQuiz?.id || activeViewParams?.quizId;
-    if (!quizIdentifier && moduleId) {
-      quizIdentifier = moduleId;
-    }
-    if (!quizIdentifier && courseId) {
-      if (courseId.includes('dairy')) quizIdentifier = 'quiz-dairy-m1';
-      else if (courseId.includes('pacs')) quizIdentifier = 'quiz-pacs-m1';
-      else if (courseId.includes('shg')) quizIdentifier = 'quiz-shg-m1';
+    let isCancelled = false;
+
+    // 1. If we don't have a valid quiz yet, try validating current localQuiz
+    const validLocal = validateAndExtractQuiz(localQuiz);
+    if (validLocal && !quizRef.current) {
+      setQuiz(validLocal);
+      setLoadingQuiz(false);
     }
 
+    // 2. Fetch authoritative full quiz from backend repository
     if (quizIdentifier) {
-      setLoadingQuiz(true);
-      api.learning.getQuiz(quizIdentifier)
-        .then(res => {
-          if (res && Array.isArray(res.questions) && res.questions.length > 0) {
-            setDbQuiz(res);
+      if (!quizRef.current) {
+        setLoadingQuiz(true);
+      }
+
+      api.learning
+        .getQuiz(quizIdentifier)
+        .then((res) => {
+          if (isCancelled) return;
+          const validApiQuiz = validateAndExtractQuiz(res);
+
+          if (validApiQuiz) {
+            // Guard: Do not allow a response with fewer questions to overwrite a complete quiz
+            if (
+              quizRef.current &&
+              Array.isArray(quizRef.current.questions) &&
+              quizRef.current.questions.length > validApiQuiz.questions.length
+            ) {
+              console.warn(
+                `[QuizView] Preserved authoritative quiz with ${quizRef.current.questions.length} questions; ignored incoming quiz with ${validApiQuiz.questions.length} questions`
+              );
+            } else {
+              setQuiz(validApiQuiz);
+            }
+          } else {
+            console.warn(
+              `[QuizView] API returned invalid quiz payload for "${quizIdentifier}"; preserved existing state`
+            );
           }
         })
-        .catch(err => {
-          console.warn('[QuizView] Could not fetch quiz from DB API, falling back to course definition:', err);
+        .catch((err) => {
+          console.warn('[QuizView] Could not fetch quiz from API, keeping existing state:', err);
         })
-        .finally(() => setLoadingQuiz(false));
+        .finally(() => {
+          if (!isCancelled) {
+            setLoadingQuiz(false);
+          }
+        });
+    } else {
+      setLoadingQuiz(false);
     }
-  }, [localQuiz?.id, activeViewParams?.quizId, moduleId, courseId]);
 
-  const activeQuiz = dbQuiz || localQuiz;
+    return () => {
+      isCancelled = true;
+    };
+  }, [quizIdentifier]);
 
-  // Normalized questions with stable IDs — ALL questions from activeQuiz.questions
+  // Authoritative questions list — never returns [{}] fallback
+  const rawQuestions = useMemo(() => {
+    return Array.isArray(quiz?.questions) ? quiz.questions : [];
+  }, [quiz]);
+
+  // Normalized questions with localized strings and stable keys
   const normalizedQuestions = useMemo(() => {
-    if (!activeQuiz?.questions) return [];
-    return activeQuiz.questions.map((q: any) => normalizeQuestion(q, currentLanguage));
-  }, [activeQuiz, currentLanguage]);
+    if (rawQuestions.length === 0) return [];
+    return rawQuestions.map((q: any) => normalizeQuestion(q, currentLanguage));
+  }, [rawQuestions, currentLanguage]);
 
-  // Selected option IDs mapped by question ID (e.g. { "qq-d1-1": "opt-qq-d1-1-b" })
+  // Separate answers state — selecting answers NEVER modifies quiz or questions
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
 
-  if (loadingQuiz && !activeQuiz) {
+  // Render Protection 1: Loading state
+  if (loadingQuiz && (!quiz || normalizedQuestions.length === 0)) {
     return (
       <PageContainer>
         <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4 shadow-sm">
@@ -94,18 +220,19 @@ export const QuizView: React.FC = () => {
     );
   }
 
-  if (!activeQuiz) {
+  // Render Protection 2: Error state — prevents "QUESTION 1 OF 1" with empty fields
+  if (!quiz || normalizedQuestions.length === 0) {
     return (
       <PageContainer>
-        <div className="bg-white rounded-2xl p-10 text-center border border-govText-border space-y-4">
+        <div className="bg-white rounded-2xl p-10 text-center border border-govText-border space-y-4 shadow-sm">
           <BookOpen className="w-12 h-12 text-govTeal-400 mx-auto" />
           <h2 className="text-lg font-bold text-govText-primary">No Assessment Available</h2>
           <p className="text-xs text-govText-secondary">
             This module does not require a graded assessment or the quiz is currently being updated.
           </p>
           <button
-            onClick={() => navigate('course_player', { courseId: course.id })}
-            className="px-4 py-2 bg-govTeal-600 text-white rounded-xl text-xs font-bold"
+            onClick={() => navigate('course_player', { courseId: course?.id || courseId })}
+            className="px-4 py-2 bg-govTeal-600 hover:bg-govTeal-700 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer"
           >
             Back to Course Lessons
           </button>
@@ -114,30 +241,43 @@ export const QuizView: React.FC = () => {
     );
   }
 
+  // Answer selection handler — only updates answers state
   const handleSelectOption = (questionId: string, optionId: string) => {
     if (isSubmitted) return;
-    setSelectedAnswers(prev => ({ ...prev, [questionId]: optionId }));
+    setSelectedAnswers((prev) => ({ ...prev, [questionId]: optionId }));
   };
+
+  // Submission validation
+  const answeredCount = normalizedQuestions.filter((q) => Boolean(selectedAnswers[q.id])).length;
+  const totalQuestionsCount = normalizedQuestions.length;
+  const allAnswered = totalQuestionsCount > 0 && answeredCount === totalQuestionsCount;
 
   const handleSubmit = async () => {
     if (normalizedQuestions.length === 0) return;
 
     // 1. Local scoring fallback
-    const localResult = gradeAssessment(normalizedQuestions, selectedAnswers, activeQuiz.passThreshold || 70);
+    const localResult = gradeAssessment(
+      normalizedQuestions,
+      selectedAnswers,
+      quiz.passThreshold || 70
+    );
 
-    // 2. Authoritative scoring via backend submit endpoint
+    // 2. Authoritative backend scoring
     try {
-      const serverRes = await api.learning.submitQuiz(activeQuiz.id, selectedAnswers);
+      const serverRes = await api.learning.submitQuiz(quiz.id, selectedAnswers);
       if (serverRes) {
         const passed = Boolean(serverRes.passed);
-        const scorePercent = serverRes.scorePercent ?? serverRes.score ?? localResult.scorePercentage;
+        const scorePercent =
+          serverRes.scorePercent ?? serverRes.score ?? localResult.scorePercentage;
         setAssessmentResult({
           totalQuestions: serverRes.totalQuestions || normalizedQuestions.length,
           correctAnswers: serverRes.correctAnswers || 0,
-          incorrectAnswers: (serverRes.totalQuestions || normalizedQuestions.length) - (serverRes.correctAnswers || 0),
+          incorrectAnswers:
+            (serverRes.totalQuestions || normalizedQuestions.length) -
+            (serverRes.correctAnswers || 0),
           unansweredCount: 0,
           scorePercentage: scorePercent,
-          passingScore: activeQuiz.passThreshold || 70,
+          passingScore: quiz.passThreshold || 70,
           passed,
           questionResults: localResult.questionResults,
         });
@@ -146,29 +286,33 @@ export const QuizView: React.FC = () => {
         if (passed) {
           try {
             confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-          } catch { /* Confetti fallback */ }
+          } catch {
+            /* Confetti fallback */
+          }
         }
 
         // Notify AppContext for state sync
-        const rawAnswers = normalizedQuestions.map(q => {
+        const rawAnswers = normalizedQuestions.map((q) => {
           const selOptId = selectedAnswers[q.id];
-          const idx = q.options.findIndex(o => o.id === selOptId);
+          const idx = q.options.findIndex((o) => o.id === selOptId);
           return idx >= 0 ? idx : -1;
         });
-        await submitQuiz(course.id, activeQuiz.id, rawAnswers, serverRes);
+        await submitQuiz(course?.id || courseId, quiz.id, rawAnswers, serverRes);
         return;
       }
     } catch (e) {
       console.warn('[QuizView] Server submit fallback to local scoring:', e);
     }
 
-    // Fallback if server call had network issue
+    // Fallback if network call had an issue
     setAssessmentResult(localResult);
     setIsSubmitted(true);
     if (localResult.passed) {
       try {
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      } catch { }
+      } catch {
+        /* Confetti fallback */
+      }
     }
   };
 
@@ -179,10 +323,20 @@ export const QuizView: React.FC = () => {
   };
 
   const isPassed = assessmentResult ? assessmentResult.passed : false;
-  const allAnswered = normalizedQuestions.length > 0 && normalizedQuestions.every(q => selectedAnswers[q.id] !== undefined && selectedAnswers[q.id] !== '');
 
-  const courseTitle = currentLanguage === 'hi' ? course.titleHi : currentLanguage === 'mr' ? course.titleMr : course.title;
-  const moduleTitle = currentLanguage === 'hi' ? currentModule?.titleHi : currentLanguage === 'mr' ? currentModule?.titleMr : currentModule?.title;
+  const courseTitle =
+    currentLanguage === 'hi'
+      ? course?.titleHi
+      : currentLanguage === 'mr'
+      ? course?.titleMr
+      : course?.title;
+
+  const moduleTitle =
+    currentLanguage === 'hi'
+      ? currentModule?.titleHi
+      : currentLanguage === 'mr'
+      ? currentModule?.titleMr
+      : currentModule?.title;
 
   return (
     <PageContainer>
@@ -190,7 +344,7 @@ export const QuizView: React.FC = () => {
       <div className="bg-white p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
         <div>
           <button
-            onClick={() => navigate('course_player', { courseId: course.id })}
+            onClick={() => navigate('course_player', { courseId: course?.id || courseId })}
             className="inline-flex items-center gap-1.5 text-xs font-bold text-govTeal-700 hover:text-govTeal-900 mb-2 cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -199,16 +353,18 @@ export const QuizView: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-saffron-700 uppercase tracking-wider">
-              {courseTitle}
+              {courseTitle || 'Course Curriculum'}
             </span>
             <SimulatedBadge text="NCCT Module Assessment" />
           </div>
 
           <h1 className="text-2xl font-extrabold text-govText-primary mt-1">
-            {moduleTitle ? `${moduleTitle}: ` : ''}{activeQuiz.title || t.quiz?.assessmentTitle || 'Module Competency Assessment'}
+            {moduleTitle ? `${moduleTitle}: ` : ''}
+            {quiz.title || t.quiz?.assessmentTitle || 'Module Competency Assessment'}
           </h1>
           <p className="text-xs text-govText-secondary mt-1">
-            Answer all questions. Minimum passing score: <span className="font-bold text-govTeal-800">{activeQuiz.passThreshold || 70}%</span>.
+            Answer all questions. Minimum passing score:{' '}
+            <span className="font-bold text-govTeal-800">{quiz.passThreshold || 70}%</span>.
           </p>
         </div>
 
@@ -240,11 +396,15 @@ export const QuizView: React.FC = () => {
             <div>
               <h3 className="text-base sm:text-lg font-extrabold">
                 {isPassed
-                  ? (t.quiz?.congratulations || 'Assessment Passed')
-                  : (t.quiz?.failedBadge || 'Assessment Score Below Threshold')}
+                  ? t.quiz?.congratulations || 'Assessment Passed'
+                  : t.quiz?.failedBadge || 'Assessment Score Below Threshold'}
               </h3>
               <p className="text-xs mt-0.5 opacity-90">
-                You achieved a score of <span className="font-extrabold text-base">{assessmentResult.scorePercentage}%</span> (Passing score: {activeQuiz.passThreshold || 70}%).
+                You achieved a score of{' '}
+                <span className="font-extrabold text-base">
+                  {assessmentResult.scorePercentage}%
+                </span>{' '}
+                (Passing score: {quiz.passThreshold || 70}%).
               </p>
             </div>
           </div>
@@ -260,7 +420,7 @@ export const QuizView: React.FC = () => {
                   <span>{t.quiz?.viewCertificate || 'View Verified Certificate'}</span>
                 </button>
                 <button
-                  onClick={() => navigate('course_detail', { courseId: course.id })}
+                  onClick={() => navigate('course_detail', { courseId: course?.id || courseId })}
                   className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-white border border-emerald-300 text-emerald-900 font-bold rounded-xl text-xs hover:bg-emerald-100 transition-colors cursor-pointer flex items-center justify-center"
                 >
                   Continue Syllabus
@@ -279,7 +439,7 @@ export const QuizView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. Questions List — Rendering ALL questions from quiz.questions */}
+      {/* 3. Questions List — Rendering ALL questions with stable keys */}
       <div className="space-y-4 sm:space-y-6">
         {normalizedQuestions.map((q, qIdx) => {
           const selectedOptionId = selectedAnswers[q.id];
@@ -354,12 +514,14 @@ export const QuizView: React.FC = () => {
                       optClass = 'border-gray-200 opacity-60 text-gray-500';
                     }
                   } else if (isOptSelected) {
-                    optClass = 'border-govTeal-600 bg-govTeal-50 text-govTeal-950 font-bold shadow-xs';
+                    optClass =
+                      'border-govTeal-600 bg-govTeal-50 text-govTeal-950 font-bold shadow-xs';
                   }
 
                   return (
                     <button
                       key={opt.id}
+                      type="button"
                       disabled={isSubmitted}
                       onClick={() => handleSelectOption(q.id, opt.id)}
                       className={`w-full min-h-[48px] p-3 sm:p-3.5 rounded-xl border text-xs text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${optClass}`}
@@ -391,10 +553,11 @@ export const QuizView: React.FC = () => {
       {!isSubmitted && (
         <div className="bg-white p-4 rounded-xl border border-govText-border shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <span className="text-xs text-govText-secondary font-medium text-center sm:text-left">
-            {Object.keys(selectedAnswers).length} of {normalizedQuestions.length} answered
+            {answeredCount} of {totalQuestionsCount} answered
           </span>
 
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={!allAnswered}
             className={`w-full sm:w-auto px-6 py-3 min-h-[44px] rounded-xl text-xs font-bold transition-all shadow flex items-center justify-center ${

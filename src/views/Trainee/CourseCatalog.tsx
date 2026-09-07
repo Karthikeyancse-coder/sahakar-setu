@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Compass,
   Search,
@@ -9,19 +9,89 @@ import {
   ArrowRight,
   CheckCircle2,
   Layers,
-  GraduationCap
+  GraduationCap,
+  Loader2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { CourseCard } from '../../components/common/CourseCard';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
+import { api } from '../../lib/api';
+import { Course, Enrollment } from '../../types';
 
 export const CourseCatalog: React.FC = () => {
-  const { courses, enrollments, currentUser, currentLanguage, navigate, t } = useApp();
+  const {
+    courses: contextCourses,
+    enrollments: contextEnrollments,
+    currentUser,
+    currentLanguage,
+    navigate,
+    setEnrollments: setContextEnrollments,
+    t
+  } = useApp();
+
+  const [dbCourses, setDbCourses] = useState<Course[]>(contextCourses);
+  const [userEnrollments, setUserEnrollments] = useState<Enrollment[]>(contextEnrollments);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [enrollingCourseId, setEnrollingCourseId] = useState<string | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
+
+  // Load real courses and trainee enrollments directly from PostgreSQL backend
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [coursesRes, enrollmentsRes] = await Promise.allSettled([
+        api.courses.list(),
+        api.enrollments.mine()
+      ]);
+
+      if (coursesRes.status === 'fulfilled' && Array.isArray(coursesRes.value) && coursesRes.value.length > 0) {
+        const mapped = coursesRes.value.map((c: any) => ({
+          ...c,
+          modules: c.modules || c.modulesJson || [],
+        }));
+        setDbCourses(mapped);
+      }
+
+      if (enrollmentsRes.status === 'fulfilled' && Array.isArray(enrollmentsRes.value)) {
+        setUserEnrollments(enrollmentsRes.value);
+        if (setContextEnrollments) {
+          setContextEnrollments(enrollmentsRes.value);
+        }
+      }
+    } catch (err) {
+      console.warn('[CourseCatalog] Failed loading backend data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [currentUser.id]);
+
+  // Handle direct registration for authenticated trainee
+  const handleRegister = async (courseId: string) => {
+    try {
+      setEnrollingCourseId(courseId);
+      const res = await api.enrollments.enroll(courseId);
+      // Immediately refresh real enrollments from database
+      const freshEnrollments = await api.enrollments.mine();
+      if (Array.isArray(freshEnrollments)) {
+        setUserEnrollments(freshEnrollments);
+        if (setContextEnrollments) {
+          setContextEnrollments(freshEnrollments);
+        }
+      }
+    } catch (err: any) {
+      console.error('[CourseCatalog] Registration failed:', err);
+    } finally {
+      setEnrollingCourseId(null);
+    }
+  };
 
   const categories = [
     { id: 'all', label: t.catalog?.allCategories || 'All Categories' },
@@ -38,7 +108,9 @@ export const CourseCatalog: React.FC = () => {
     { id: 'advanced', label: 'Advanced' },
   ];
 
-  const filteredCourses = courses.filter(course => {
+  const displayCourses = dbCourses.length > 0 ? dbCourses : contextCourses;
+
+  const filteredCourses = displayCourses.filter(course => {
     const courseTitle = currentLanguage === 'hi' ? course.titleHi : currentLanguage === 'mr' ? course.titleMr : course.title;
     const courseDesc = currentLanguage === 'hi' ? course.descriptionHi : currentLanguage === 'mr' ? course.descriptionMr : course.description;
 
@@ -74,7 +146,7 @@ export const CourseCatalog: React.FC = () => {
             {t.catalog?.title || 'National Course Catalog'}
           </h1>
           <p className="text-xs text-govText-secondary mt-1 max-w-2xl">
-            {t.catalog?.subtitle || 'Explore accredited cooperative training courses and earn recognized certifications.'}
+            {t.catalog?.subtitle || 'Explore accredited cooperative training courses, register seamlessly, and earn recognized certifications.'}
           </p>
         </div>
 
@@ -84,7 +156,7 @@ export const CourseCatalog: React.FC = () => {
             className="px-4 py-2.5 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 border border-govTeal-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
           >
             <BookOpen className="w-4 h-4 text-govTeal-700" />
-            <span>{t.myCourses?.title || 'My Enrolled Courses'}</span>
+            <span>{t.myCourses?.title || 'My Enrolled Courses'} ({userEnrollments.length})</span>
           </button>
         </div>
       </div>
@@ -103,7 +175,7 @@ export const CourseCatalog: React.FC = () => {
           <Search className="w-4 h-4 text-govText-muted absolute left-3 top-3" />
         </div>
 
-        {/* Category Pills (Horizontally scrollable on mobile) */}
+        {/* Category Pills */}
         <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
           <Filter className="w-3.5 h-3.5 text-govText-muted flex-shrink-0" />
           <div className="flex gap-1.5 flex-nowrap">
@@ -111,10 +183,11 @@ export const CourseCatalog: React.FC = () => {
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer min-h-[36px] flex items-center ${selectedCategory === cat.id
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer min-h-[36px] flex items-center ${
+                  selectedCategory === cat.id
                     ? 'bg-govTeal-700 text-white shadow-xs'
                     : 'bg-govBg text-govText-secondary hover:bg-gray-200 border border-gray-200'
-                  }`}
+                }`}
               >
                 {cat.label}
               </button>
@@ -137,7 +210,12 @@ export const CourseCatalog: React.FC = () => {
       </div>
 
       {/* 3. Course Grid */}
-      {filteredCourses.length === 0 ? (
+      {loading && displayCourses.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4 shadow-sm">
+          <Loader2 className="w-8 h-8 text-govTeal-600 animate-spin mx-auto" />
+          <p className="text-xs text-govText-secondary">Loading official courses from repository...</p>
+        </div>
+      ) : filteredCourses.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4">
           <GraduationCap className="w-12 h-12 text-govTeal-400 mx-auto" />
           <h3 className="text-base font-bold text-govText-primary">No courses match your criteria</h3>
@@ -158,8 +236,12 @@ export const CourseCatalog: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredCourses.map(course => {
-            const enrollment = enrollments.find(
-              e => e.userId === currentUser.id && e.courseId === course.id
+            const enrollment = userEnrollments.find(
+              e =>
+                e.courseId === course.id ||
+                (course.id.includes('dairy') && e.courseId.includes('dairy')) ||
+                (course.id.includes('pacs') && e.courseId.includes('pacs')) ||
+                (course.id.includes('shg') && e.courseId.includes('shg'))
             );
 
             return (
@@ -168,9 +250,17 @@ export const CourseCatalog: React.FC = () => {
                 course={course}
                 enrollment={enrollment}
                 currentLanguage={currentLanguage}
-                onSelect={(id) => navigate('course_detail', { courseId: id })}
-                continueLabel={t.lms.continueLesson}
-                startLabel={t.catalog?.enrollNow || t.lms.startLesson}
+                onSelect={(id) => {
+                  if (enrollment) {
+                    navigate('course_player', { courseId: id });
+                  } else {
+                    navigate('course_detail', { courseId: id });
+                  }
+                }}
+                onEnroll={handleRegister}
+                isEnrolling={enrollingCourseId === course.id}
+                continueLabel="Continue Course"
+                startLabel="Register / Enroll"
               />
             );
           })}

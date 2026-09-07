@@ -60,25 +60,46 @@ export function normalizeQuestion(rawQ: any, lang: 'en' | 'hi' | 'mr' = 'en'): A
   // If explicit optionList is provided
   if (Array.isArray(rawQ.optionList) && rawQ.optionList.length > 0) {
     normalizedOptions = rawQ.optionList.map((opt: any, idx: number) => {
-      const optId = opt.id || `${qId}-${OPTION_LETTERS[idx] || idx}`;
-      const displayText = lang === 'hi' ? (opt.textHi || opt.text) : lang === 'mr' ? (opt.textMr || opt.text) : opt.text;
+      const optId = String(opt.id || `${qId}-${OPTION_LETTERS[idx] || idx}`);
+      const textEn = opt.text || opt.optionText || opt.en || '';
+      const textHi = opt.textHi || opt.optionTextHi;
+      const textMr = opt.textMr || opt.optionTextMr;
+      const displayText = (lang === 'hi' ? (textHi || textEn) : lang === 'mr' ? (textMr || textEn) : textEn) || textEn || '';
       return {
         id: optId,
-        text: displayText || opt.text || '',
-        textHi: opt.textHi,
-        textMr: opt.textMr,
+        text: displayText,
+        textHi,
+        textMr,
       };
     });
   } else if (Array.isArray(rawQ.options)) {
     // Array of strings or objects
     normalizedOptions = rawQ.options.map((opt: any, idx: number) => {
-      const optId = (typeof opt === 'object' && opt.id) ? opt.id : `${qId}-${OPTION_LETTERS[idx] || idx}`;
-      const text = typeof opt === 'string' ? opt : (opt[lang] || opt.text || opt.en || '');
+      const optId = (typeof opt === 'object' && opt.id) ? String(opt.id) : `${qId}-${OPTION_LETTERS[idx] || idx}`;
+      let text = '';
+      let textHi: string | undefined;
+      let textMr: string | undefined;
+
+      if (typeof opt === 'string') {
+        text = opt;
+      } else if (typeof opt === 'object' && opt !== null) {
+        textHi = opt.textHi || opt.optionTextHi;
+        textMr = opt.textMr || opt.optionTextMr;
+        const textEn = opt.text || opt.optionText || opt.en || opt[lang] || '';
+        text = (
+          lang === 'hi'
+            ? (textHi || textEn)
+            : lang === 'mr'
+            ? (textMr || textEn)
+            : textEn
+        ) || textEn || textHi || textMr || '';
+      }
+
       return {
         id: optId,
         text,
-        textHi: typeof opt === 'object' ? opt.textHi : undefined,
-        textMr: typeof opt === 'object' ? opt.textMr : undefined,
+        textHi,
+        textMr,
       };
     });
   } else if (rawQ.options && typeof rawQ.options === 'object') {
@@ -101,7 +122,14 @@ export function normalizeQuestion(rawQ: any, lang: 'en' | 'hi' | 'mr' = 'en'): A
   }
 
   // Derive stable correctOptionId
-  let correctOptionId = rawQ.correctOptionId;
+  let correctOptionId = rawQ.correctOptionId ? String(rawQ.correctOptionId) : undefined;
+  if (!correctOptionId && Array.isArray(rawQ.options)) {
+    const correctOpt = rawQ.options.find((o: any) => typeof o === 'object' && o !== null && o.isCorrect);
+    if (correctOpt) {
+      correctOptionId = String(correctOpt.id);
+    }
+  }
+
   if (!correctOptionId && typeof rawQ.correctOptionIndex === 'number') {
     if (normalizedOptions[rawQ.correctOptionIndex]) {
       correctOptionId = normalizedOptions[rawQ.correctOptionIndex].id;
@@ -115,16 +143,26 @@ export function normalizeQuestion(rawQ: any, lang: 'en' | 'hi' | 'mr' = 'en'): A
     correctOptionId = normalizedOptions[0].id;
   }
 
-  const questionText = (lang === 'hi' ? rawQ.questionHi : lang === 'mr' ? rawQ.questionMr : rawQ.question) || rawQ.question || '';
+  const rawTextEn = rawQ.question || rawQ.questionText || rawQ.title || '';
+  const rawTextHi = rawQ.questionHi || rawQ.questionTextHi;
+  const rawTextMr = rawQ.questionMr || rawQ.questionTextMr;
+
+  const questionText = (
+    lang === 'hi'
+      ? (rawTextHi || rawTextEn)
+      : lang === 'mr'
+      ? (rawTextMr || rawTextEn)
+      : rawTextEn
+  ) || rawTextEn || rawTextHi || rawTextMr || '';
 
   return {
     id: qId,
     question: questionText,
-    questionHi: rawQ.questionHi,
-    questionMr: rawQ.questionMr,
+    questionHi: rawTextHi,
+    questionMr: rawTextMr,
     options: normalizedOptions,
     correctOptionId: correctOptionId || `${qId}-a`,
-    explanation: rawQ.explanation,
+    explanation: rawQ.explanation || (rawQ.explanationEn ? { en: rawQ.explanationEn, hi: rawQ.explanationHi, mr: rawQ.explanationMr } : undefined),
   };
 }
 

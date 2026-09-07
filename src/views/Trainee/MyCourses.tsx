@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   BookOpen,
   PlayCircle,
@@ -8,45 +8,102 @@ import {
   CheckCircle2,
   ArrowRight,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
+import { api } from '../../lib/api';
+import { Enrollment } from '../../types';
 
 export const MyCourses: React.FC = () => {
-  const { courses, enrollments, currentUser, currentLanguage, navigate, t } = useApp();
+  const {
+    courses,
+    enrollments: contextEnrollments,
+    currentUser,
+    currentLanguage,
+    navigate,
+    setEnrollments: setContextEnrollments,
+    t
+  } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'in_progress' | 'completed'>('all');
+  const [dbEnrollments, setDbEnrollments] = useState<Enrollment[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Trainee enrollments
-  const userEnrollments = enrollments.filter(e => e.userId === currentUser.id);
+  // Fetch real enrollments from PostgreSQL via backend API on mount
+  const fetchMyEnrollments = async () => {
+    try {
+      setLoading(true);
+      const data = await api.enrollments.mine();
+      if (Array.isArray(data)) {
+        setDbEnrollments(data);
+        if (setContextEnrollments) {
+          setContextEnrollments(data);
+        }
+      }
+    } catch (err) {
+      console.warn('[MyCourses] Failed to fetch enrollments from DB:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const enrolledCourseData = userEnrollments.map(enrollment => {
-    const course = courses.find(
+  useEffect(() => {
+    fetchMyEnrollments();
+  }, [currentUser.id]);
+
+  // Use database enrollments or context enrollments filtered for currentUser
+  const sourceEnrollments = dbEnrollments.length > 0
+    ? dbEnrollments
+    : contextEnrollments.filter(e => e.userId === currentUser.id);
+
+  const enrolledCourseData = sourceEnrollments.map(enrollment => {
+    // Course resolution: prioritize joined enrollment.course, then context courses with alias fallback
+    const backendCourse = (enrollment as any).course;
+    const course = backendCourse || courses.find(
       c =>
         c.id === enrollment.courseId ||
         (enrollment.courseId.includes('dairy') && c.id.includes('dairy')) ||
         (enrollment.courseId.includes('pacs') && c.id.includes('pacs')) ||
         (enrollment.courseId.includes('shg') && c.id.includes('shg'))
     );
-    const totalLessons = course ? course.modules.reduce((acc, m) => acc + m.lessons.length, 0) : 0;
-    const completedCount = Array.isArray(enrollment.completedLessonIds) ? enrollment.completedLessonIds.length : 0;
+
+    const modules = course?.modules || (course as any)?.modulesJson || [];
+    const totalLessons = modules.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0);
+    const completedList = Array.isArray(enrollment.completedLessonIds)
+      ? enrollment.completedLessonIds
+      : [];
+    const completedCount = completedList.length;
     const statusLower = (enrollment.status || '').toLowerCase();
-    const isCompleted = statusLower === 'completed' || enrollment.progressPercent >= 100;
+    const isCompleted = statusLower === 'completed' || (enrollment.progressPercent || 0) >= 100;
     const progress = isCompleted
       ? 100
       : Math.min(100, Math.max(0, enrollment.progressPercent || (totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0)));
 
     return {
       enrollment,
-      course,
+      course: course || {
+        id: enrollment.courseId,
+        title: 'NCCT Cooperative Training Course',
+        thumbnail: 'https://images.unsplash.com/photo-1595246140625-573b715d11dc?w=800&auto=format&fit=crop&q=80',
+        durationHours: 24,
+        level: 'Intermediate',
+        category: 'Cooperative Training',
+        description: 'Comprehensive modular curriculum accredited by NCCT.',
+        modules: [],
+      },
       totalLessons: totalLessons || Math.max(completedCount, 2),
       completedCount,
       progress,
       isCompleted,
     };
-  }).filter(item => item.course !== undefined);
+  });
+
+  const allCount = enrolledCourseData.length;
+  const inProgressCount = enrolledCourseData.filter(i => !i.isCompleted).length;
+  const completedCount = enrolledCourseData.filter(i => i.isCompleted).length;
 
   const filteredData = enrolledCourseData.filter(item => {
     if (activeTab === 'in_progress') return !item.isCompleted;
@@ -69,7 +126,7 @@ export const MyCourses: React.FC = () => {
             {t.myCourses?.title || 'My Enrolled Courses'}
           </h1>
           <p className="text-xs text-govText-secondary mt-1">
-            {t.myCourses?.subtitle || 'Track your modular progress and resume your ongoing training sessions.'}
+            {t.myCourses?.subtitle || 'Track your active learning journey, resume interactive lessons, and complete assessments'}
           </p>
         </div>
 
@@ -78,11 +135,11 @@ export const MyCourses: React.FC = () => {
           className="px-4 py-2.5 bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm"
         >
           <Compass className="w-4 h-4 text-saffron-300" />
-          <span>{t.catalog?.title || 'Explore Catalog'}</span>
+          <span>{t.catalog?.title || 'National Training Course Catalog'}</span>
         </button>
       </div>
 
-      {/* 2. Tabs Filter */}
+      {/* 2. Tabs Filter with Real Database Counts */}
       <div className="flex items-center gap-2 border-b border-gray-200 pb-1 overflow-x-auto scrollbar-none whitespace-nowrap">
         <button
           onClick={() => setActiveTab('all')}
@@ -92,7 +149,7 @@ export const MyCourses: React.FC = () => {
               : 'text-govText-secondary hover:bg-govBg'
           }`}
         >
-          {t.myCourses?.tabs?.all || 'All Courses'} ({enrolledCourseData.length})
+          {t.myCourses?.tabs?.all || 'All Enrolled'} ({allCount})
         </button>
         <button
           onClick={() => setActiveTab('in_progress')}
@@ -102,7 +159,7 @@ export const MyCourses: React.FC = () => {
               : 'text-govText-secondary hover:bg-govBg'
           }`}
         >
-          {t.myCourses?.tabs?.inProgress || 'In Progress'} ({enrolledCourseData.filter(i => !i.isCompleted).length})
+          {t.myCourses?.tabs?.inProgress || 'In Progress'} ({inProgressCount})
         </button>
         <button
           onClick={() => setActiveTab('completed')}
@@ -112,34 +169,61 @@ export const MyCourses: React.FC = () => {
               : 'text-govText-secondary hover:bg-govBg'
           }`}
         >
-          {t.myCourses?.tabs?.completed || 'Completed'} ({enrolledCourseData.filter(i => i.isCompleted).length})
+          {t.myCourses?.tabs?.completed || 'Completed'} ({completedCount})
         </button>
       </div>
 
-      {/* 3. Course Cards Grid */}
-      {filteredData.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4">
-          <BookOpen className="w-12 h-12 text-govTeal-400 mx-auto" />
+      {/* 3. Loading State */}
+      {loading && enrolledCourseData.length === 0 ? (
+        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4 shadow-sm">
+          <Loader2 className="w-8 h-8 text-govTeal-600 animate-spin mx-auto" />
+          <p className="text-xs text-govText-secondary">Synchronizing your enrolled courses from database...</p>
+        </div>
+      ) : allCount === 0 ? (
+        /* 4. Global Empty State (Only when user has zero enrollments in DB) */
+        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4 shadow-sm">
+          <BookOpen className="w-12 h-12 text-govTeal-600 mx-auto" />
           <h3 className="text-base font-bold text-govText-primary">
-            {t.myCourses?.emptyTitle || 'No courses enrolled in this tab'}
+            No Enrolled Courses Found
           </h3>
           <p className="text-xs text-govText-secondary max-w-sm mx-auto">
             Explore national curriculum courses designed for Primary Agricultural Credit Societies and Dairy cooperatives.
           </p>
           <button
             onClick={() => navigate('courses')}
-            className="px-5 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2"
+            className="px-5 py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer inline-flex items-center gap-2 shadow-sm"
           >
             <Compass className="w-4 h-4" />
             <span>Browse National Catalog</span>
           </button>
         </div>
+      ) : filteredData.length === 0 ? (
+        /* 5. Tab-Specific Empty State (e.g. user has enrolled courses, but none completed yet) */
+        <div className="bg-white rounded-2xl p-10 text-center border border-govText-border space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-govTeal-500 mx-auto" />
+          <h3 className="text-sm font-bold text-govText-primary">
+            {activeTab === 'completed' ? 'No Completed Courses Yet' : 'No Courses in this Category'}
+          </h3>
+          <p className="text-xs text-govText-secondary max-w-sm mx-auto">
+            {activeTab === 'completed'
+              ? 'Complete all modular lessons and assessments to earn your official NCCT certification.'
+              : 'Continue your learning modules to make steady progress.'}
+          </p>
+          {activeTab === 'completed' && (
+            <button
+              onClick={() => setActiveTab('in_progress')}
+              className="px-4 py-2 bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer"
+            >
+              View In Progress Courses
+            </button>
+          )}
+        </div>
       ) : (
+        /* 6. Course Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredData.map(({ course, completedCount, totalLessons, progress, isCompleted }) => {
-            if (!course) return null;
-            const title = currentLanguage === 'hi' ? course.titleHi : currentLanguage === 'mr' ? course.titleMr : course.title;
-            const description = currentLanguage === 'hi' ? course.descriptionHi : currentLanguage === 'mr' ? course.descriptionMr : course.description;
+            const title = currentLanguage === 'hi' ? course.titleHi || course.title : currentLanguage === 'mr' ? course.titleMr || course.title : course.title;
+            const description = currentLanguage === 'hi' ? course.descriptionHi || course.description : currentLanguage === 'mr' ? course.descriptionMr || course.description : course.description;
 
             return (
               <div
@@ -158,10 +242,14 @@ export const MyCourses: React.FC = () => {
                         {course.level}
                       </span>
                     </div>
-                    {isCompleted && (
+                    {isCompleted ? (
                       <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-emerald-600 text-white text-[10px] font-bold flex items-center gap-1 shadow">
                         <CheckCircle2 className="w-3 h-3" />
-                        <span>Completed</span>
+                        <span>Completed ✓</span>
+                      </div>
+                    ) : (
+                      <div className="absolute top-3 right-3 px-2 py-0.5 rounded bg-govTeal-700 text-white text-[10px] font-bold shadow">
+                        In Progress
                       </div>
                     )}
                   </div>
@@ -184,7 +272,7 @@ export const MyCourses: React.FC = () => {
                     <div className="space-y-1.5 pt-2">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-govText-secondary font-medium">
-                          {completedCount} of {totalLessons} lessons
+                          {isCompleted ? 'All curriculum completed' : `${completedCount} of ${totalLessons} lessons`}
                         </span>
                         <span className="font-bold text-govTeal-800">{progress}%</span>
                       </div>
@@ -213,10 +301,11 @@ export const MyCourses: React.FC = () => {
                   {isCompleted && (
                     <button
                       onClick={() => navigate('certificates')}
-                      className="px-3 py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                      title="View Certificate"
+                      className="px-3 py-2.5 bg-saffron-50 hover:bg-saffron-100 text-saffron-900 border border-saffron-200 text-xs font-bold rounded-xl transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
+                      title="View Official Certificate"
                     >
                       <Award className="w-4 h-4 text-saffron-600" />
+                      <span className="text-xs font-bold">Certificate</span>
                     </button>
                   )}
                 </div>

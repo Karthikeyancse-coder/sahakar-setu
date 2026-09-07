@@ -316,18 +316,32 @@ export const learningService = {
     const safeQuestions = quiz.questions.map((q) => ({
       id: q.id,
       orderIndex: q.orderIndex,
+      question: q.questionText,
       questionText: q.questionText,
+      questionHi: q.questionTextHi,
       questionTextHi: q.questionTextHi,
+      questionMr: q.questionTextMr,
       questionTextMr: q.questionTextMr,
+      explanation: {
+        en: q.explanationEn || '',
+        hi: q.explanationHi || '',
+        mr: q.explanationMr || '',
+      },
       explanationEn: q.explanationEn,
       explanationHi: q.explanationHi,
       explanationMr: q.explanationMr,
       options: q.options.map((opt) => ({
         id: opt.id,
         optionIndex: opt.optionIndex,
+        text: opt.optionText,
         optionText: opt.optionText,
+        textHi: opt.optionTextHi,
         optionTextHi: opt.optionTextHi,
+        textMr: opt.optionTextMr,
         optionTextMr: opt.optionTextMr,
+        en: opt.optionText,
+        hi: opt.optionTextHi,
+        mr: opt.optionTextMr,
       })),
     }));
 
