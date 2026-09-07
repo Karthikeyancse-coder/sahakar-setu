@@ -62,6 +62,17 @@ const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, bod
 
 export const api = {
   auth: {
+    register: async (payload: {
+      fullName: string;
+      email: string;
+      password: string;
+      role: string;
+      phone?: string;
+      profileDetails?: Record<string, any>;
+      eKycStatus?: string;
+    }) => {
+      return post<{ user: any; registrationId: string; message: string }>('/api/auth/register', payload, false);
+    },
     login: async (identifier: string, password: string, rememberMe = true) => {
       const result = await post<{ token: string; user: any }>(
         '/api/auth/login',

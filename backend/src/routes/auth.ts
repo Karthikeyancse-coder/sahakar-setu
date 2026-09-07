@@ -16,6 +16,17 @@ const loginSchema = z.object({
   path: ['identifier'],
 });
 
+const registerSchema = z.object({
+  fullName: z.string().min(1, 'Full name is required'),
+  email: z.string().email('Invalid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.enum(['TRAINEE', 'FACULTY', 'INSTITUTE_ADMIN', 'EMPLOYER', 'trainee', 'faculty', 'institute_admin', 'employer']),
+  phone: z.string().optional(),
+  profileDetails: z.record(z.any()).optional(),
+  eKycStatus: z.enum(['VERIFIED', 'NOT_VERIFIED']).optional(),
+});
+
+router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
 router.get('/me', requireAuth, authController.me);
 router.post('/logout', requireAuth, authController.logout);

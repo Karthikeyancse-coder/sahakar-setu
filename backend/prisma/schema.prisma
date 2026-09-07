@@ -41,6 +41,7 @@ model User {
   aadhaarMock            String?
   isKycVerified          Boolean @default(false)
   status                 String  @default("active")
+  eKycStatus             String  @default("NOT_VERIFIED")
 
   enrollments    Enrollment[]
   attendance     AttendanceRecord[]
