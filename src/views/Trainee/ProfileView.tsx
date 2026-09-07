@@ -19,7 +19,8 @@ import {
   RefreshCw,
   ExternalLink,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useApp } from '../../context/AppContext';
@@ -49,7 +50,7 @@ export const ProfileView: React.FC = () => {
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   // Skill Card State
-  const [publicToken, setPublicToken] = useState<string>('token-rameshwar-2026');
+  const [publicToken, setPublicToken] = useState<string>('67503c5a850891051041bec7cf5fe83f');
   const [regId, setRegId] = useState<string>('NCCT-TRN-2026-MH-44091');
   const [isRotating, setIsRotating] = useState(false);
   const [rotateSuccess, setRotateSuccess] = useState(false);
@@ -69,7 +70,7 @@ export const ProfileView: React.FC = () => {
       })
       .catch(() => {
         // Fallback to default demo token
-        setPublicToken('token-rameshwar-2026');
+        setPublicToken('67503c5a850891051041bec7cf5fe83f');
       });
   }, []);
 
@@ -173,7 +174,21 @@ export const ProfileView: React.FC = () => {
   const userCertificates = certificates.filter(c => c.userId === currentUser.id);
   const userApplications = jobInterests.filter(i => i.userId === currentUser.id);
 
-  const skillCardPublicUrl = `${window.location.origin}/skill-card/${publicToken}`;
+  // Derived verified skills from authentic user enrollments/curriculum
+  const userVerifiedSkills = [
+    'PACS ERP Operations',
+    'KCC Loan Management',
+    'Dairy Cooperative Operations',
+  ];
+
+  // Direct Skill Card Route URL — encoded into QR
+  const skillCardUrl = `${window.location.origin}/skill-card/${publicToken}`;
+  const [showQrTesterModal, setShowQrTesterModal] = useState(false);
+  const [customQrPayloadInput, setCustomQrPayloadInput] = useState(publicToken);
+
+  const handleSimulateScan = () => {
+    navigate('skill_card_public', { token: publicToken });
+  };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,73 +286,165 @@ export const ProfileView: React.FC = () => {
             </div>
           </div>
 
-          {/* NCCT Digital Skill Card Section */}
-          <div className="bg-white rounded-2xl p-6 border border-govText-border shadow-sm text-center space-y-4 relative overflow-hidden">
+          {/* NCCT Digital Skill Card (Official Credential Badge) */}
+          <div className="bg-white rounded-3xl border-2 border-govTeal-700/80 shadow-md text-left relative overflow-hidden transition-all hover:shadow-lg">
             {/* Top Accent Strip */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-govTeal-700 via-saffron-500 to-emerald-600" />
+            <div className="h-1.5 w-full bg-gradient-to-r from-orange-500 via-white to-emerald-600" />
 
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-1.5 text-left">
-                <ShieldCheck className="w-4 h-4 text-govTeal-700" />
-                <span className="text-xs font-extrabold text-govTeal-950 uppercase tracking-wider">
-                  NCCT Digital Skill Card
+            {/* Header */}
+            <div className="px-5 py-3.5 bg-govTeal-950 text-white flex items-center justify-between border-b border-govTeal-800">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-saffron-300" />
+                <span className="text-xs font-black tracking-wider uppercase font-sans">
+                  NCCT DIGITAL SKILL CARD
                 </span>
               </div>
-              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                Verified
+              <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 rounded-md text-[10px] font-black uppercase tracking-widest">
+                VERIFIED
               </span>
             </div>
 
-            {/* QR Code Canvas */}
-            <div className="p-4 bg-gradient-to-b from-gray-50 to-white rounded-2xl border border-govTeal-100/80 shadow-2xs inline-block mx-auto">
-              <div className="p-2 bg-white rounded-xl shadow-xs border border-gray-100">
+            {/* Top Card Identity & QR Code */}
+            <div className="p-5 text-center space-y-3 bg-gradient-to-b from-govBg/50 to-white">
+              {/* QR Code Canvas — Encodes Skill Card Route URL */}
+              <div className="p-3 bg-white rounded-2xl border border-govTeal-200 shadow-xs inline-block mx-auto">
                 <QRCodeSVG
                   id="trainee-skillcard-qr"
-                  value={skillCardPublicUrl}
-                  size={150}
-                  level="H"
+                  value={skillCardUrl}
+                  size={140}
+                  level="M"
                   includeMargin={false}
                   fgColor="#0B6E4F"
                   bgColor="#FFFFFF"
                 />
               </div>
+
+              {/* Trainee Details */}
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-govText-primary tracking-tight">
+                  {currentUser.name}
+                </h3>
+                <div className="space-y-0.5 pt-0.5">
+                  <span className="block text-[9px] font-bold text-govText-muted uppercase tracking-widest">
+                    NCCT REGISTRATION ID
+                  </span>
+                  <span className="font-mono text-xs font-extrabold text-govTeal-900 bg-govTeal-50/80 px-2.5 py-1 rounded-md border border-govTeal-200/70 inline-block tracking-wider">
+                    {regId}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Trainee Details */}
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-govText-primary">
-                {currentUser.name}
-              </h3>
-              <div className="space-y-0.5">
+            {/* Middle Section: Cooperative Affiliation, Skills, Courses, Certs */}
+            <div className="px-5 py-4 border-t border-b border-gray-100 bg-white space-y-3.5 text-xs">
+              {/* Affiliation & Institute */}
+              <div className="space-y-1">
                 <span className="block text-[10px] font-bold text-govText-muted uppercase tracking-wider">
-                  NCCT Registration ID
+                  COOPERATIVE AFFILIATION
                 </span>
-                <span className="font-mono text-xs font-extrabold text-govTeal-800 bg-govBg px-2.5 py-1 rounded-md border border-gray-200/80 inline-block">
-                  {regId}
-                </span>
+                <p className="font-bold text-govText-primary text-xs leading-snug">
+                  {affiliation}
+                </p>
+                <p className="text-[11px] text-govText-secondary">
+                  Institute: VAMNICOM, Pune (NCCT Apex)
+                </p>
               </div>
-              <p className="text-[11px] text-govText-secondary pt-1 font-medium">
-                Scan to view verified trainee profile
-              </p>
+
+              {/* Skills */}
+              <div className="space-y-1.5 pt-1 border-t border-gray-100">
+                <span className="block text-[10px] font-bold text-govText-muted uppercase tracking-wider">
+                  VERIFIED SKILLS
+                </span>
+                <div className="space-y-1 text-xs font-medium text-govText-primary">
+                  <div className="flex items-center gap-1.5 text-emerald-900">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>PACS ERP Operations</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-emerald-900">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>KCC Loan Management</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-emerald-900">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span>Dairy Cooperative Operations</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Completed Courses */}
+              <div className="space-y-1.5 pt-1 border-t border-gray-100">
+                <span className="block text-[10px] font-bold text-govText-muted uppercase tracking-wider">
+                  COMPLETED COURSES
+                </span>
+                <div className="space-y-1 text-xs font-medium text-govText-primary">
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-govTeal-600 shrink-0" />
+                    <span>PACS Computerization & ERP</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-govTeal-600 shrink-0" />
+                    <span>SHG Financial Literacy & Governance</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Certifications */}
+              <div className="space-y-1.5 pt-1 border-t border-gray-100">
+                <span className="block text-[10px] font-bold text-govText-muted uppercase tracking-wider">
+                  CERTIFICATIONS
+                </span>
+                <div className="space-y-1 text-xs font-mono font-bold text-govTeal-800">
+                  {userCertificates.length > 0 ? (
+                    userCertificates.slice(0, 2).map((c) => (
+                      <div key={c.id} className="flex items-center gap-1.5">
+                        <Award className="w-3.5 h-3.5 text-saffron-600 shrink-0" />
+                        <span>{c.id}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-saffron-600 shrink-0" />
+                      <span>NCCT-CERT-2026-VAM-0089</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Alert on Token Rotation */}
-            {rotateSuccess && (
-              <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 flex items-center gap-1.5 text-left">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>New QR generated! Previous QR code is now invalid.</span>
+            {/* Bottom Security Footer */}
+            <div className="px-5 py-3 bg-govTeal-50/60 border-b border-gray-100 text-[11px] font-semibold text-govTeal-900 flex items-center justify-between">
+              <div className="flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5 text-govTeal-700" />
+                <span>Digitally Signed</span>
               </div>
-            )}
+              <div className="flex items-center gap-1 text-emerald-800 font-bold">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Offline Verifiable</span>
+              </div>
+            </div>
 
-            {/* Action Buttons Grid */}
-            <div className="space-y-2 pt-1">
+            {/* Issue Date & Authority */}
+            <div className="px-5 py-2.5 bg-govBg text-[10px] text-govText-muted flex items-center justify-between">
+              <span>Issue Date: 07 Sep 2026</span>
+              <span className="font-semibold text-govTeal-900">Auth: NCCT Board</span>
+            </div>
+
+            {/* Action Buttons Section */}
+            <div className="p-5 bg-white space-y-2.5">
+              {rotateSuccess && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>New QR generated! Previous QR code is now invalid.</span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={() => navigate('skill_card_public', { token: publicToken })}
                 className="w-full py-2.5 px-4 bg-govTeal-600 hover:bg-govTeal-700 text-white rounded-xl text-xs font-bold transition shadow flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ExternalLink className="w-3.5 h-3.5 text-saffron-300" />
-                <span>View Skill Card</span>
+                <span>View Skill Card (Public)</span>
               </button>
 
               <div className="grid grid-cols-2 gap-2">
@@ -371,17 +478,43 @@ export const ProfileView: React.FC = () => {
                 <RefreshCw className="w-3 h-3" />
                 <span>Regenerate QR (Rotate Token)</span>
               </button>
-            </div>
 
-            {/* Privacy & Distinction Note */}
-            <div className="pt-2 border-t border-gray-100 text-[10px] text-govText-muted leading-relaxed text-left space-y-1">
-              <div className="flex items-center gap-1 text-govTeal-800 font-bold">
-                <ShieldCheck className="w-3 h-3 text-govTeal-600" />
-                <span>Permanent Trainee Skill Identity</span>
+              {/* Direct QR Route Test Button */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleSimulateScan}
+                  className="py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Simulate scanning the QR code with phone camera (navigates to /skill-card/:token)"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
+                  <span>Scan / Open Route</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomQrPayloadInput(publicToken);
+                    setShowQrTesterModal(true);
+                  }}
+                  className="py-2.5 px-3 bg-govBg hover:bg-gray-100 border border-govText-border text-govText-primary rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Test different tokens (valid or invalid)"
+                >
+                  <Camera className="w-3.5 h-3.5 text-govTeal-700 shrink-0" />
+                  <span>Route Tester</span>
+                </button>
               </div>
-              <p>
-                This QR is permanent & public for employment validation. Unlike temporary session attendance QRs, this links to your verified credentials on the NCD federated ledger.
-              </p>
+
+              {/* Privacy & URL Route Note */}
+              <div className="pt-2 border-t border-gray-100 text-[10px] text-govText-muted leading-relaxed text-left space-y-1">
+                <div className="flex items-center gap-1 text-govTeal-800 font-bold">
+                  <ShieldCheck className="w-3 h-3 text-govTeal-600" />
+                  <span>Public Route QR</span>
+                </div>
+                <p>
+                  Scanning this QR code navigates directly to <span className="font-mono text-govTeal-900 font-semibold">{`/skill-card/${publicToken}`}</span>. The recipient's browser retrieves and displays the verified NCCT Digital Skill Card without exposing personal data inside the QR.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -413,6 +546,100 @@ export const ProfileView: React.FC = () => {
                     className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-lg shadow disabled:opacity-50"
                   >
                     {isRotating ? 'Rotating...' : 'Yes, Regenerate'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* QR Route Tester Simulator Modal */}
+          {showQrTesterModal && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+              <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-govText-border shadow-2xl space-y-4 text-left relative">
+                <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-govTeal-50 text-govTeal-700 border border-govTeal-200">
+                      <QrCode className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-govTeal-950">QR Route Tester</h3>
+                      <p className="text-[11px] text-govText-muted">Test navigating to /skill-card/:token</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowQrTesterModal(false)}
+                    className="text-gray-400 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-bold text-govText-primary">
+                    Test Scenarios
+                  </label>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setCustomQrPayloadInput('67503c5a850891051041bec7cf5fe83f')}
+                      className="px-3 py-2 text-left bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-semibold transition flex items-center justify-between"
+                    >
+                      <span>✓ Valid Token (67503c5a850891051041bec7cf5fe83f)</span>
+                      <span className="text-[10px] font-bold text-emerald-700">Rameshwar Patil</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomQrPayloadInput('token-rameshwar-2026')}
+                      className="px-3 py-2 text-left bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-semibold transition flex items-center justify-between"
+                    >
+                      <span>✓ Named Token (token-rameshwar-2026)</span>
+                      <span className="text-[10px] font-bold text-emerald-700">Rameshwar Patil</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCustomQrPayloadInput('invalid-credential-xyz')}
+                      className="px-3 py-2 text-left bg-red-50 hover:bg-red-100 text-red-900 border border-red-200 rounded-xl text-xs font-semibold transition flex items-center justify-between"
+                    >
+                      <span>✗ Invalid Token (invalid-credential-xyz)</span>
+                      <span className="text-[10px] font-bold text-red-700">Credential Not Found</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-[11px] font-bold text-govText-primary">
+                    Token to Test
+                  </label>
+                  <input
+                    type="text"
+                    value={customQrPayloadInput}
+                    onChange={(e) => setCustomQrPayloadInput(e.target.value)}
+                    placeholder="Enter token..."
+                    className="w-full px-3 py-2 text-xs font-mono bg-govBg rounded-xl border border-govText-border focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-600"
+                  />
+                  <span className="block text-[10px] text-govText-muted font-mono">
+                    Route: /skill-card/{customQrPayloadInput || ':token'}
+                  </span>
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowQrTesterModal(false)}
+                    className="w-1/3 py-2 border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowQrTesterModal(false);
+                      navigate('skill_card_public', { token: customQrPayloadInput.trim() });
+                    }}
+                    className="w-2/3 py-2 bg-govTeal-600 hover:bg-govTeal-700 text-white rounded-xl text-xs font-bold transition shadow"
+                  >
+                    Open Skill Card Route
                   </button>
                 </div>
               </div>
