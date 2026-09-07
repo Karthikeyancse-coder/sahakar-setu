@@ -608,6 +608,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             const storage = isPersistent ? localStorage : sessionStorage;
             storage.setItem('ss_auth', 'true');
             storage.setItem('ss_user', JSON.stringify(fullUser));
+
+            if (normRole === 'trainee') {
+              api.enrollments.mine().then(enrs => {
+                if (Array.isArray(enrs)) setEnrollments(enrs);
+              }).catch(() => {});
+              api.certificates.mine().then(certs => {
+                if (Array.isArray(certs)) setCertificates(certs);
+              }).catch(() => {});
+            }
           }
         })
         .catch(() => {
@@ -665,6 +674,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentLanguageState(fullUser.languagePreference);
       storage.setItem('ss_lang', fullUser.languagePreference);
     }
+    if (fullUser.role === 'trainee') {
+      api.enrollments.mine().then(enrs => {
+        if (Array.isArray(enrs)) setEnrollments(enrs);
+      }).catch(() => {});
+      api.certificates.mine().then(certs => {
+        if (Array.isArray(certs)) setCertificates(certs);
+      }).catch(() => {});
+    }
+
     setActiveView('home');
     setActiveViewParams(null);
     const targetPath = `${getRolePrefix(fullUser.role)}/dashboard`;

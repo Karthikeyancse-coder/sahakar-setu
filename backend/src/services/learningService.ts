@@ -355,7 +355,10 @@ export const learningService = {
     submittedAnswers: Record<string, string> | Array<{ questionId: string; selectedOptionId: string }>
   ) => {
     // 1. Fetch full quiz from DB (including isCorrect)
-    const quiz = await learningRepository.findQuizById(quizId);
+    let quiz = await learningRepository.findQuizById(quizId);
+    if (!quiz) {
+      quiz = await learningRepository.findQuizByModuleId(quizId);
+    }
     if (!quiz) throw createError(404, `Quiz ${quizId} not found`);
 
     const course = await courseRepository.findById(quiz.courseId);

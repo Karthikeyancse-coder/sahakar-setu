@@ -1,12 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { quizService } from '../services/quizService';
+import { learningService } from '../services/learningService';
 
 export const quizController = {
   submit: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const result = await quizService.submitQuiz(
+      const result = await learningService.submitQuiz(
         req.user!.userId,
-        req.body.courseId,
         req.params.quizId,
         req.body.answers
       );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -7,6 +7,7 @@ import {
   Award,
   RotateCcw,
   BookOpen,
+  Loader2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../../context/AppContext';
@@ -17,6 +18,7 @@ import {
   gradeAssessment,
   AssessmentResult,
 } from '../../lib/assessmentEngine';
+import { api } from '../../lib/api';
 
 export const QuizView: React.FC = () => {
   const {
@@ -33,20 +35,66 @@ export const QuizView: React.FC = () => {
 
   const course = courses.find(c => c.id === courseId) || courses[0];
   const currentModule = (moduleId ? course?.modules.find(m => m.id === moduleId) : null) || course?.modules[0];
-  const quiz = currentModule?.quiz;
+  const localQuiz = currentModule?.quiz;
 
-  // Normalized questions with stable IDs
+  const [dbQuiz, setDbQuiz] = useState<any>(null);
+  const [loadingQuiz, setLoadingQuiz] = useState<boolean>(false);
+
+  // Fetch complete assessment from database so all questions (e.g. 5 questions) are loaded
+  useEffect(() => {
+    let quizIdentifier = localQuiz?.id || activeViewParams?.quizId;
+    if (!quizIdentifier && moduleId) {
+      quizIdentifier = moduleId;
+    }
+    if (!quizIdentifier && courseId) {
+      if (courseId.includes('dairy')) quizIdentifier = 'quiz-dairy-m1';
+      else if (courseId.includes('pacs')) quizIdentifier = 'quiz-pacs-m1';
+      else if (courseId.includes('shg')) quizIdentifier = 'quiz-shg-m1';
+    }
+
+    if (quizIdentifier) {
+      setLoadingQuiz(true);
+      api.learning.getQuiz(quizIdentifier)
+        .then(res => {
+          if (res && Array.isArray(res.questions) && res.questions.length > 0) {
+            setDbQuiz(res);
+          }
+        })
+        .catch(err => {
+          console.warn('[QuizView] Could not fetch quiz from DB API, falling back to course definition:', err);
+        })
+        .finally(() => setLoadingQuiz(false));
+    }
+  }, [localQuiz?.id, activeViewParams?.quizId, moduleId, courseId]);
+
+  const activeQuiz = dbQuiz || localQuiz;
+
+  // Normalized questions with stable IDs — ALL questions from activeQuiz.questions
   const normalizedQuestions = useMemo(() => {
-    if (!quiz?.questions) return [];
-    return quiz.questions.map(q => normalizeQuestion(q, currentLanguage));
-  }, [quiz, currentLanguage]);
+    if (!activeQuiz?.questions) return [];
+    return activeQuiz.questions.map((q: any) => normalizeQuestion(q, currentLanguage));
+  }, [activeQuiz, currentLanguage]);
 
-  // Selected option IDs mapped by question ID (e.g. { "q-dairy-1": "q-dairy-1-a" })
+  // Selected option IDs mapped by question ID (e.g. { "qq-d1-1": "opt-qq-d1-1-b" })
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [assessmentResult, setAssessmentResult] = useState<AssessmentResult | null>(null);
 
-  if (!quiz) {
+  if (loadingQuiz && !activeQuiz) {
+    return (
+      <PageContainer>
+        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border space-y-4 shadow-sm">
+          <Loader2 className="w-10 h-10 text-govTeal-600 animate-spin mx-auto" />
+          <h2 className="text-base font-bold text-govText-primary">Loading Assessment Questions...</h2>
+          <p className="text-xs text-govText-secondary">
+            Fetching official examination questions from the NCCT repository.
+          </p>
+        </div>
+      </PageContainer>
+    );
+  }
+
+  if (!activeQuiz) {
     return (
       <PageContainer>
         <div className="bg-white rounded-2xl p-10 text-center border border-govText-border space-y-4">
@@ -74,27 +122,53 @@ export const QuizView: React.FC = () => {
   const handleSubmit = async () => {
     if (normalizedQuestions.length === 0) return;
 
-    // 1. Authoritative scoring via pure assessment engine
-    const result = gradeAssessment(normalizedQuestions, selectedAnswers, quiz.passThreshold);
-    setAssessmentResult(result);
-    setIsSubmitted(true);
+    // 1. Local scoring fallback
+    const localResult = gradeAssessment(normalizedQuestions, selectedAnswers, activeQuiz.passThreshold || 70);
 
-    if (result.passed) {
-      try {
-        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
-      } catch { /* Confetti fallback */ }
+    // 2. Authoritative scoring via backend submit endpoint
+    try {
+      const serverRes = await api.learning.submitQuiz(activeQuiz.id, selectedAnswers);
+      if (serverRes) {
+        const passed = Boolean(serverRes.passed);
+        const scorePercent = serverRes.scorePercent ?? serverRes.score ?? localResult.scorePercentage;
+        setAssessmentResult({
+          totalQuestions: serverRes.totalQuestions || normalizedQuestions.length,
+          correctAnswers: serverRes.correctAnswers || 0,
+          incorrectAnswers: (serverRes.totalQuestions || normalizedQuestions.length) - (serverRes.correctAnswers || 0),
+          unansweredCount: 0,
+          scorePercentage: scorePercent,
+          passingScore: activeQuiz.passThreshold || 70,
+          passed,
+          questionResults: localResult.questionResults,
+        });
+        setIsSubmitted(true);
+
+        if (passed) {
+          try {
+            confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+          } catch { /* Confetti fallback */ }
+        }
+
+        // Notify AppContext for state sync
+        const rawAnswers = normalizedQuestions.map(q => {
+          const selOptId = selectedAnswers[q.id];
+          const idx = q.options.findIndex(o => o.id === selOptId);
+          return idx >= 0 ? idx : -1;
+        });
+        await submitQuiz(course.id, activeQuiz.id, rawAnswers, serverRes);
+        return;
+      }
+    } catch (e) {
+      console.warn('[QuizView] Server submit fallback to local scoring:', e);
     }
 
-    // 2. Submit to backend/AppContext in background without overwriting the local authoritative result
-    try {
-      const rawAnswers = normalizedQuestions.map(q => {
-        const selOptId = selectedAnswers[q.id];
-        const idx = q.options.findIndex(o => o.id === selOptId);
-        return idx >= 0 ? idx : -1;
-      });
-      await submitQuiz(course.id, quiz.id, rawAnswers, result);
-    } catch {
-      // Local result remains authoritative
+    // Fallback if server call had network issue
+    setAssessmentResult(localResult);
+    setIsSubmitted(true);
+    if (localResult.passed) {
+      try {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.6 } });
+      } catch { }
     }
   };
 
@@ -108,7 +182,7 @@ export const QuizView: React.FC = () => {
   const allAnswered = normalizedQuestions.length > 0 && normalizedQuestions.every(q => selectedAnswers[q.id] !== undefined && selectedAnswers[q.id] !== '');
 
   const courseTitle = currentLanguage === 'hi' ? course.titleHi : currentLanguage === 'mr' ? course.titleMr : course.title;
-  const moduleTitle = currentLanguage === 'hi' ? currentModule.titleHi : currentLanguage === 'mr' ? currentModule.titleMr : currentModule.title;
+  const moduleTitle = currentLanguage === 'hi' ? currentModule?.titleHi : currentLanguage === 'mr' ? currentModule?.titleMr : currentModule?.title;
 
   return (
     <PageContainer>
@@ -131,10 +205,10 @@ export const QuizView: React.FC = () => {
           </div>
 
           <h1 className="text-2xl font-extrabold text-govText-primary mt-1">
-            {moduleTitle}: {t.quiz?.assessmentTitle || 'Module Competency Assessment'}
+            {moduleTitle ? `${moduleTitle}: ` : ''}{activeQuiz.title || t.quiz?.assessmentTitle || 'Module Competency Assessment'}
           </h1>
           <p className="text-xs text-govText-secondary mt-1">
-            Answer all questions. Minimum passing score: <span className="font-bold text-govTeal-800">{quiz.passThreshold}%</span>.
+            Answer all questions. Minimum passing score: <span className="font-bold text-govTeal-800">{activeQuiz.passThreshold || 70}%</span>.
           </p>
         </div>
 
@@ -170,7 +244,7 @@ export const QuizView: React.FC = () => {
                   : (t.quiz?.failedBadge || 'Assessment Score Below Threshold')}
               </h3>
               <p className="text-xs mt-0.5 opacity-90">
-                You achieved a score of <span className="font-extrabold text-base">{assessmentResult.scorePercentage}%</span> (Passing score: {quiz.passThreshold}%).
+                You achieved a score of <span className="font-extrabold text-base">{assessmentResult.scorePercentage}%</span> (Passing score: {activeQuiz.passThreshold || 70}%).
               </p>
             </div>
           </div>
@@ -205,7 +279,7 @@ export const QuizView: React.FC = () => {
         </div>
       )}
 
-      {/* 3. Questions List */}
+      {/* 3. Questions List — Rendering ALL questions from quiz.questions */}
       <div className="space-y-4 sm:space-y-6">
         {normalizedQuestions.map((q, qIdx) => {
           const selectedOptionId = selectedAnswers[q.id];
@@ -230,9 +304,14 @@ export const QuizView: React.FC = () => {
                   <span className="w-7 h-7 rounded-lg bg-govTeal-100 text-govTeal-900 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
                     {qIdx + 1}
                   </span>
-                  <h3 className="font-bold text-xs sm:text-sm text-govText-primary leading-snug">
-                    {q.question}
-                  </h3>
+                  <div>
+                    <span className="text-[11px] font-bold text-saffron-700 tracking-wider uppercase block mb-0.5">
+                      Question {qIdx + 1} of {normalizedQuestions.length}
+                    </span>
+                    <h3 className="font-bold text-xs sm:text-sm text-govText-primary leading-snug">
+                      {q.question}
+                    </h3>
+                  </div>
                 </div>
 
                 {isSubmitted && (

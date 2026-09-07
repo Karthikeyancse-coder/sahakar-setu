@@ -96,6 +96,10 @@ export const api = {
     get: (id: string) => get<any>(`/api/courses/${id}`),
   },
 
+  trainee: {
+    getDashboard: () => get<any>('/api/trainee/dashboard'),
+  },
+
   enrollments: {
     mine: () => get<any[]>('/api/enrollments/me'),
     enroll: (courseId: string) => post<any>('/api/enrollments', { courseId }),

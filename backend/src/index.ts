@@ -16,6 +16,7 @@ import userRoutes from './routes/users';
 import chatRoutes from './routes/chat';
 import learningRoutes from './routes/learning';
 import skillCardRoutes from './routes/skillCard';
+import traineeRoutes from './routes/trainee';
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/learning', learningRoutes);
+app.use('/api/trainee', traineeRoutes);
 app.use('/api', skillCardRoutes);
 
 // ─── Error handler (must be last) ─────────────────────────────────────────────

@@ -23,19 +23,28 @@ export const MyCourses: React.FC = () => {
   const userEnrollments = enrollments.filter(e => e.userId === currentUser.id);
 
   const enrolledCourseData = userEnrollments.map(enrollment => {
-    const course = courses.find(c => c.id === enrollment.courseId);
+    const course = courses.find(
+      c =>
+        c.id === enrollment.courseId ||
+        (enrollment.courseId.includes('dairy') && c.id.includes('dairy')) ||
+        (enrollment.courseId.includes('pacs') && c.id.includes('pacs')) ||
+        (enrollment.courseId.includes('shg') && c.id.includes('shg'))
+    );
     const totalLessons = course ? course.modules.reduce((acc, m) => acc + m.lessons.length, 0) : 0;
-    const completedCount = enrollment.completedLessonIds.length;
-    const progress = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
-    const isCompleted = progress >= 100;
+    const completedCount = Array.isArray(enrollment.completedLessonIds) ? enrollment.completedLessonIds.length : 0;
+    const statusLower = (enrollment.status || '').toLowerCase();
+    const isCompleted = statusLower === 'completed' || enrollment.progressPercent >= 100;
+    const progress = isCompleted
+      ? 100
+      : Math.min(100, Math.max(0, enrollment.progressPercent || (totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0)));
 
     return {
       enrollment,
       course,
-      totalLessons,
+      totalLessons: totalLessons || Math.max(completedCount, 2),
       completedCount,
       progress,
-      isCompleted
+      isCompleted,
     };
   }).filter(item => item.course !== undefined);
 
