@@ -15,6 +15,8 @@ export default defineConfig({
       // and are handled by the runtime CacheFirst rule below instead.
       includeAssets: ['icon-192.png', 'icon-512.png', '*.jpg', 'manifest.webmanifest'],
       workbox: {
+        // Increase precache file size limit to 6 MiB to support bundle assets
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Precache all built JS/CSS/HTML + small images.
         // Explicitly ignore the oversized bg/ PNGs (2MB+) so Workbox
         // doesn't throw "exceeds maximumFileSizeToCacheInBytes" errors.
@@ -115,5 +117,17 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+  },
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          charts: ['recharts'],
+          pdf: ['jspdf', 'html2canvas'],
+          icons: ['lucide-react'],
+        },
+      },
+    },
   },
 });
