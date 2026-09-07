@@ -1,10 +1,24 @@
 /**
  * src/lib/api.ts
- * Lightweight fetch wrapper for the Sahakar Setu Express backend (http://localhost:5000).
+ * Lightweight fetch wrapper for the Sahakar Setu Express backend.
  * Automatically attaches the stored JWT Bearer token to every request.
+ * Environment-aware API client:
+ *  - In Localhost / LAN: Uses relative '/api/...' routed through Vite's dev server proxy to localhost:5000.
+ *  - In Production (Vercel): Uses VITE_API_URL pointing to the deployed backend.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+function getApiBaseUrl(): string {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+  if (!envUrl || envUrl === '/api') {
+    // Relative path routed through Vite dev proxy (Localhost & LAN)
+    return '';
+  }
+  // Production / external backend URL: strip trailing '/api' or '/'
+  // because endpoint paths below explicitly start with '/api/...'
+  return envUrl.replace(/\/api\/?$/i, '').replace(/\/+$/, '');
+}
+
+const BASE_URL = getApiBaseUrl();
 
 const getToken = () => localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
 
@@ -151,6 +165,17 @@ export const api = {
         '/api/attendance',
         { sessionId, method, qrToken }
       ),
+    createSession: (data: {
+      title: string;
+      programmeId?: string;
+      courseId?: string;
+      instructor?: string;
+      date?: string;
+      timeSlot?: string;
+      room?: string;
+    }) => post<any>('/api/attendance/sessions', data),
+    activateSession: (sessionId: string, active?: boolean) =>
+      patch<any>(`/api/attendance/sessions/${sessionId}/activate`, { active }),
   },
 
   // ─── Certificates ──────────────────────────────────────────────────────────
@@ -195,6 +220,12 @@ export const api = {
     send: (message: string) =>
       post<{ message: string; timestamp: string }>('/api/chat', { message }),
     history: () => get<any[]>('/api/chat/history'),
+  },
+
+  // ─── Faculty ───────────────────────────────────────────────────────────────
+
+  faculty: {
+    getDashboard: () => get<any>('/api/faculty/dashboard'),
   },
 
   // ─── NCCT Digital Skill Card ───────────────────────────────────────────────

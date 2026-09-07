@@ -1,3 +1,4 @@
+import prisma from '../config/prisma';
 import { attendanceRepository } from '../repositories/attendanceRepository';
 import { userRepository } from '../repositories/userRepository';
 import { notificationRepository } from '../repositories/notificationRepository';
@@ -63,4 +64,43 @@ export const attendanceService = {
   },
 
   getActiveSessions: () => attendanceRepository.findActiveSessions(),
+
+  createSession: async (data: {
+    programmeId?: string;
+    courseId?: string;
+    title: string;
+    instructor: string;
+    date: string;
+    timeSlot: string;
+    room: string;
+  }) => {
+    let progId = data.programmeId;
+    if (!progId && data.courseId) {
+      const course = await prisma.course.findUnique({ where: { id: data.courseId } });
+      progId = course?.programmeId || 'prog-pacs-2026';
+    }
+    const qrToken = `QR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    return prisma.session.create({
+      data: {
+        id: `sess-${Date.now()}`,
+        programmeId: progId || 'prog-pacs-2026',
+        title: data.title,
+        instructor: data.instructor,
+        date: data.date,
+        timeSlot: data.timeSlot,
+        room: data.room,
+        qrToken,
+        active: false,
+      },
+    });
+  },
+
+  activateSession: async (sessionId: string, active = true) => {
+    const session = await prisma.session.findUnique({ where: { id: sessionId } });
+    if (!session) throw createError(404, 'Session not found');
+    return prisma.session.update({
+      where: { id: sessionId },
+      data: { active },
+    });
+  },
 };

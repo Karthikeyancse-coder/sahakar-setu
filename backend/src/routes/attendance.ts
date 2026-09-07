@@ -13,6 +13,8 @@ const markSchema = z.object({
 });
 
 router.get('/sessions', requireAuth, attendanceController.getSessions);
+router.post('/sessions', requireAuth, attendanceController.createSession);
+router.patch('/sessions/:id/activate', requireAuth, attendanceController.activateSession);
 router.post('/', requireAuth, validate(markSchema), attendanceController.mark);
 
 export default router;
