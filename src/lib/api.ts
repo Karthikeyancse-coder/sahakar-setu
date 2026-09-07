@@ -226,6 +226,8 @@ export const api = {
 
   faculty: {
     getDashboard: () => get<any>('/api/faculty/dashboard'),
+    getCourses: () => get<any[]>('/api/faculty/courses'),
+    getCourseRoster: (courseId: string) => get<any[]>(`/api/faculty/courses/${courseId}/roster`),
   },
 
   // ─── NCCT Digital Skill Card ───────────────────────────────────────────────

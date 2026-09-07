@@ -28,4 +28,47 @@ router.get('/dashboard', requireAuth, async (req: Request, res: Response, next: 
   }
 });
 
+/**
+ * GET /api/faculty/courses
+ * Returns the list of courses authored/managed by the authenticated faculty,
+ * with real enrollment counts, completion rates, and quiz pass rates.
+ */
+router.get('/courses', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user!;
+    const role = (user.role || '').toLowerCase();
+
+    if (role !== 'faculty' && role !== 'institute_admin' && role !== 'super_admin') {
+      throw createError(403, 'Forbidden: Faculty courses endpoint requires faculty or academic admin credentials');
+    }
+
+    const courses = await facultyService.getCourses(user.userId);
+    res.json(courses);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/faculty/courses/:courseId/roster
+ * Returns the real enrolled trainee roster for a specific course,
+ * with individual progress, quiz scores, and completion status.
+ */
+router.get('/courses/:courseId/roster', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const user = req.user!;
+    const role = (user.role || '').toLowerCase();
+
+    if (role !== 'faculty' && role !== 'institute_admin' && role !== 'super_admin') {
+      throw createError(403, 'Forbidden: Faculty roster endpoint requires faculty or academic admin credentials');
+    }
+
+    const { courseId } = req.params;
+    const roster = await facultyService.getCourseRoster(courseId);
+    res.json(roster);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;

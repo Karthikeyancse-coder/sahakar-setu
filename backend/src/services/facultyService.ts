@@ -584,6 +584,94 @@ export class FacultyService {
       employmentReadiness,
     };
   }
+
+  /**
+   * Returns the list of courses authored/managed by the faculty member,
+   * with real enrollment counts, completion rates, and quiz pass rates.
+   */
+  async getCourses(userId?: string): Promise<FacultyCourseItem[]> {
+    const data = await this.getDashboardData(userId);
+    return data.myCourses;
+  }
+
+  /**
+   * Returns the enrolled trainee roster for a specific course,
+   * computed from real database enrollment and quiz attempt records.
+   */
+  async getCourseRoster(courseId: string): Promise<RosterTraineeItem[]> {
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        enrollments: {
+          include: {
+            user: true,
+          },
+        },
+        quizAttempts: {
+          include: { user: true },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!course) {
+      throw createError(404, `Course ${courseId} not found`);
+    }
+
+    return course.enrollments.map(enrollment => {
+      const trainee = enrollment.user;
+
+      // Best quiz attempt for this trainee in this course
+      const traineeAttempts = course.quizAttempts.filter(
+        a => a.userId === enrollment.userId && a.courseId === courseId
+      );
+      const bestAttempt = traineeAttempts
+        .filter(a => a.passed)
+        .sort((a, b) => (b.percentage || b.score || 0) - (a.percentage || a.score || 0))[0]
+        || traineeAttempts.sort((a, b) => (b.percentage || b.score || 0) - (a.percentage || a.score || 0))[0]
+        || null;
+
+      const scoreNum = bestAttempt ? Math.round(bestAttempt.percentage || bestAttempt.score || 0) : null;
+      let quizScore = 'Pending';
+      if (bestAttempt) {
+        if (bestAttempt.passed) {
+          quizScore = scoreNum !== null && scoreNum >= 90
+            ? `${scoreNum}% (Distinction)`
+            : `${scoreNum}% (Pass)`;
+        } else {
+          quizScore = `${scoreNum ?? 0}% (Fail)`;
+        }
+      }
+
+      const status: 'completed' | 'in_progress' =
+        enrollment.progressPercent >= 100 && (bestAttempt?.passed ?? false)
+          ? 'completed'
+          : 'in_progress';
+
+      return {
+        id: trainee?.id || enrollment.userId,
+        name: trainee?.name || 'Unknown Trainee',
+        email: trainee?.email || '',
+        coop: trainee?.cooperativeAffiliation || 'PACS Society Member',
+        enrolledDate: enrollment.enrolledDate
+          ? new Date(enrollment.enrolledDate).toISOString().slice(0, 10)
+          : new Date().toISOString().slice(0, 10),
+        progressPercent: Math.round(enrollment.progressPercent || 0),
+        quizScore,
+        status,
+      };
+    });
+  }
+}
+export interface RosterTraineeItem {
+  id: string;
+  name: string;
+  email: string;
+  coop: string;
+  enrolledDate: string;
+  progressPercent: number;
+  quizScore: string;
+  status: 'completed' | 'in_progress';
 }
 
 export const facultyService = new FacultyService();
