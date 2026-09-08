@@ -6,7 +6,6 @@ import {
   Clock,
   ArrowRight,
   CheckCircle2,
-  QrCode,
   Sparkles,
   ShieldCheck,
   TrendingUp,
@@ -20,6 +19,7 @@ import {
   Loader2,
   HelpCircle,
   XCircle,
+  Camera,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -208,6 +208,39 @@ export const TraineeHome: React.FC = () => {
   return (
     <PageContainer>
 
+      {/* Active Classroom Attendance Live Alert */}
+      {activeSession && !activeSession.userCheckedIn && (
+        <div className="mb-5 rounded-2xl border-2 border-emerald-400 bg-gradient-to-r from-emerald-50 via-teal-50 to-white p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3.5">
+            <div className="relative">
+              <span className="w-4 h-4 rounded-full bg-emerald-500 inline-block animate-ping absolute inset-0 opacity-75" />
+              <span className="relative w-4 h-4 rounded-full bg-emerald-600 flex items-center justify-center text-white text-[9px] font-bold">
+                ●
+              </span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase tracking-wider text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                  Live Attendance Session Open
+                </span>
+                <span className="text-xs font-medium text-gray-500">{activeSession.timeSlot}</span>
+              </div>
+              <p className="text-sm font-bold text-gray-900 mt-0.5">
+                {activeSession.title} <span className="font-normal text-gray-600">— Room: {activeSession.room}</span>
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => navigate('attendance_history')}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer shrink-0"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Mark Face Attendance</span>
+          </button>
+        </div>
+      )}
+
       {/* 1. Hero Welcome Banner — 100% Authenticated User Profile */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-govTeal-700 via-govTeal-800 to-govTeal-900 text-white p-5 sm:p-7 shadow-md border border-govTeal-600/50">
         <div className="relative z-10 max-w-4xl space-y-3">
@@ -329,13 +362,20 @@ export const TraineeHome: React.FC = () => {
                   Instructor: <strong className="text-govText-primary">{activeSession.instructor}</strong>
                 </span>
 
-                <button
-                  onClick={() => navigate('attendance_kiosk')}
-                  className="w-full sm:w-auto px-3.5 py-2.5 min-h-[44px] bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow transition-all cursor-pointer"
-                >
-                  <QrCode className="w-3.5 h-3.5 text-saffron-300" />
-                  <span>Scan QR / Face Kiosk Check-in</span>
-                </button>
+                {activeSession.userCheckedIn ? (
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3.5 py-2 rounded-xl border border-emerald-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>✓ Attendance Recorded</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => navigate('attendance_history')}
+                    className="w-full sm:w-auto px-4 py-2.5 min-h-[44px] bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow transition-all cursor-pointer"
+                  >
+                    <Camera className="w-4 h-4 text-saffron-300" />
+                    <span>Mark Face Attendance</span>
+                  </button>
+                )}
               </div>
             </div>
           ) : (

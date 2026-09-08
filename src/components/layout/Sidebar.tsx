@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
       if (item.id === 'certificates') return 'प्रमाणपत्र';
       if (item.id === 'jobs') return 'रोजगार अवसर';
       if (item.id === 'my_applications') return 'मेरे आवेदन';
-      if (item.id === 'attendance_kiosk') return 'उपस्थिति कियोस्क';
+      if (item.id === 'attendance_kiosk' || item.id === 'attendance') return 'उपस्थिति / सत्र';
       if (item.id === 'career_chat') return 'सहकार सहायक AI';
       if (item.id === 'profile') return 'मेरी प्रोफ़ाइल';
       if (item.id === 'settings') return 'सेटिंग्स';
@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
       if (item.id === 'certificates') return 'प्रमाणपत्रे';
       if (item.id === 'jobs') return 'रोजगार संधी';
       if (item.id === 'my_applications') return 'माझे अर्ज';
-      if (item.id === 'attendance_kiosk') return 'हजेरी कियोस्क';
+      if (item.id === 'attendance_kiosk' || item.id === 'attendance') return 'हजेरी / सत्र';
       if (item.id === 'career_chat') return 'सहकार सहायक AI';
       if (item.id === 'profile') return 'माझे प्रोफाईल';
       if (item.id === 'settings') return 'सेटिंग्ज';
@@ -162,7 +162,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
                 (item.id === 'my_courses' && (activeView === 'my_courses' || activeView === 'course_player' || activeView === 'quiz' || activeView === 'courses' || activeView === 'course_detail')) ||
                 (item.id === 'certificates' && (activeView === 'certificates' || activeView === 'verify_public')) ||
                 (item.id === 'jobs' && (activeView === 'jobs' || activeView === 'job_detail' || activeView === 'my_applications')) ||
-                (item.id === 'attendance_kiosk' && (activeView === 'attendance_kiosk' || activeView === 'attendance')) ||
+                ((item.id === 'attendance_kiosk' || item.id === 'attendance') && (activeView === 'attendance_kiosk' || activeView === 'attendance' || activeView === 'sessions')) ||
                 (item.id === 'nominations' && activeView === 'nominations') ||
                 (item.id === 'timetable' && activeView === 'timetable') ||
                 (item.id === 'hostel_timetable' && activeView === 'hostel_timetable') ||

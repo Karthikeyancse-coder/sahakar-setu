@@ -280,9 +280,9 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     if (path !== '/trainee/career-chat') window.history.replaceState({}, '', '/trainee/career-chat');
     return { view: 'career_chat', params: null };
   }
-  if (path === '/trainee/attendance' || path === '/attendance') {
+  if (path === '/trainee/scan-attendance' || path === '/scan-attendance' || path === '/trainee/attendance' || path === '/attendance') {
     if (path !== '/trainee/attendance') window.history.replaceState({}, '', '/trainee/attendance');
-    return { view: 'attendance_kiosk', params: null };
+    return { view: 'attendance_history', params: null };
   }
   if (path === '/trainee/profile' || path === '/profile') {
     if (path !== '/trainee/profile') window.history.replaceState({}, '', '/trainee/profile');
@@ -314,8 +314,8 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     return { view: 'trainee_directory', params: null };
   }
   if (path === '/institute-admin/sessions' || path === '/institute-admin/attendance' || path === '/dashboard/admin/attendance') {
-    if (path !== '/institute-admin/sessions') window.history.replaceState({}, '', '/institute-admin/sessions');
-    return { view: 'attendance_kiosk', params: null };
+    if (path !== '/institute-admin/attendance') window.history.replaceState({}, '', '/institute-admin/attendance');
+    return { view: 'attendance_devices', params: null };
   }
   if (path === '/institute-admin/hostel' || path === '/dashboard/admin/hostel') {
     if (path !== '/institute-admin/hostel') window.history.replaceState({}, '', '/institute-admin/hostel');
@@ -377,6 +377,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/faculty/courses' || path === '/dashboard/faculty/courses') {
     if (path !== '/faculty/courses') window.history.replaceState({}, '', '/faculty/courses');
     return { view: 'courses', params: null };
+  }
+  if (path === '/faculty/attendance' || path === '/faculty/sessions') {
+    if (path !== '/faculty/attendance') window.history.replaceState({}, '', '/faculty/attendance');
+    return { view: 'attendance', params: null };
   }
   const facultyEditCourseMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit-course/);
   if (facultyEditCourseMatch) {
@@ -906,9 +910,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'career_chat' || destination === 'career_bot') {
         targetPath = '/trainee/career-chat';
         targetView = 'career_chat';
+      } else if (destination === 'scan_attendance' || destination === '/trainee/scan-attendance') {
+        targetPath = '/trainee/scan-attendance';
+        targetView = 'scan_attendance';
       } else if (destination === 'attendance' || destination === 'attendance_kiosk') {
-        targetPath = '/trainee/attendance';
-        targetView = 'attendance_kiosk';
+        targetPath = '/trainee/dashboard';
+        targetView = 'home';
       } else if (destination === 'profile') {
         targetPath = '/trainee/profile';
         targetView = 'profile';
@@ -961,6 +968,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'course_builder' || destination === 'edit') {
         targetPath = `/faculty/courses/${params?.courseId || 'crs-pacs-erp-101'}/edit`;
         targetView = 'course_builder';
+      } else if (destination === 'attendance' || destination === 'attendance_kiosk' || destination === 'sessions' || destination === '/faculty/attendance') {
+        targetPath = '/faculty/attendance';
+        targetView = 'attendance';
       } else if (destination === 'settings') {
         targetPath = '/faculty/settings';
         targetView = 'settings';

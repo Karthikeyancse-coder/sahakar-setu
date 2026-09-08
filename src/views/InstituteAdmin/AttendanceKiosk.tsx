@@ -1,518 +1,515 @@
-import React, { useState, useRef, useEffect } from 'react';
+/**
+ * src/views/InstituteAdmin/AttendanceKiosk.tsx (Classroom Attendance Devices & RFID Management)
+ *
+ * Institute Admin view for:
+ *  1. Monitoring Physical Classroom Attendance Devices (Raspberry Pi / ESP32-CAM Kiosks)
+ *  2. Real-time Heartbeat & Online/Offline Status from PostgreSQL
+ *  3. Registering new classroom devices
+ *  4. Assigning Contactless RFID / NFC smart cards to registered trainees
+ */
+
+import React, { useState, useEffect } from 'react';
 import {
-  QrCode,
-  Camera,
   Cpu,
+  Radio,
   CheckCircle2,
   AlertCircle,
   RefreshCw,
-  Download,
-  Users,
-  ShieldCheck,
-  Zap,
-  Sparkles,
-  MapPin,
+  Plus,
+  CreditCard,
+  UserCheck,
+  Building2,
+  Calendar,
   Clock,
-  Video,
-  VideoOff
+  ShieldCheck,
+  X,
+  Search,
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import { useApp } from '../../context/AppContext';
-import { SimulatedBadge } from '../../components/common/SimulatedBadge';
+import { api } from '../../lib/api';
 import { PageContainer } from '../../components/layout/PageContainer';
-import { SEED_USERS } from '../../data/seedData';
 
 export const AttendanceKiosk: React.FC = () => {
-  const { sessions, attendance, markAttendance, currentUser, t } = useApp();
-  const [activeTab, setActiveTab] = useState<'qr' | 'face'>('qr');
-  const [selectedSessionId, setSelectedSessionId] = useState(sessions[0]?.id || '');
+  const { currentUser } = useApp();
 
-  // Webcam & Face Kiosk State
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isDetecting, setIsDetecting] = useState(false);
-  const [matchResult, setMatchResult] = useState<{
-    traineeName: string;
-    coop: string;
-    confidence: number;
-    timestamp: string;
-  } | null>(null);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [trainees, setTrainees] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [errorNotice, setErrorNotice] = useState<string | null>(null);
+  const [successNotice, setSuccessNotice] = useState<string | null>(null);
 
-  // QR Scanner Simulator State
-  const [selectedTraineeForScan, setSelectedTraineeForScan] = useState(
-    currentUser.role === 'trainee' ? currentUser.id : SEED_USERS[0].id
-  );
-  const [scanNotice, setScanNotice] = useState<string | null>(null);
+  // New device modal state
+  const [isNewDeviceModalOpen, setIsNewDeviceModalOpen] = useState<boolean>(false);
+  const [newDeviceCode, setNewDeviceCode] = useState<string>('');
+  const [newDeviceRoom, setNewDeviceRoom] = useState<string>('');
+  const [newDeviceName, setNewDeviceName] = useState<string>('');
+  const [isRegisteringDevice, setIsRegisteringDevice] = useState<boolean>(false);
 
-  const selectedSession = sessions.find(s => s.id === selectedSessionId) || sessions[0];
-  const sessionAttendance = attendance.filter(a => a.sessionId === selectedSession?.id);
+  // RFID Assignment state
+  const [selectedTraineeId, setSelectedTraineeId] = useState<string>('');
+  const [rfidInput, setRfidInput] = useState<string>('');
+  const [isAssigningRfid, setIsAssigningRfid] = useState<boolean>(false);
+  const [traineeSearchQuery, setTraineeSearchQuery] = useState<string>('');
 
-  // Start / Stop Camera Stream for Kiosk
-  const startCamera = async () => {
-    setCameraError(null);
+  const loadAll = async () => {
+    setIsRefreshing(true);
+    setErrorNotice(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: 'user' },
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setIsCameraActive(true);
+      const [devicesData, traineesRes] = await Promise.all([
+        api.attendance.getDevices().catch(() => []),
+        api.institute.getTrainees({ limit: 100 }).catch(() => ({ data: [] })),
+      ]);
+
+      const traineesList = traineesRes?.data || [];
+      setDevices(devicesData || []);
+      setTrainees(traineesList);
+
+      if (traineesList && traineesList.length > 0 && !selectedTraineeId) {
+        setSelectedTraineeId(traineesList[0].id);
       }
     } catch (err: any) {
-      console.warn('Camera stream error or permission denied:', err);
-      setCameraError('Webcam access not allowed or unavailable. Using virtual kiosk simulation feed.');
-      setIsCameraActive(false);
+      console.error('[AttendanceDevices] Load error:', err);
+      setErrorNotice(err.message || 'Failed to load devices and trainees.');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
-  };
-
-  const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      const stream = videoRef.current.srcObject as MediaStream;
-      stream.getTracks().forEach(track => track.stop());
-      videoRef.current.srcObject = null;
-    }
-    setIsCameraActive(false);
   };
 
   useEffect(() => {
-    return () => {
-      stopCamera();
-    };
+    loadAll();
+    // Auto-refresh heartbeat every 15 seconds
+    const interval = setInterval(loadAll, 15000);
+    return () => clearInterval(interval);
   }, []);
 
-  // Face Detection Loop Simulation on Canvas
-  useEffect(() => {
-    let animationFrameId: number;
+  const handleRegisterDevice = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDeviceCode.trim() || !newDeviceRoom.trim() || !newDeviceName.trim()) return;
 
-    const drawSimulation = () => {
-      if (canvasRef.current) {
-        const ctx = canvasRef.current.getContext('2d');
-        if (ctx) {
-          ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-
-          if (isCameraActive && videoRef.current) {
-            ctx.drawImage(videoRef.current, 0, 0, 400, 300);
-          } else {
-            // Draw simulated dark feed
-            ctx.fillStyle = '#1E2523';
-            ctx.fillRect(0, 0, 400, 300);
-
-            ctx.fillStyle = '#34A868';
-            ctx.font = '12px Inter';
-            ctx.fillText('• KIOSK CAMERA NODE-01 ACTIVE', 20, 30);
-          }
-
-          if (isDetecting) {
-            // Draw scanning bounding box
-            const time = Date.now() / 300;
-            const offsetY = Math.sin(time) * 15;
-
-            ctx.strokeStyle = '#E68A2E';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(100, 60 + offsetY, 200, 180);
-
-            // Corner indicators
-            ctx.fillStyle = '#0B6E4F';
-            ctx.fillRect(95, 55 + offsetY, 15, 5);
-            ctx.fillRect(95, 55 + offsetY, 5, 15);
-            ctx.fillRect(290, 55 + offsetY, 15, 5);
-            ctx.fillRect(300, 55 + offsetY, 5, 15);
-
-            // Text
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = 'bold 12px Inter';
-            ctx.fillText('BIOMETRIC AI FEATURE SCAN...', 115, 260 + offsetY);
-          }
-        }
-      }
-      animationFrameId = requestAnimationFrame(drawSimulation);
-    };
-
-    drawSimulation();
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [isCameraActive, isDetecting]);
-
-  const handleSimulateFaceScan = () => {
-    setIsDetecting(true);
-    setMatchResult(null);
-
-    setTimeout(() => {
-      setIsDetecting(false);
-      const randomTrainee = SEED_USERS[Math.floor(Math.random() * 4)];
-      const confidence = Number((95 + Math.random() * 4.8).toFixed(1));
-
-      const res = markAttendance(selectedSession.id, 'face', randomTrainee.id, confidence);
-      setMatchResult({
-        traineeName: randomTrainee.name,
-        coop: randomTrainee.cooperativeAffiliation || 'NCCT Trainee',
-        confidence,
-        timestamp: new Date().toLocaleTimeString(),
+    setIsRegisteringDevice(true);
+    setErrorNotice(null);
+    try {
+      await api.attendance.registerDevice({
+        deviceCode: newDeviceCode.trim().toUpperCase(),
+        classroomId: newDeviceRoom.trim(),
+        name: newDeviceName.trim(),
       });
-    }, 1800);
+      setSuccessNotice(`Device "${newDeviceCode}" successfully registered to Classroom ${newDeviceRoom}!`);
+      setIsNewDeviceModalOpen(false);
+      setNewDeviceCode('');
+      setNewDeviceRoom('');
+      setNewDeviceName('');
+      loadAll();
+    } catch (err: any) {
+      setErrorNotice(err.message || 'Failed to register device.');
+    } finally {
+      setIsRegisteringDevice(false);
+    }
   };
 
-  const handleQrScanSubmit = () => {
-    const res = markAttendance(selectedSession.id, 'qr', selectedTraineeForScan, 99.8);
-    setScanNotice(res.message);
-    setTimeout(() => setScanNotice(null), 4000);
+  const handleAssignRfid = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTraineeId || !rfidInput.trim()) return;
+
+    setIsAssigningRfid(true);
+    setErrorNotice(null);
+    setSuccessNotice(null);
+
+    try {
+      const res = await api.attendance.assignRfid(selectedTraineeId, rfidInput.trim());
+      setSuccessNotice(`RFID UID "${rfidInput.trim()}" assigned to ${res.trainee.name} successfully!`);
+      setRfidInput('');
+      loadAll();
+    } catch (err: any) {
+      setErrorNotice(err.message || 'Failed to assign RFID card.');
+    } finally {
+      setIsAssigningRfid(false);
+    }
   };
 
-  const exportCsv = () => {
-    const headers = 'ID,Session,Trainee Name,Cooperative,Method,Confidence,Timestamp,Location\n';
-    const rows = sessionAttendance
-      .map(
-        a =>
-          `"${a.id}","${selectedSession.title}","${a.traineeName}","${a.traineeCoop}","${a.method}","${a.confidenceScore}%","${a.timestamp}","${a.deviceLocation}"`
-      )
-      .join('\n');
-    const blob = new Blob([headers + rows], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `NCCT_Attendance_${selectedSession.id}.csv`;
-    a.click();
-  };
+  const filteredTrainees = trainees.filter(t =>
+    t.name?.toLowerCase().includes(traineeSearchQuery.toLowerCase()) ||
+    t.email?.toLowerCase().includes(traineeSearchQuery.toLowerCase()) ||
+    t.rfidUid?.toLowerCase().includes(traineeSearchQuery.toLowerCase())
+  );
 
   return (
     <PageContainer>
-
-      {/* Header Banner */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-        <div className="space-y-2">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-            <span className="text-xs font-extrabold text-govTeal-700 uppercase tracking-wider">
-              HARDWARE TRACK SHOWCASE
-            </span>
-            <SimulatedBadge text="Raspberry Pi + Camera Kiosk Prototype" />
-          </div>
-          <h2 className="text-xl sm:text-2xl font-extrabold text-govText-primary leading-tight">
-            {t.attendance.title}
-          </h2>
-          <p className="text-xs text-govText-secondary leading-relaxed max-w-xl">
-            {t.attendance.subtitle}
-          </p>
-        </div>
-
-        {/* Tab Switcher: Full width stacked on mobile/tablet (< lg), horizontal on desktop */}
-        <div className="flex flex-col sm:flex-col lg:flex-row w-full lg:w-auto bg-govBg p-1.5 rounded-xl border border-govTeal-100 gap-2 lg:gap-1.5">
-          <button
-            onClick={() => setActiveTab('qr')}
-            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${activeTab === 'qr'
-                ? 'bg-govTeal-600 text-white shadow'
-                : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
-              }`}
-          >
-            <QrCode className="w-4 h-4" />
-            <span>Primary: Session QR Check-in</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('face')}
-            className={`w-full lg:w-auto px-4 py-3 sm:py-2.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 min-h-[44px] ${activeTab === 'face'
-                ? 'bg-saffron-500 text-white shadow'
-                : 'text-govText-secondary hover:text-govText-primary bg-white/60 lg:bg-transparent'
-              }`}
-          >
-            <Cpu className="w-4 h-4" />
-            <span>Hardware Showcase: Face Kiosk</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Session Selector Bar */}
-      <div className="bg-govBg p-4 rounded-xl border border-govTeal-100 flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
-        <div className="flex flex-col gap-1.5 w-full lg:w-auto min-w-0">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-govTeal-600 flex-shrink-0" />
-            <span className="text-xs font-bold text-govText-primary">Select Session:</span>
-          </div>
-          <select
-            value={selectedSessionId}
-            onChange={(e) => setSelectedSessionId(e.target.value)}
-            className="w-full max-w-full text-xs font-semibold px-3 py-2.5 rounded-lg border border-govText-border bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-600 min-h-[44px] truncate"
-          >
-            {sessions.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.title} ({s.timeSlot})
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="text-xs font-semibold text-govTeal-800 bg-white px-3 py-2 rounded-lg border border-gray-200 self-start lg:self-auto shadow-xs">
-          {sessionAttendance.length} Trainees Checked In
-        </div>
-      </div>
-
-      {/* TAB 1: QR Code Check-in Flow */}
-      {activeTab === 'qr' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* QR Display Card (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl p-4 sm:p-8 border border-govText-border shadow-sm flex flex-col items-center text-center space-y-6 w-full">
-            <div className="space-y-1 w-full">
-              <span className="text-xs font-bold text-saffron-600 uppercase tracking-wider">
-                Live Dynamic Token
+      <div className="max-w-6xl mx-auto space-y-6 pb-12">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-5">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="p-2.5 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-100">
+                <Cpu className="w-6 h-6 text-indigo-700" />
               </span>
-              <h3 className="text-base sm:text-xl font-bold text-govText-primary break-words [overflow-wrap:anywhere] leading-snug">
-                {selectedSession?.title}
-              </h3>
-              <p className="text-xs text-govText-secondary max-w-md mx-auto">
-                {t.attendance.scanInstructions}
-              </p>
-            </div>
-
-            {/* Render High-Contrast Civic QR Code: width min(280px, 70vw) */}
-            <div
-              style={{ width: 'min(280px, 70vw)', height: 'auto' }}
-              className="p-4 sm:p-5 bg-white rounded-2xl border-4 border-govTeal-600 shadow-xl relative group mx-auto flex items-center justify-center aspect-square"
-            >
-              <QRCodeSVG
-                value={`https://sahakarsetu.gov.in/checkin?token=${selectedSession?.qrToken}`}
-                size={220}
-                level="H"
-                fgColor="#0B6E4F"
-                className="w-full h-full object-contain"
-              />
-              <div className="absolute inset-0 bg-govTeal-900/5 backdrop-blur-[0.5px] rounded-xl pointer-events-none" />
-            </div>
-
-            <div className="bg-govBg px-4 py-2.5 rounded-xl border border-gray-200 text-xs font-mono text-govText-secondary break-all max-w-full text-center">
-              Session Token: <strong className="text-govTeal-800 break-all">{selectedSession?.qrToken}</strong>
-            </div>
-          </div>
-
-          {/* Mobile Camera Scanner Simulator (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-govText-border shadow-sm space-y-5 flex flex-col justify-between">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
-                <Camera className="w-5 h-5 text-govTeal-600" />
-                <h4 className="font-bold text-sm text-govText-primary">
-                  Trainee Mobile Camera Scanner Simulator
-                </h4>
-              </div>
-              <p className="text-xs text-govText-secondary leading-relaxed">
-                Test the mobile QR scanning experience without needing a second physical phone:
-              </p>
-
               <div>
-                <label className="block text-xs font-semibold text-govText-secondary mb-1.5">
-                  Select Scanning Trainee Profile:
-                </label>
-                <select
-                  value={selectedTraineeForScan}
-                  onChange={(e) => setSelectedTraineeForScan(e.target.value)}
-                  className="w-full text-xs font-medium px-3 py-2 rounded-lg border border-govText-border bg-govBg focus:outline-none focus:ring-2 focus:ring-govTeal-600"
-                >
-                  {SEED_USERS.filter(u => u.role === 'trainee').map(u => (
-                    <option key={u.id} value={u.id}>
-                      {u.name} ({u.cooperativeAffiliation})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {scanNotice && (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 font-semibold flex items-center gap-2 animate-fadeIn">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                  <span>{scanNotice}</span>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleQrScanSubmit}
-              className="w-full py-3 bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold rounded-xl text-xs shadow transition-all flex items-center justify-center gap-2"
-            >
-              <Zap className="w-4 h-4 text-saffron-300" />
-              <span>Simulate Instant Camera Scan</span>
-            </button>
-          </div>
-
-        </div>
-      )}
-
-      {/* TAB 2: Raspberry Pi Face-Recognition Kiosk Showcase */}
-      {activeTab === 'face' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* Webcam & Canvas Feed (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl p-6 sm:p-8 border border-govText-border shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <div className="flex items-center gap-2">
-                <Cpu className="w-5 h-5 text-saffron-600" />
-                <h3 className="font-bold text-base text-govText-primary">
-                  Raspberry Pi Optical Kiosk Feed
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                {!isCameraActive ? (
-                  <button
-                    onClick={startCamera}
-                    className="px-3 py-1.5 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 rounded-lg text-xs font-bold border border-govTeal-200 flex items-center gap-1.5"
-                  >
-                    <Video className="w-3.5 h-3.5" />
-                    <span>Enable Real Webcam</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={stopCamera}
-                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 rounded-lg text-xs font-bold border border-rose-200 flex items-center gap-1.5"
-                  >
-                    <VideoOff className="w-3.5 h-3.5" />
-                    <span>Stop Camera</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Hidden video element for stream */}
-            <video ref={videoRef} className="hidden" playsInline muted />
-
-            {/* Canvas Display */}
-            <div className="relative mx-auto flex justify-center bg-gray-950 rounded-2xl overflow-hidden border-2 border-govTeal-600 shadow-xl max-w-[400px]">
-              <canvas
-                ref={canvasRef}
-                width={400}
-                height={300}
-                className="w-full h-auto block"
-              />
-              {isDetecting && (
-                <div className="absolute top-3 left-3 bg-saffron-500 text-white text-[10px] font-bold px-2 py-0.5 rounded animate-pulse">
-                  AI MATCHING IN PROGRESS...
-                </div>
-              )}
-            </div>
-
-            {cameraError && (
-              <p className="text-xs text-amber-800 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
-                {cameraError}
-              </p>
-            )}
-
-            <div className="pt-2">
-              <button
-                onClick={handleSimulateFaceScan}
-                disabled={isDetecting}
-                className="w-full py-3.5 bg-saffron-500 hover:bg-saffron-600 disabled:opacity-50 text-white font-bold rounded-xl shadow transition-all flex items-center justify-center gap-2 text-xs sm:text-sm"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span>{isDetecting ? 'Analyzing Face Vectors...' : 'Trigger Kiosk Face Match & Check-in'}</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Real-time Match Telemetry (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-govText-border shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h4 className="font-bold text-sm text-govText-primary">
-                Kiosk Edge Telemetry
-              </h4>
-              <span className="text-[10px] font-mono font-bold bg-govBg px-2 py-0.5 rounded text-govTeal-800 border border-govTeal-200">
-                NODE-01 (ARM Cortex-A72)
-              </span>
-            </div>
-
-            {matchResult ? (
-              <div className="p-5 bg-emerald-50 border-2 border-emerald-300 rounded-2xl space-y-3 animate-fadeIn">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <h5 className="font-bold text-emerald-900 text-sm">Face Match Verified!</h5>
-                </div>
-
-                <div className="text-xs space-y-1 text-emerald-950 font-mono">
-                  <p>Candidate: <strong className="text-sm font-sans">{matchResult.traineeName}</strong></p>
-                  <p>Cooperative: {matchResult.coop}</p>
-                  <p>Match Confidence: <strong className="text-emerald-700">{matchResult.confidence}%</strong></p>
-                  <p>Timestamp: {matchResult.timestamp}</p>
-                  <p className="text-[10px] text-emerald-700">Audit Status: Synchronized with NCCT Cloud</p>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-govBg rounded-xl p-6 text-center space-y-2 border border-gray-200">
-                <Cpu className="w-8 h-8 text-govTeal-600 mx-auto opacity-70" />
-                <p className="text-xs font-semibold text-govText-primary">Awaiting Face Capture</p>
-                <p className="text-[11px] text-govText-muted">
-                  Click 'Trigger Kiosk Face Match' to simulate camera frame feature matching against pre-stored biometric vectors.
+                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                  Classroom Attendance Devices & RFID
+                </h1>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Manage physical edge attendance devices, live heartbeats, and trainee RFID card mapping
                 </p>
               </div>
-            )}
-
-            <div className="bg-govBg rounded-xl p-3.5 border border-govTeal-100 text-xs text-govTeal-950 space-y-1">
-              <p className="font-bold text-[11px] uppercase tracking-wider text-govTeal-800">Hardware Specs:</p>
-              <ul className="text-[11px] list-disc list-inside space-y-0.5 opacity-90">
-                <li>Sensor: Sony IMX219 8MP Camera Module</li>
-                <li>Inference: Client-side quantized MobileNet</li>
-                <li>Fallback: Automatic offline SQLite caching</li>
-              </ul>
             </div>
           </div>
 
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsNewDeviceModalOpen(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl bg-govTeal-600 hover:bg-govTeal-700 text-white shadow-sm transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              Register Device
+            </button>
+            <button
+              onClick={loadAll}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+              title="Refresh Devices"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-govTeal-600' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
-      )}
 
-      {/* Live Biometric & QR Attendance Audit Log Table */}
-      <div className="bg-white rounded-2xl p-4 sm:p-6 border border-govText-border shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          <div>
-            <h3 className="font-bold text-base text-govText-primary">
-              {t.attendance.recentLogs}
-            </h3>
-            <p className="text-xs text-govText-secondary">
-              Real-time audit log of attendees for session: <strong className="text-govText-primary">{selectedSession?.title}</strong>
+        {/* Notices */}
+        {errorNotice && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+              <span>{errorNotice}</span>
+            </div>
+            <button onClick={() => setErrorNotice(null)} className="text-xs font-semibold text-rose-600 hover:underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {successNotice && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 flex items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span>{successNotice}</span>
+            </div>
+            <button onClick={() => setSuccessNotice(null)} className="text-xs font-semibold text-emerald-600 hover:underline">
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* Devices Summary Metrics */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              Total Registered Kiosks
+            </div>
+            <div className="mt-2 text-3xl font-extrabold text-gray-900">
+              {devices.length}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Classroom attendance nodes</p>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <div className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
+              Online Devices
+            </div>
+            <div className="mt-2 text-3xl font-extrabold text-emerald-700">
+              {devices.filter(d => d.status === 'ONLINE').length}
+            </div>
+            <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+              Heartbeat active (&lt;90s)
             </p>
           </div>
 
-          <button
-            onClick={exportCsv}
-            className="w-full sm:w-auto px-3.5 py-2.5 sm:py-2 bg-govTeal-50 hover:bg-govTeal-100 text-govTeal-800 text-xs font-bold rounded-xl border border-govTeal-200 flex items-center justify-center gap-1.5 transition-colors min-h-[44px] sm:min-h-0"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV Audit Log</span>
-          </button>
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <div className="text-xs font-semibold text-indigo-700 uppercase tracking-wider">
+              RFID Cards Assigned
+            </div>
+            <div className="mt-2 text-3xl font-extrabold text-indigo-700">
+              {trainees.filter(t => t.rfidUid).length} / {trainees.length}
+            </div>
+            <p className="text-xs text-indigo-600 mt-1 font-medium">
+              Trainees equipped with smart card
+            </p>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="bg-govBg text-govText-secondary uppercase font-semibold border-b border-gray-200">
-                <th className="p-3">Trainee Name</th>
-                <th className="p-3">Cooperative Affiliation</th>
-                <th className="p-3">Method</th>
-                <th className="p-3">Biometric Score</th>
-                <th className="p-3">Timestamp</th>
-                <th className="p-3">Kiosk / Location</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {sessionAttendance.map(record => (
-                <tr key={record.id} className="hover:bg-govTeal-50/40 transition-colors">
-                  <td className="p-3 font-bold text-govText-primary">{record.traineeName}</td>
-                  <td className="p-3 text-govText-secondary">{record.traineeCoop}</td>
-                  <td className="p-3">
-                    <span className={`px-2 py-0.5 rounded font-mono font-bold uppercase text-[10px] ${record.method === 'face'
-                        ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : 'bg-emerald-100 text-emerald-900 border border-emerald-300'
-                      }`}>
-                      {record.method}
-                    </span>
-                  </td>
-                  <td className="p-3 font-mono text-govTeal-700 font-bold">
-                    {record.confidenceScore}%
-                  </td>
-                  <td className="p-3 text-govText-muted font-mono">{record.timestamp}</td>
-                  <td className="p-3 text-govText-secondary text-[11px] truncate max-w-[200px]">
-                    {record.deviceLocation}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Section 1: Registered Classroom Devices Table */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Radio className="w-5 h-5 text-indigo-600" />
+              <h2 className="font-bold text-gray-900 text-base">Classroom Edge Devices</h2>
+            </div>
+            <span className="text-xs text-gray-400">Auto-refresh every 15s</span>
+          </div>
+
+          {devices.length === 0 ? (
+            <div className="py-12 text-center text-gray-400">
+              <Cpu className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+              <p className="text-sm font-medium text-gray-600">No attendance devices registered yet</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Click "Register Device" above to register classroom Raspberry Pi / PC kiosks.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-gray-600">
+                <thead className="bg-gray-50 text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-3.5">Device Code</th>
+                    <th className="px-6 py-3.5">Device Name</th>
+                    <th className="px-6 py-3.5">Classroom</th>
+                    <th className="px-6 py-3.5">Status</th>
+                    <th className="px-6 py-3.5">Last Seen / Heartbeat</th>
+                    <th className="px-6 py-3.5">Institute</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {devices.map(dev => (
+                    <tr key={dev.id} className="hover:bg-gray-50/60 transition-colors">
+                      <td className="px-6 py-4 font-mono font-bold text-gray-900">
+                        {dev.deviceCode}
+                      </td>
+                      <td className="px-6 py-4 font-medium text-gray-800">
+                        {dev.name}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg bg-teal-50 text-teal-800 font-semibold text-xs border border-teal-100">
+                          {dev.classroomId}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {dev.status === 'ONLINE' ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
+                            ONLINE
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                            OFFLINE
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-xs font-mono text-gray-500">
+                        {new Date(dev.lastSeenAt).toLocaleTimeString('en-IN', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: true,
+                        })}
+                      </td>
+                      <td className="px-6 py-4 text-xs text-gray-500">
+                        {dev.instituteId}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+
+        {/* Section 2: RFID Card Assignment Station */}
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+            <div className="flex items-center gap-2.5">
+              <CreditCard className="w-5 h-5 text-govTeal-600" />
+              <div>
+                <h2 className="font-bold text-gray-900 text-base">
+                  RFID / NFC Smart Card Assignment Station
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Link a physical contactless RFID smart card to an enrolled trainee
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <form onSubmit={handleAssignRfid} className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            <div className="md:col-span-5">
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Select Trainee
+              </label>
+              <select
+                value={selectedTraineeId}
+                onChange={e => setSelectedTraineeId(e.target.value)}
+                className="w-full text-sm rounded-xl border border-gray-200 p-2.5 bg-gray-50 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-500"
+              >
+                {trainees.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.email}) {t.rfidUid ? `— [Assigned: ${t.rfidUid}]` : '— [No Card]'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-5">
+              <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                Tap or Enter RFID UID
+              </label>
+              <input
+                type="text"
+                value={rfidInput}
+                onChange={e => setRfidInput(e.target.value)}
+                placeholder="e.g. RFID-RAMESHWAR-01 or 04:A7:2B:9F"
+                className="w-full text-sm font-mono rounded-xl border border-gray-200 p-2.5 bg-gray-50 font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-500"
+              />
+            </div>
+
+            <div className="md:col-span-2 flex items-end">
+              <button
+                type="submit"
+                disabled={isAssigningRfid || !selectedTraineeId || !rfidInput.trim()}
+                className="w-full py-2.5 px-4 rounded-xl bg-govTeal-600 hover:bg-govTeal-700 text-white font-bold text-sm shadow-sm transition-all disabled:opacity-50"
+              >
+                {isAssigningRfid ? 'Assigning...' : 'Assign Card'}
+              </button>
+            </div>
+          </form>
+
+          {/* Searchable Trainee Roster Table */}
+          <div className="mt-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-800 text-sm">Trainee RFID Registry</h3>
+              <div className="relative w-64">
+                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={traineeSearchQuery}
+                  onChange={e => setTraineeSearchQuery(e.target.value)}
+                  placeholder="Search trainees..."
+                  className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-gray-200 focus:outline-none focus:ring-1 focus:ring-govTeal-500"
+                />
+              </div>
+            </div>
+
+            <div className="border border-gray-100 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+              <table className="w-full text-left text-xs text-gray-600">
+                <thead className="bg-gray-50 font-semibold text-gray-500 uppercase tracking-wider sticky top-0">
+                  <tr>
+                    <th className="px-4 py-2.5">Name</th>
+                    <th className="px-4 py-2.5">Email</th>
+                    <th className="px-4 py-2.5">RFID UID</th>
+                    <th className="px-4 py-2.5">Face Biometric</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {filteredTrainees.map(t => (
+                    <tr key={t.id} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-2.5 font-medium text-gray-900">{t.name}</td>
+                      <td className="px-4 py-2.5 text-gray-500">{t.email}</td>
+                      <td className="px-4 py-2.5 font-mono">
+                        {t.rfidUid ? (
+                          <span className="text-emerald-700 font-bold">{t.rfidUid}</span>
+                        ) : (
+                          <span className="text-gray-400 italic">Not assigned</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {t.faceEnrolled ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-700 font-semibold">
+                            <CheckCircle2 className="w-3.5 h-3.5" /> Enrolled
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">Pending</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ─── Modal: Register New Classroom Device ─────────────────────────── */}
+        {isNewDeviceModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Cpu className="w-5 h-5 text-govTeal-600" />
+                  <h3 className="font-bold text-gray-900 text-lg">Register Classroom Device</h3>
+                </div>
+                <button
+                  onClick={() => setIsNewDeviceModalOpen(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRegisterDevice} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                    Device Code (Hardware ID)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newDeviceCode}
+                    onChange={e => setNewDeviceCode(e.target.value)}
+                    placeholder="e.g. CLASS-A101-01"
+                    className="w-full text-sm font-mono rounded-xl border border-gray-200 p-2.5 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-500 font-medium uppercase"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                    Classroom / Room Identifier
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newDeviceRoom}
+                    onChange={e => setNewDeviceRoom(e.target.value)}
+                    placeholder="e.g. A101 or Computer Lab 1"
+                    className="w-full text-sm rounded-xl border border-gray-200 p-2.5 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-500 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                    Device Name / Label
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newDeviceName}
+                    onChange={e => setNewDeviceName(e.target.value)}
+                    placeholder="e.g. Classroom A101 Attendance Kiosk"
+                    className="w-full text-sm rounded-xl border border-gray-200 p-2.5 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-govTeal-500 font-medium"
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewDeviceModalOpen(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-xl"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isRegisteringDevice}
+                    className="px-5 py-2 text-sm font-semibold rounded-xl bg-govTeal-600 hover:bg-govTeal-700 text-white shadow-sm disabled:opacity-50"
+                  >
+                    {isRegisteringDevice ? 'Registering...' : 'Save & Register'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
-
     </PageContainer>
   );
 };

@@ -31,6 +31,8 @@ import { AdminDashboard } from './views/InstituteAdmin/AdminDashboard';
 import { ProgrammesManagement } from './views/InstituteAdmin/ProgrammesManagement';
 import { NominationsManagement } from './views/InstituteAdmin/NominationsManagement';
 import { AttendanceKiosk } from './views/InstituteAdmin/AttendanceKiosk';
+import { FacultyAttendanceView } from './views/Faculty/FacultyAttendanceView';
+import { TraineeScanAttendanceView } from './views/Trainee/TraineeScanAttendanceView';
 import { HostelTimetable } from './views/InstituteAdmin/HostelTimetable';
 import { AcademicTimetable } from './views/InstituteAdmin/AcademicTimetable';
 import { AdminProfileView } from './views/InstituteAdmin/AdminProfileView';
@@ -103,10 +105,12 @@ export const AppContent: React.FC = () => {
         return <NominationsManagement />;
       case 'trainee_directory':
         return <TraineeDirectory />;
+      case 'attendance_devices':
       case 'attendance_kiosk':
       case 'attendance':
-      case 'sessions':
         return <AttendanceKiosk />;
+      case 'sessions':
+        return <FacultyAttendanceView />;
       case 'hostel_timetable':
       case 'hostel':
         return <HostelTimetable />;
@@ -149,9 +153,12 @@ export const AppContent: React.FC = () => {
       case 'career_chat':
       case 'career_bot':
         return <CareerChatView />;
+      case 'attendance_history':
+      case 'scan_attendance':
       case 'attendance':
+        return <TraineeScanAttendanceView />;
       case 'attendance_kiosk':
-        return <AttendanceKiosk />;
+        return <TraineeHome />;
       case 'profile':
         return <ProfileView />;
       case 'settings':
@@ -194,6 +201,10 @@ export const AppContent: React.FC = () => {
         return <CreateCourseView />;
       case 'course_builder':
         return <CourseBuilder />;
+      case 'attendance':
+      case 'faculty_attendance':
+      case 'sessions':
+        return <FacultyAttendanceView />;
       case 'settings':
         return <SettingsView />;
       case 'profile':

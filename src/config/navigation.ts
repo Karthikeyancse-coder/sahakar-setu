@@ -53,14 +53,14 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
         { id: 'my_courses', label: 'My Courses', route: '/trainee/my-courses', icon: BookOpen },
         { id: 'certificates', label: 'Certificates', route: '/trainee/certificates', icon: Award },
         { id: 'jobs', label: 'Job Opportunities', route: '/trainee/jobs', icon: Briefcase },
-        { id: 'attendance_kiosk', label: 'Attendance', route: '/trainee/attendance', icon: QrCode },
+        { id: 'attendance_history', label: 'Attendance History', route: '/trainee/attendance', icon: ShieldCheck, badge: 'Biometric' },
       ],
     },
     {
       title: 'SYSTEM',
       items: [
-        { id: 'help', label: 'Help & Support', route: '/trainee/help', icon: HelpCircle },
         { id: 'settings', label: 'Settings', route: '/trainee/settings', icon: Settings },
+        { id: 'help', label: 'Help & Support', route: '/trainee/help', icon: HelpCircle },
       ],
     },
   ],
@@ -78,20 +78,20 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
         { id: 'programmes_erp', label: 'Programmes', route: '/institute-admin/programmes', icon: Layers },
         { id: 'nominations', label: 'Nominations', route: '/institute-admin/nominations', icon: FileCheck },
         { id: 'trainee_directory', label: 'Trainees', route: '/institute-admin/trainees', icon: Users },
-        { id: 'attendance_kiosk', label: 'Sessions & Kiosk', route: '/institute-admin/sessions', icon: QrCode, badge: 'Hardware' },
+        { id: 'attendance', label: 'Attendance Devices', route: '/institute-admin/attendance', icon: Cpu },
       ],
     },
     {
       title: 'CAMPUS & LOGISTICS',
       items: [
-        { id: 'hostel_timetable', label: 'Hostel & Rooms', route: '/institute-admin/hostel', icon: BedDouble },
+        { id: 'hostel', label: 'Hostel & Rooms', route: '/institute-admin/hostel', icon: BedDouble },
         { id: 'timetable', label: 'Academic Timetable', route: '/institute-admin/timetable', icon: CalendarDays },
       ],
     },
     {
       title: 'INTELLIGENCE',
       items: [
-        { id: 'analytics', label: 'Institute Analytics', route: '/institute-admin/analytics', icon: BarChart3 },
+        { id: 'reports', label: 'Analytics', route: '/institute-admin/analytics', icon: BarChart3 },
       ],
     },
     {
@@ -104,16 +104,18 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
 
   super_admin: [
     {
-      title: 'OVERVIEW',
+      title: 'MAIN',
       items: [
-        { id: 'home', label: 'National Dashboard', route: '/super-admin/dashboard', icon: BarChart3 },
+        { id: 'home', label: 'National Dashboard', route: '/super-admin/dashboard', icon: LayoutDashboard },
       ],
     },
     {
-      title: 'NETWORK MANAGEMENT',
+      title: 'FEDERATION & GOVERNANCE',
       items: [
-        { id: 'institutes_directory', label: '20 NCCT Institutes', route: '/super-admin/institutes', icon: Building2 },
-        { id: 'users', label: 'User & Role Management', route: '/super-admin/users', icon: UserCheck },
+        { id: 'institutes', label: '20 NCCT Institutes', route: '/super-admin/institutes', icon: Building2 },
+        { id: 'user_management', label: 'User & Role Management', route: '/super-admin/users', icon: UserCheck },
+        { id: 'national_curriculum', label: 'National Curriculum Hub', route: '/super-admin/curriculum', icon: BookOpen },
+        { id: 'national_certificates', label: 'National Certificate Registry', route: '/super-admin/certificates', icon: Award },
       ],
     },
     {
@@ -134,7 +136,7 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
     {
       title: 'MAIN',
       items: [
-        { id: 'home', label: 'Faculty Dashboard', route: '/faculty/dashboard', icon: LayoutDashboard },
+        { id: 'home', label: 'Dashboard', route: '/faculty/dashboard', icon: LayoutDashboard },
       ],
     },
     {
@@ -142,6 +144,13 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       items: [
         { id: 'courses', label: 'Courses', route: '/faculty/courses', icon: BookOpen },
         { id: 'course_builder', label: 'Course Studio', route: '/faculty/courses/crs-pacs-erp-101/edit', icon: Edit3, badge: 'Studio' },
+        { id: 'attendance', label: 'Classroom Attendance', route: '/faculty/attendance', icon: Users },
+      ],
+    },
+    {
+      title: 'SYSTEM',
+      items: [
+        { id: 'settings', label: 'Settings', route: '/faculty/settings', icon: Settings },
       ],
     },
   ],

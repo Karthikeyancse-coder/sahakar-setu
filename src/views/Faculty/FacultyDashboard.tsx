@@ -529,15 +529,7 @@ export const FacultyDashboard: React.FC = () => {
             <button
               id="btn-quick-generate-qr"
               type="button"
-              onClick={() => {
-                const liveSession = upcomingSessions.find(s => s.status === 'LIVE') || upcomingSessions[0];
-                if (liveSession) {
-                  handleOpenQrModal(liveSession);
-                } else {
-                  setSessionSuccessToast('No active session available. Please schedule or start a session first.');
-                  setTimeout(() => setSessionSuccessToast(null), 3500);
-                }
-              }}
+              onClick={() => navigate('/faculty/attendance')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-200 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap active:scale-95 min-h-[38px]"
             >
               <QrCode className="w-3.5 h-3.5 text-emerald-700" />

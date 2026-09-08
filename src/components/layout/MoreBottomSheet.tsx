@@ -142,14 +142,6 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
           badge: null,
         },
         {
-          id: 'attendance_kiosk',
-          route: '/trainee/attendance',
-          label: currentLanguage === 'hi' ? 'उपस्थिति कियोस्क' : currentLanguage === 'mr' ? 'हजेरी कियोस्क' : 'Attendance',
-          sub: 'QR check-in & biometric kiosk logs',
-          icon: QrCode,
-          badge: 'Live',
-        },
-        {
           id: 'help',
           route: '/trainee/help',
           label: currentLanguage === 'hi' ? 'सहायता व संपर्क' : currentLanguage === 'mr' ? 'मदत व संपर्क' : 'Help & Support',

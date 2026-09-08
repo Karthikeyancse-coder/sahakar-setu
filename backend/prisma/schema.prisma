@@ -42,6 +42,9 @@ model User {
   isKycVerified          Boolean @default(false)
   status                 String  @default("active")
   eKycStatus             String  @default("NOT_VERIFIED")
+  rfidUid                String? @unique
+  faceEnrolled           Boolean @default(false)
+  faceIdentity           String? @unique
 
   enrollments    Enrollment[]
   attendance     AttendanceRecord[]
@@ -273,18 +276,37 @@ model QuizAttemptAnswer {
 }
 
 model Session {
-  id          String  @id
-  programmeId String
-  title       String
-  instructor  String
-  date        String
-  timeSlot    String
-  room        String
-  qrToken     String  @unique
-  active      Boolean @default(false)
-  instituteId String  @default("inst-vamnicom")
+  id             String    @id
+  programmeId    String
+  courseId       String?
+  title          String
+  instructor     String
+  facultyId      String?
+  date           String
+  timeSlot       String
+  room           String
+  capacity       Int?      @default(40)
+  classroomId    String?   @default("A101")
+  attendanceMode String?   @default("FACE_RFID") // FACE_RFID | Face Recognition | QR
+  qrToken        String    @unique
+  qrExpiresAt    DateTime?
+  active         Boolean   @default(false)
+  instituteId    String    @default("inst-vamnicom")
+  createdAt      DateTime  @default(now())
 
   attendance AttendanceRecord[]
+}
+
+model AttendanceDevice {
+  id          String   @id @default(cuid())
+  deviceCode  String   @unique
+  classroomId String
+  name        String
+  status      String   @default("ONLINE")
+  lastSeenAt  DateTime @default(now())
+  instituteId String   @default("inst-vamnicom")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model AttendanceRecord {
@@ -297,6 +319,7 @@ model AttendanceRecord {
   timestamp       String
   confidenceScore Float?
   deviceLocation  String?
+  status          String  @default("PRESENT")
 
   user    User    @relation(fields: [userId], references: [id])
   session Session @relation(fields: [sessionId], references: [id])

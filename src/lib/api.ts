@@ -185,23 +185,102 @@ export const api = {
   // ─── Attendance ────────────────────────────────────────────────────────────
 
   attendance: {
-    sessions: () => get<any[]>('/api/attendance/sessions'),
+    sessions: (params?: { courseId?: string; date?: string; active?: boolean }) => {
+      const query = new URLSearchParams();
+      if (params?.courseId) query.set('courseId', params.courseId);
+      if (params?.date) query.set('date', params.date);
+      if (params?.active !== undefined) query.set('active', String(params.active));
+      const qs = query.toString();
+      return get<any[]>(`/api/attendance/sessions${qs ? `?${qs}` : ''}`);
+    },
+    getSession: (id: string) =>
+      get<{ session: any; summary: any }>(`/api/attendance/sessions/${id}`),
+    getSummary: (id: string) =>
+      get<any>(`/api/attendance/sessions/${id}/summary`),
+    getSessionRecords: (id: string) =>
+      get<any[]>(`/api/attendance/sessions/${id}/records`),
+    createSession: (data: {
+      title: string;
+      courseId?: string;
+      programmeId?: string;
+      instructor?: string;
+      date: string;
+      timeSlot: string;
+      room: string;
+      classroomId?: string;
+      capacity?: number;
+      attendanceMode?: string;
+    }) => post<any>('/api/attendance/sessions', data),
+    startSession: (sessionId: string) =>
+      post<any>(`/api/attendance/sessions/${sessionId}/start`),
+    closeSession: (sessionId: string) =>
+      post<any>(`/api/attendance/sessions/${sessionId}/close`),
+    refreshQr: (sessionId: string) =>
+      post<any>(`/api/attendance/sessions/${sessionId}/qr`),
+    checkIn: (sessionId: string, qrToken: string, method: 'qr' | 'face' = 'qr') =>
+      post<{ success: boolean; message: string; record: any }>(
+        '/api/attendance/check-in',
+        { sessionId, qrToken, method }
+      ),
     mark: (sessionId: string, method: 'qr' | 'face', qrToken?: string) =>
       post<{ success: boolean; message: string; record: any }>(
         '/api/attendance',
         { sessionId, method, qrToken }
       ),
-    createSession: (data: {
-      title: string;
-      programmeId?: string;
-      courseId?: string;
-      instructor?: string;
-      date?: string;
-      timeSlot?: string;
-      room?: string;
-    }) => post<any>('/api/attendance/sessions', data),
     activateSession: (sessionId: string, active?: boolean) =>
       patch<any>(`/api/attendance/sessions/${sessionId}/activate`, { active }),
+
+    // Online Web Camera Face Attendance APIs
+    getActiveSessions: () =>
+      get<any[]>('/api/attendance/active'),
+    markWebFace: (sessionId: string, image: string) =>
+      post<{
+        success: boolean;
+        message: string;
+        status: string;
+        trainee: { id: string; name: string };
+        course: { id: string; title: string };
+        confidence: number;
+        markedAt: string;
+        method: string;
+      }>('/api/attendance/face', { sessionId, image }),
+
+    // Physical Classroom & Hardware APIs
+    getHistory: (userId?: string) =>
+      get<any[]>(`/api/attendance/history${userId ? `?userId=${userId}` : ''}`),
+    deviceHeartbeat: (deviceCode: string) =>
+      post<{ success: boolean; device: any }>('/api/attendance/device/heartbeat', { deviceCode }),
+    deviceRfid: (deviceCode: string, rfidUid: string) =>
+      post<{
+        success: boolean;
+        traineeId: string;
+        traineeName: string;
+        sessionId: string;
+        courseTitle: string;
+        classroomId: string;
+        verificationToken: string;
+        message: string;
+      }>('/api/attendance/device/rfid', { deviceCode, rfidUid }),
+    deviceVerifyFace: (data: {
+      deviceCode: string;
+      rfidUid: string;
+      imageBase64: string;
+      verificationToken?: string;
+      sessionId?: string;
+    }) => post<any>('/api/attendance/device/verify-face', data),
+    assignRfid: (traineeId: string, rfidUid: string) =>
+      post<{ success: boolean; message: string; trainee: any }>(
+        '/api/attendance/device/assign-rfid',
+        { traineeId, rfidUid }
+      ),
+    enrollFace: (userId: string, imageBase64: string, identity?: string) =>
+      post<{ success: boolean; message: string; user: any; modelIdentity: string }>(
+        '/api/attendance/face/enroll',
+        { userId, imageBase64, identity }
+      ),
+    getDevices: () => get<any[]>('/api/attendance/devices'),
+    registerDevice: (data: { deviceCode: string; classroomId: string; name: string }) =>
+      post<any>('/api/attendance/devices', data),
   },
 
   // ─── Certificates ──────────────────────────────────────────────────────────
