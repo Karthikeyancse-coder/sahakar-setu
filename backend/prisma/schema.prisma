@@ -51,6 +51,7 @@ model User {
   chatMessages   ChatMessage[]
   lessonProgress LessonProgress[]
   quizAttempts   QuizAttempt[]
+  nominations    Nomination[]
   publicProfile  TraineePublicProfile?
 }
 
@@ -281,6 +282,7 @@ model Session {
   room        String
   qrToken     String  @unique
   active      Boolean @default(false)
+  instituteId String  @default("inst-vamnicom")
 
   attendance AttendanceRecord[]
 }
@@ -417,3 +419,76 @@ model TraineePublicProfile {
 
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model Programme {
+  id            String   @id
+  title         String
+  titleHi       String?
+  titleMr       String?
+  instituteId   String
+  startDate     String
+  endDate       String
+  mode          String   @default("residential") // residential | online | hybrid
+  capacity      Int      @default(30)
+  enrolledCount Int      @default(0)
+  category      String
+  description   String
+  status        String   @default("active") // active | completed | upcoming | draft | archived | cancelled
+  courseId      String?
+  facultyId     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  nominations   Nomination[]
+  timetable     TimetableEntry[]
+  hostelBeds    HostelBed[]
+}
+
+model Nomination {
+  id              String   @id
+  programmeId     String
+  userId          String?
+  traineeName     String
+  traineeEmail    String
+  cooperativeName String
+  status          String   @default("pending") // pending | approved | rejected
+  nominatedDate   String
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  programme       Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  user            User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+model HostelBed {
+  id          String   @id
+  roomNumber  String
+  bedNumber   String
+  block       String   // Block A (Men) | Block B (Women) | Executive Guest Block
+  programmeId String
+  instituteId String   @default("inst-vamnicom")
+  traineeId   String?
+  traineeName String?
+  status      String   @default("vacant") // occupied | vacant | maintenance
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+}
+
+model TimetableEntry {
+  id          String   @id
+  programmeId String
+  instituteId String   @default("inst-vamnicom")
+  day         String   // Monday | Tuesday | Wednesday | Thursday | Friday | Saturday
+  timeSlot    String
+  subject     String
+  facultyName String
+  venue       String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+}
+

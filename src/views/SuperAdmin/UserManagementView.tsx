@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Users,
   UserPlus,
@@ -19,10 +19,13 @@ import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { UserRole, User } from '../../types';
+import { api } from '../../lib/api';
 
 export const UserManagementView: React.FC = () => {
   const { users, addUser, toggleUserStatus, institutes } = useApp();
 
+  const [dbUsers, setDbUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -35,7 +38,26 @@ export const UserManagementView: React.FC = () => {
   const [newRole, setNewRole] = useState<UserRole>('institute_admin');
   const [newInstituteId, setNewInstituteId] = useState<string>(institutes[0]?.id || 'inst-vamnicom');
 
-  const filteredUsers = users.filter(user => {
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await api.users.getAll();
+      setDbUsers(res);
+    } catch (err) {
+      console.warn('Fallback to local users list:', err);
+      setDbUsers(users);
+    } finally {
+      setLoading(false);
+    }
+  }, [users]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
+
+  const displayedUsers = dbUsers.length > 0 ? dbUsers : users;
+
+  const filteredUsers = displayedUsers.filter(user => {
     const matchesSearch =
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -45,30 +67,44 @@ export const UserManagementView: React.FC = () => {
     return matchesSearch && matchesRole;
   });
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newName.trim() || !newEmail.trim()) return;
 
-    const created = addUser({
-      name: newName.trim(),
-      email: newEmail.trim(),
-      phone: newPhone.trim(),
-      role: newRole,
-      languagePreference: 'en',
-      instituteId: (newRole === 'institute_admin' || newRole === 'faculty') ? newInstituteId : undefined,
-      cooperativeAffiliation: newRole === 'trainee' ? 'Shri Datta PACS, Nashik' : undefined,
-      status: 'active',
-      isKycVerified: true,
-    });
+    try {
+      const created = await api.users.create({
+        name: newName.trim(),
+        email: newEmail.trim(),
+        phone: newPhone.trim(),
+        role: newRole,
+        instituteId: (newRole === 'institute_admin' || newRole === 'faculty') ? newInstituteId : undefined,
+        cooperativeAffiliation: newRole === 'trainee' ? 'Shri Datta PACS, Nashik' : undefined,
+      });
 
-    setSuccessMessage(`Successfully provisioned ${created.name} as ${created.role.replace('_', ' ').toUpperCase()}!`);
-    setIsAddModalOpen(false);
-    setNewName('');
-    setNewEmail('');
+      setDbUsers(prev => [created, ...prev]);
+      addUser(created);
+      setSuccessMessage(`Successfully provisioned ${created.name} as ${created.role.replace('_', ' ').toUpperCase()} in PostgreSQL!`);
+      setIsAddModalOpen(false);
+      setNewName('');
+      setNewEmail('');
 
-    setTimeout(() => {
-      setSuccessMessage(null);
-    }, 4000);
+      setTimeout(() => {
+        setSuccessMessage(null);
+      }, 4000);
+    } catch (err: any) {
+      alert(err?.message || 'Failed to provision user in database');
+    }
+  };
+
+  const handleToggleUser = async (userId: string, currentStatus: string) => {
+    const newStatus: 'active' | 'deactivated' = currentStatus === 'active' ? 'deactivated' : 'active';
+    try {
+      await api.users.updateStatus(userId, newStatus === 'deactivated' ? 'suspended' : 'active');
+      setDbUsers(prev => prev.map(u => u.id === userId ? { ...u, status: newStatus } : u));
+    } catch (err) {
+      console.error('API toggle failed:', err);
+    }
+    toggleUserStatus(userId);
   };
 
   const getInstituteName = (instId?: string) => {
@@ -231,7 +267,7 @@ export const UserManagementView: React.FC = () => {
                         {user.role !== 'super_admin' && (
                           <button
                             type="button"
-                            onClick={() => toggleUserStatus(user.id)}
+                            onClick={() => handleToggleUser(user.id, user.status || 'active')}
                             className={`px-3 py-1 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                               isActive
                                 ? 'bg-gray-100 hover:bg-rose-50 text-gray-700 hover:text-rose-700 border border-gray-200'
@@ -293,7 +329,7 @@ export const UserManagementView: React.FC = () => {
                     {user.role !== 'super_admin' && (
                       <button
                         type="button"
-                        onClick={() => toggleUserStatus(user.id)}
+                        onClick={() => handleToggleUser(user.id, user.status || 'active')}
                         className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
                           isActive
                             ? 'bg-gray-100 text-gray-700 hover:text-rose-700'

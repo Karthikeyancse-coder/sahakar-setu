@@ -629,6 +629,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (Array.isArray(certs)) setCertificates(certs);
               }).catch(() => {});
             }
+
+            if (normRole === 'institute_admin') {
+              api.institute.getNominations().then(noms => {
+                if (Array.isArray(noms)) setNominations(noms);
+              }).catch(() => {});
+              api.institute.getHostel().then(beds => {
+                if (Array.isArray(beds)) setHostelBeds(beds);
+              }).catch(() => {});
+              api.institute.getTimetable().then(tt => {
+                if (Array.isArray(tt)) setTimetable(tt);
+              }).catch(() => {});
+              api.institute.getSessions().then(sess => {
+                if (Array.isArray(sess)) setSessions(sess);
+              }).catch(() => {});
+            }
           }
         })
         .catch(() => {
@@ -702,6 +717,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }).catch(() => {});
       api.certificates.mine().then(certs => {
         if (Array.isArray(certs)) setCertificates(certs);
+      }).catch(() => {});
+    }
+
+    if (fullUser.role === 'institute_admin') {
+      api.institute.getNominations().then(noms => {
+        if (Array.isArray(noms)) setNominations(noms);
+      }).catch(() => {});
+      api.institute.getHostel().then(beds => {
+        if (Array.isArray(beds)) setHostelBeds(beds);
+      }).catch(() => {});
+      api.institute.getTimetable().then(tt => {
+        if (Array.isArray(tt)) setTimetable(tt);
+      }).catch(() => {});
+      api.institute.getSessions().then(sess => {
+        if (Array.isArray(sess)) setSessions(sess);
       }).catch(() => {});
     }
 
@@ -1235,11 +1265,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateNominationStatus = (nominationId: string, status: 'approved' | 'rejected') => {
     setNominations(prev => prev.map(n => n.id === nominationId ? { ...n, status } : n));
+    api.institute.updateNominationStatus(nominationId, status).catch(err => {
+      console.warn('[API] updateNominationStatus failed:', err.message);
+    });
   };
 
   const bulkUpdateNominationStatus = (nominationIds: string[], status: 'approved' | 'rejected') => {
     const idSet = new Set(nominationIds);
     setNominations(prev => prev.map(n => idSet.has(n.id) ? { ...n, status } : n));
+    nominationIds.forEach(id => {
+      api.institute.updateNominationStatus(id, status).catch(err => {
+        console.warn('[API] bulk updateNominationStatus failed for', id, err.message);
+      });
+    });
   };
 
   const bulkImportNominations = (programmeId: string, records: Array<{ name: string; email: string; coop: string }>) => {
@@ -1321,6 +1359,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const updateHostelBed = (bedId: string, updates: Partial<HostelBed>) => {
     setHostelBeds(prev => prev.map(b => b.id === bedId ? { ...b, ...updates } : b));
+    api.institute.updateHostelBed(bedId, {
+      status: (updates.status as string) || 'available',
+      traineeId: updates.traineeId,
+      traineeName: updates.traineeName,
+    }).catch(err => {
+      console.warn('[API] updateHostelBed failed:', err.message);
+    });
   };
 
   const verifyEkyc = (aadhaarNumber: string) => {

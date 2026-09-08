@@ -2,23 +2,47 @@
  * src/lib/api.ts
  * Lightweight fetch wrapper for the Sahakar Setu Express backend.
  * Automatically attaches the stored JWT Bearer token to every request.
- * Environment-aware API client:
- *  - In Localhost / LAN: Uses relative '/api/...' routed through Vite's dev server proxy to localhost:5000.
- *  - In Production (Vercel): Uses VITE_API_URL pointing to the deployed backend.
+ *
+ * URL resolution priority:
+ *  1. VITE_API_URL env var (set in Vercel / production) — explicit production backend URL.
+ *  2. If running in browser and VITE_API_URL is not set:
+ *     - Requests go to the same hostname on port 5000.
+ *     - On localhost/127.0.0.1 the Vite dev proxy intercepts /api → localhost:5000
+ *       (no absolute URL needed, relative '' works fine).
+ *     - On a LAN IP (172.x / 10.x / 192.168.x) the Vite proxy also intercepts,
+ *       so '' still works — but we derive an absolute fallback just in case the
+ *       proxy is bypassed (e.g., mobile device hitting the frontend directly).
  */
 
 function getApiBaseUrl(): string {
   const envUrl = (import.meta.env.VITE_API_URL || '').trim();
-  if (!envUrl || envUrl === '/api') {
-    // Relative path routed through Vite dev proxy (Localhost & LAN)
-    return '';
+
+  // If an explicit production URL is configured, use it (strip trailing /api or /)
+  if (envUrl && envUrl !== '/api' && !envUrl.startsWith('/')) {
+    return envUrl.replace(/\/api\/?$/i, '').replace(/\/+$/, '');
   }
-  // Production / external backend URL: strip trailing '/api' or '/'
-  // because endpoint paths below explicitly start with '/api/...'
-  return envUrl.replace(/\/api\/?$/i, '').replace(/\/+$/, '');
+
+  // In the browser without an explicit URL: derive from window.location.hostname.
+  // This makes the frontend work from ANY LAN IP without code changes.
+  if (typeof window !== 'undefined') {
+    const { hostname, protocol } = window.location;
+    // Always use HTTP for local/LAN (backend is not TLS in dev)
+    // The Vite proxy intercepts /api on the same origin, so '' works for dev.
+    // For direct non-proxy access (mobile, other machines), use the explicit host.
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return ''; // Vite proxy handles /api → localhost:5000
+    }
+    // LAN IP — Vite proxy on the same machine still works ('' is fine),
+    // but return the explicit URL as a safe fallback for non-Vite contexts.
+    return `${protocol}//${hostname}:5000`;
+  }
+
+  // SSR / Node context — relative path
+  return '';
 }
 
 const BASE_URL = getApiBaseUrl();
+
 
 const getToken = () => localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
 
@@ -201,6 +225,46 @@ export const api = {
       patch<any>(`/api/jobs/applications/${id}/status`, { status }),
   },
 
+  // ─── Employer / Recruiter Dashboard ────────────────────────────────────────
+
+  employer: {
+    /** Fetch 100% database-driven dashboard metrics for the authenticated employer. */
+    getDashboard: () => get<any>('/api/employer/dashboard'),
+
+    /** Recruiter contacts a candidate — persists notification + updates interest status. */
+    contactCandidate: (payload: {
+      jobInterestId: string;
+      candidateUserId: string;
+      jobTitle: string;
+    }) => post<any>('/api/employer/contact', payload),
+
+    /** Create a new job posting owned by the authenticated employer. */
+    createJob: (data: {
+      title: string;
+      description: string;
+      location: string;
+      type: string;
+      salaryRange: string;
+      openingsCount: number;
+      requiredSkills: string[];
+      preferredSkills?: string[];
+      requiredQualification?: string;
+      minimumExperience?: number;
+      requiredCertificates?: string[];
+    }) => post<any>('/api/employer/jobs', data),
+
+    /** Update a job posting owned by the authenticated employer. */
+    updateJob: (id: string, updates: Record<string, unknown>) =>
+      put<any>(`/api/employer/jobs/${id}`, updates),
+
+    /** Soft-close (delete) a job posting owned by the authenticated employer. */
+    deleteJob: (id: string) => del<any>(`/api/employer/jobs/${id}`),
+
+    /** Toggle a job's status between ACTIVE and CLOSED. */
+    toggleJobStatus: (id: string) =>
+      patch<any>(`/api/employer/jobs/${id}/status`),
+  },
+
   // ─── Notifications ─────────────────────────────────────────────────────────
 
   notifications: {
@@ -214,6 +278,10 @@ export const api = {
   users: {
     updateMe: (data: Record<string, any>) => patch<any>('/api/users/me', data),
     verifyKyc: (aadhaarNumber: string) => post<any>('/api/users/me/kyc', { aadhaarNumber }),
+    getAll: () => get<any[]>('/api/users'),
+    create: (data: any) => post<any>('/api/users', data),
+    updateStatus: (id: string, status: 'active' | 'deactivated' | 'suspended') => patch<any>(`/api/users/${id}/status`, { status }),
+    updateRole: (id: string, role: string) => patch<any>(`/api/users/${id}/role`, { role }),
   },
 
   // ─── Career Chat ───────────────────────────────────────────────────────────
@@ -276,6 +344,224 @@ export const api = {
     contactTrainee: (token: string, data: any) =>
       post<any>(`/api/public/skill-card/${token}/contact`, data, false),
   },
+
+  // ─── Institute Admin Portal ────────────────────────────────────────────────
+  institute: {
+    getDashboard: () => get<any>('/api/institute/dashboard'),
+    getAnalytics: () => get<any>('/api/institute/analytics'),
+    getProgrammes: (params?: { status?: string; mode?: string; category?: string; search?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.mode) q.append('mode', params.mode);
+      if (params?.category) q.append('category', params.category);
+      if (params?.search) q.append('search', params.search);
+      const qs = q.toString();
+      return get<any[]>(`/api/institute/programmes${qs ? `?${qs}` : ''}`);
+    },
+    getProgramme: (id: string) => get<any>(`/api/institute/programmes/${id}`),
+    createProgramme: (data: any) => post<any>('/api/institute/programmes', data),
+    updateProgramme: (id: string, data: any) => patch<any>(`/api/institute/programmes/${id}`, data),
+    archiveProgramme: (id: string) => post<any>(`/api/institute/programmes/${id}/archive`, {}),
+    getProgrammeNominations: (programmeId: string, params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.search) q.append('search', params.search);
+      if (params?.page) q.append('page', String(params.page));
+      if (params?.limit) q.append('limit', String(params.limit));
+      const qs = q.toString();
+      return get<{ nominations: any[]; total: number; page: number; limit: number; totalPages: number }>(
+        `/api/institute/programmes/${programmeId}/nominations${qs ? `?${qs}` : ''}`
+      );
+    },
+    getNominations: (params?: { status?: string; programmeId?: string; cooperative?: string; search?: string; page?: number; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.programmeId) q.append('programmeId', params.programmeId);
+      if (params?.cooperative) q.append('cooperative', params.cooperative);
+      if (params?.search) q.append('search', params.search);
+      if (params?.page) q.append('page', String(params.page));
+      if (params?.limit) q.append('limit', String(params.limit));
+      const qs = q.toString();
+      return get<any>(`/api/institute/nominations${qs ? `?${qs}` : ''}`);
+    },
+    getNominationById: (id: string) => get<any>(`/api/institute/nominations/${id}`),
+    approveNomination: (id: string) => post<any>(`/api/institute/nominations/${id}/approve`, {}),
+    rejectNomination: (id: string, reason?: string) => post<any>(`/api/institute/nominations/${id}/reject`, { reason }),
+    bulkApproveNominations: (nominationIds: string[]) => post<any>('/api/institute/nominations/bulk-approve', { nominationIds }),
+    bulkRejectNominations: (nominationIds: string[], reason?: string) => post<any>('/api/institute/nominations/bulk-reject', { nominationIds, reason }),
+    bulkImportNominations: (programmeId: string, records: Array<{ name: string; email: string; coop?: string }>, validateOnly = false) =>
+      post<any>('/api/institute/nominations/bulk-import', { programmeId, records, validateOnly }),
+    updateNominationStatus: (id: string, status: 'approved' | 'rejected' | 'pending', rejectionReason?: string) =>
+      patch<any>(`/api/institute/nominations/${id}/status`, { status, rejectionReason }),
+    getHostel: () => get<any[]>('/api/institute/hostel'),
+    updateHostelBed: (bedId: string, data: { status: string; traineeId?: string | null; traineeName?: string | null }) =>
+      patch<any>(`/api/institute/hostel/beds/${bedId}`, data),
+    getSessions: (date?: string) => get<any[]>(`/api/institute/sessions${date ? `?date=${date}` : ''}`),
+    createSession: (data: any) => post<any>('/api/institute/sessions', data),
+    updateSession: (id: string, data: any) => patch<any>(`/api/institute/sessions/${id}`, data),
+    deleteSession: (id: string) => del<any>(`/api/institute/sessions/${id}`),
+    getInstitutes: () => get<any[]>('/api/institutes'),
+    getTrainees: (params?: {
+      search?: string;
+      instituteId?: string;
+      page?: number;
+      limit?: number;
+      sort?: string;
+      order?: 'asc' | 'desc';
+    }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.append('search', params.search);
+      if (params?.instituteId) q.append('instituteId', params.instituteId);
+      if (params?.page) q.append('page', String(params.page));
+      if (params?.limit) q.append('limit', String(params.limit));
+      if (params?.sort) q.append('sort', params.sort);
+      if (params?.order) q.append('order', params.order);
+      const qs = q.toString();
+      return get<{
+        data: any[];
+        pagination: { page: number; limit: number; total: number; totalPages: number };
+        total: number;
+      }>(`/api/institute/trainees${qs ? `?${qs}` : ''}`);
+    },
+    getTraineeById: (id: string) => get<any>(`/api/institute/trainees/${id}`),
+    getTimetable: () => get<any[]>('/api/institute/timetable'),
+  },
+  national: {
+    getDashboard: () => get<NationalDashboardData>('/api/national/dashboard'),
+    getSummary: () => get<NationalSummary>('/api/national/summary'),
+    getTrainings: () => get<InstituteTypeAnalytics[]>('/api/national/trainings'),
+    getSkills: () => get<SkillDemandItem[]>('/api/national/skills'),
+    getTrend: () => get<{ trend: CertificationTrendItem[]; biometricFidelityAvailable: boolean; averageAttendanceRate: number | null }>('/api/national/trend'),
+    getAttendance: () => get<AttendanceAnalytics>('/api/national/attendance'),
+    getPlacements: () => get<PlacementAnalytics>('/api/national/placements'),
+    getAnalytics: () => get<NationalAnalyticsData>('/api/national/analytics'),
+  },
 };
 
+export interface NationalSummary {
+  totalCertifiedTrainees: number;
+  activeInstitutes: number;
+  totalInstitutes: number;
+  instituteTypeBreakdown: string;
+  certificatesGenerated: number;
+  employerPlacementsInitiated: number;
+  placementsSubtext: string;
+  lastSync: string;
+}
+
+export interface InstituteTypeAnalytics {
+  name: string;
+  type: string;
+  count: number;
+  capacity: number;
+  fill: string;
+  instituteCount: number;
+}
+
+export interface SkillDemandItem {
+  name: string;
+  value: number;
+  count: number;
+  color: string;
+}
+
+export interface CertificationTrendItem {
+  month: string;
+  certs: number;
+  attendanceRate: number | null;
+}
+
+export interface AttendanceAnalytics {
+  totalSessions: number;
+  totalRecords: number;
+  qrCount: number;
+  faceCount: number;
+  manualCount: number;
+  biometricRate: number | null;
+}
+
+export interface PlacementAnalytics {
+  totalJobs: number;
+  totalOpenings: number;
+  totalInterests: number;
+  shortlistedCount: number;
+  interviewCount: number;
+  selectedCount: number;
+  appliedCount: number;
+  initiatedCount: number;
+}
+
+export interface NationalDashboardData {
+  summary: NationalSummary;
+  instituteTypeData: InstituteTypeAnalytics[];
+  skillDemandData: SkillDemandItem[];
+  monthlyCertData: CertificationTrendItem[];
+  attendance: AttendanceAnalytics;
+  placements: PlacementAnalytics;
+}
+
+export interface CertificationTrajectoryMonth {
+  month: string;
+  monthly: number;
+  monthlyIssued: number;
+  cumulative: number;
+  cumulativeCertified: number;
+}
+
+export interface CertificationTrajectory {
+  months: CertificationTrajectoryMonth[];
+  totalCertified: number;
+  distinctCertifiedTrainees: number;
+}
+
+export interface InstitutionalCompletionTier {
+  tier: string;
+  name: string;
+  instituteCount: number;
+  totalEnrollments: number;
+  completedEnrollments: number;
+  completionRate: number;
+  dropoutRate: number;
+  fill: string;
+}
+
+export interface EmploymentPipeline {
+  certifiedTrainees: number;
+  employerInterestGenerated: number;
+  placementsInitiated: number;
+  employerInterestRate: number;
+  placementConversionRate: number;
+  federationsWithPlacements: number;
+  federationsList: string[];
+}
+
+export interface InstituteMatrixRow {
+  id: string;
+  name: string;
+  type: string;
+  city: string;
+  state: string;
+  director: string;
+  activeCount: number;
+  capacity: number;
+  utilization: number;
+  certificates: number;
+  nominations: number;
+}
+
+export interface NationalAnalyticsData {
+  trajectory: CertificationTrajectory;
+  institutionalCompletion: InstitutionalCompletionTier[];
+  pipeline: EmploymentPipeline;
+  instituteMatrix: InstituteMatrixRow[];
+  summary: {
+    totalInstitutes: number;
+    activeInstitutes: number;
+    totalCapacity: number;
+    totalActiveTrainees: number;
+    lastSyncAt: string;
+  };
+}
+
 export default api;
+

@@ -19,38 +19,72 @@ import skillCardRoutes from './routes/skillCard';
 import traineeRoutes from './routes/trainee';
 import facultyRoutes from './routes/faculty';
 import curriculumRoutes from './routes/curriculum';
+import instituteRoutes from './routes/institute';
+import nationalRoutes from './routes/national';
+import employerRoutes from './routes/employer';
 import { learningController } from './controllers/learningController';
 import { requireAuth } from './middleware/auth';
 
 const app = express();
 
 // ─── Middleware ────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://10.186.186.107:3000',
-  'http://localhost:4173',
-  'http://127.0.0.1:4173',
-  'http://10.186.186.107:4173',
-  'http://localhost:5173',
-  'https://sahakar-setu-self.vercel.app',
+//
+// RFC-1918 private address ranges allowed for local development:
+//   10.0.0.0/8        → 10.x.x.x
+//   172.16.0.0/12     → 172.16.x.x – 172.31.x.x   ← includes 172.28.x.x
+//   192.168.0.0/16    → 192.168.x.x
+//
+// For production: set FRONTEND_URL or CORS_ORIGIN in the environment.
+// Never use origin: '*' — credentials (JWT cookies) require a specific origin.
+
+const allowedOriginsEnv = [
   process.env.FRONTEND_URL,
   process.env.CORS_ORIGIN,
+  'https://sahakar-setu-self.vercel.app',
 ].filter(Boolean) as string[];
+
+/** Returns true if the origin is from a private RFC-1918 LAN address. */
+function isPrivateLanOrigin(origin: string): boolean {
+  // Match http(s)://<host>:<port> — only http on LAN, https on Vercel
+  const match = origin.match(/^https?:\/\/([^/:]+)(:\d+)?/);
+  if (!match) return false;
+  const host = match[1];
+
+  // IPv4 private ranges — using simple prefix checks (no regex edge-case risk)
+  if (host === 'localhost' || host === '127.0.0.1') return true;
+
+  const parts = host.split('.').map(Number);
+  if (parts.length !== 4 || parts.some(isNaN)) return false;
+
+  const [a, b] = parts;
+
+  // 10.0.0.0/8
+  if (a === 10) return true;
+
+  // 172.16.0.0/12  →  172.(16–31).x.x
+  if (a === 172 && b >= 16 && b <= 31) return true;
+
+  // 192.168.0.0/16
+  if (a === 192 && b === 168) return true;
+
+  return false;
+}
 
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
-    // Allow requests with no origin (e.g. server-to-server, curl, Postman, Vite proxy)
+    // No-origin requests: curl, Postman, server-to-server — always allow
     if (!origin) return callback(null, true);
 
-    const isExplicitlyAllowed = allowedOrigins.includes(origin);
-    const isVercelDeploy = origin.endsWith('.vercel.app');
-    const isLanOrLocalhost = /^http:\/\/(localhost|127\.0\.0\.1|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}):\d+$/.test(origin);
+    // Explicitly listed production origins
+    if (allowedOriginsEnv.includes(origin)) return callback(null, true);
 
-    if (isExplicitlyAllowed || isVercelDeploy || isLanOrLocalhost) {
-      return callback(null, true);
-    }
-    return callback(new Error(`CORS error: Origin ${origin} is not allowed`));
+    // Any *.vercel.app preview / production deploy
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+
+    // All RFC-1918 LAN origins (covers 10.x, 172.16-31.x, 192.168.x on any port)
+    if (isPrivateLanOrigin(origin)) return callback(null, true);
+
+    return callback(new Error(`CORS blocked: Origin "${origin}" is not allowed`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -84,6 +118,17 @@ app.use('/api/trainee', traineeRoutes);
 app.use('/api/faculty', facultyRoutes);
 app.use('/api', curriculumRoutes);
 app.use('/api', skillCardRoutes);
+app.use('/api/institute', instituteRoutes);
+app.use('/api/national', nationalRoutes);
+app.use('/api/employer', employerRoutes);
+app.get('/api/institutes', async (_req, res, next) => {
+  try {
+    const { instituteService } = await import('./services/instituteService');
+    res.json(await instituteService.getInstitutes());
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ─── Error handler (must be last) ─────────────────────────────────────────────
 app.use(errorHandler);

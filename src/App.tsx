@@ -34,6 +34,7 @@ import { AttendanceKiosk } from './views/InstituteAdmin/AttendanceKiosk';
 import { HostelTimetable } from './views/InstituteAdmin/HostelTimetable';
 import { AcademicTimetable } from './views/InstituteAdmin/AcademicTimetable';
 import { AdminProfileView } from './views/InstituteAdmin/AdminProfileView';
+import { InstituteAnalytics } from './views/InstituteAdmin/InstituteAnalytics';
 
 import { SuperAdminDashboard } from './views/SuperAdmin/SuperAdminDashboard';
 import { SuperAdminAnalytics } from './views/SuperAdmin/SuperAdminAnalytics';
@@ -112,7 +113,7 @@ export const AppContent: React.FC = () => {
       case 'timetable':
         return <AcademicTimetable />;
       case 'analytics':
-        return <AdminDashboard />;
+        return <InstituteAnalytics />;
       case 'settings':
         return <SettingsView />;
       case 'profile':

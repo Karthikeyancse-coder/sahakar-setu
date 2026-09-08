@@ -127,12 +127,12 @@ export const SuperAdminProfileView: React.FC = () => {
               </div>
               <div className="bg-govBg p-2.5 rounded-xl border border-gray-100">
                 <Users className="w-4 h-4 text-[#E68A2E] mx-auto mb-1" />
-                <span className="block text-sm font-bold text-govText-primary">3,121</span>
+                <span className="block text-sm font-bold text-govText-primary">{certificates.length}</span>
                 <span className="text-[10px] text-govText-muted">Certified</span>
               </div>
               <div className="bg-govBg p-2.5 rounded-xl border border-gray-100">
                 <Award className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                <span className="block text-sm font-bold text-govText-primary">2,420</span>
+                <span className="block text-sm font-bold text-govText-primary">{certificates.filter(c => c.status === 'ISSUED').length || certificates.length}</span>
                 <span className="text-[10px] text-govText-muted">Verifiable</span>
               </div>
             </div>

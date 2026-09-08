@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Building2,
   MapPin,
@@ -13,11 +13,28 @@ import {
 import { useApp } from '../../context/AppContext';
 import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
+import { api } from '../../lib/api';
+import { Institute } from '../../types';
 
 export const InstitutesDirectory: React.FC = () => {
   const { institutes, navigate } = useApp();
+  const [dbInstitutes, setDbInstitutes] = useState<Institute[]>([]);
   const [searchQuery, setSearchQuery] = useState(() => sessionStorage.getItem('ss_inst_search') || '');
   const [selectedType, setSelectedType] = useState<string>(() => sessionStorage.getItem('ss_inst_type') || 'all');
+
+  useEffect(() => {
+    api.institute.getInstitutes()
+      .then(res => {
+        if (Array.isArray(res) && res.length > 0) {
+          setDbInstitutes(res);
+        } else {
+          setDbInstitutes(institutes);
+        }
+      })
+      .catch(() => setDbInstitutes(institutes));
+  }, [institutes]);
+
+  const displayedInstitutes = dbInstitutes.length > 0 ? dbInstitutes : institutes;
 
   const handleSearchChange = (val: string) => {
     setSearchQuery(val);
@@ -29,7 +46,7 @@ export const InstitutesDirectory: React.FC = () => {
     sessionStorage.setItem('ss_inst_type', val);
   };
 
-  const filteredInstitutes = institutes.filter(inst => {
+  const filteredInstitutes = displayedInstitutes.filter(inst => {
     const matchesSearch =
       inst.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       inst.city.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,7 +80,7 @@ export const InstitutesDirectory: React.FC = () => {
         </div>
 
         <div className="bg-govTeal-50 border border-govTeal-200 px-4 py-2 rounded-xl text-xs text-govTeal-900 font-bold">
-          {institutes.length} Institutes Connected to Cloud Hub
+          {displayedInstitutes.length} Institutes Connected to Cloud Hub
         </div>
       </div>
 

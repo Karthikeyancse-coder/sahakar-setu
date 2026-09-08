@@ -36,3 +36,6 @@ backend/node_modules
 backend/dist
 backend/prisma/*.db
 backend/prisma/*.db-journal
+
+# Development scratch / debug scripts — never commit these
+backend/scratch/
