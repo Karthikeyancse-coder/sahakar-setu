@@ -18,11 +18,23 @@
  * 11. Trainee attendance history retrieval -> Verified in PostgreSQL.
  */
 
+import fs from 'fs';
+import path from 'path';
 import jwt from 'jsonwebtoken';
 import prisma from './src/config/prisma';
 
 const API_BASE = 'http://127.0.0.1:5000/api';
+const FACE_SERVICE_URL = 'http://127.0.0.1:8000';
 const JWT_SECRET = process.env.JWT_SECRET || 'sahakar_setu_secret_jwt_key_2026';
+
+// Real test frames (generated from real faces)
+const face0Path = path.resolve(__dirname, '../FACE/test_face_0.jpg');
+const face1Path = path.resolve(__dirname, '../FACE/test_face_1.jpg');
+const blankPath = path.resolve(__dirname, '../FACE/test_blank.jpg');
+
+const face0Base64 = `data:image/jpeg;base64,${fs.readFileSync(face0Path).toString('base64')}`;
+const face1Base64 = `data:image/jpeg;base64,${fs.readFileSync(face1Path).toString('base64')}`;
+const blankBase64 = `data:image/jpeg;base64,${fs.readFileSync(blankPath).toString('base64')}`;
 
 function generateToken(user: { id: string; email: string; role: string }) {
   return jwt.sign(
@@ -67,9 +79,37 @@ async function runTests() {
     const trainee1Token = generateToken({ id: trainee1.id, email: trainee1.email, role: 'trainee' });
     const trainee2Token = generateToken({ id: trainee2.id, email: trainee2.email, role: 'trainee' });
 
+    const originalTrainee1FaceId = trainee1.faceIdentity === 'test_student' ? null : trainee1.faceIdentity;
+    const originalTrainee1Enrolled = trainee1.faceIdentity === 'test_student' ? false : trainee1.faceEnrolled;
+    const originalTrainee2FaceId = trainee2.faceIdentity;
+    const originalTrainee2Enrolled = trainee2.faceEnrolled;
+
     console.log(`[Setup] Faculty: ${faculty.name} (${faculty.id})`);
-    console.log(`[Setup] Trainee 1: ${trainee1.name} (${trainee1.id}, faceId: "${trainee1.faceIdentity}")`);
-    console.log(`[Setup] Trainee 2: ${trainee2.name} (${trainee2.id}, faceId: "${trainee2.faceIdentity}")\n`);
+    console.log(`[Setup] Trainee 1 original faceId: "${originalTrainee1FaceId}"`);
+    console.log(`[Setup] Trainee 2 original faceId: "${originalTrainee2FaceId}"\n`);
+
+    // Enroll test_face_0 as test_student on the real Face AI service
+    const enrollTestRes = await fetch(`${FACE_SERVICE_URL}/enroll`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        identity: 'test_student',
+        image: face0Base64,
+      }),
+    });
+    const enrollTestData = await enrollTestRes.json();
+    console.log(`[Setup] Real model face enrollment: ${enrollTestData.success ? 'SUCCESS' : 'FAILED'}, identity: ${enrollTestData.identity}`);
+
+    // Set trainee 1 face identity to test_student
+    await prisma.user.update({
+      where: { id: trainee1.id },
+      data: { faceIdentity: 'test_student', faceEnrolled: true },
+    });
+    // Set trainee 2 face identity to sunita
+    await prisma.user.update({
+      where: { id: trainee2.id },
+      data: { faceIdentity: 'sunita', faceEnrolled: true },
+    });
 
     // Clean up any previous test sessions / records
     const testSessionId = `test-sess-e2e-${Date.now()}`;
@@ -85,7 +125,7 @@ async function runTests() {
       },
       update: {},
       create: {
-        id: `enr-test-${Date.now()}`,
+        id: `enr-test-t1-${Date.now()}`,
         userId: trainee1.id,
         courseId,
         status: 'IN_PROGRESS',
@@ -151,7 +191,7 @@ async function runTests() {
     // ──────────────────────────────────────────────────────────────────────────
     // CASE 3: Valid Web Face Attendance Verification & Persistence
     // ──────────────────────────────────────────────────────────────────────────
-    // Trainee 1 (Rameshwar Patil, faceIdentity: 'karthik') sends matching face
+    // Trainee 1 (Rameshwar Patil, faceIdentity: 'test_student') sends matching real face
     const markRes = await fetch(`${API_BASE}/attendance/face`, {
       method: 'POST',
       headers: {
@@ -160,7 +200,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: testSessionId,
-        image: 'MOCK_FACE:karthik',
+        image: face0Base64,
       }),
     });
     const markData = await markRes.json();
@@ -196,7 +236,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: testSessionId,
-        image: 'MOCK_FACE:karthik',
+        image: face0Base64,
       }),
     });
     assert(
@@ -206,7 +246,7 @@ async function runTests() {
     );
 
     // ──────────────────────────────────────────────────────────────────────────
-    // CASE 5: Anti-Proxy Guard (Logged-in Trainee 2 vs Face Identity Karthik)
+    // CASE 5: Anti-Proxy Guard (Logged-in Trainee 2 vs Face Identity test_student)
     // ──────────────────────────────────────────────────────────────────────────
     // Ensure Trainee 2 is enrolled so enrollment check doesn't shadow anti-proxy
     await prisma.enrollment.upsert({
@@ -234,7 +274,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: testSessionId,
-        image: 'MOCK_FACE:karthik', // Trainee 2 is Sunita Devi, but face is Karthik
+        image: face0Base64, // Trainee 2 is Sunita, but face is test_student
       }),
     });
     const proxyData = await proxyRes.json();
@@ -276,7 +316,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: unEnrolledSessionId,
-        image: 'MOCK_FACE:karthik',
+        image: face0Base64,
       }),
     });
     assert(
@@ -310,12 +350,12 @@ async function runTests() {
     const closedRes = await fetch(`${API_BASE}/attendance/face`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${trainee2Token}`,
+        Authorization: `Bearer ${trainee1Token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         sessionId: closedSessionId,
-        image: 'MOCK_FACE:Samritha',
+        image: face0Base64,
       }),
     });
     assert(
@@ -325,9 +365,9 @@ async function runTests() {
     );
 
     // ──────────────────────────────────────────────────────────────────────────
-    // CASE 8: Low Confidence Match Guard
+    // CASE 8: Low Confidence / Unknown Face Match Guard (Real Unenrolled Face)
     // ──────────────────────────────────────────────────────────────────────────
-    // Create active session for Trainee 2
+    // Create active session for Trainee 1
     const lowConfSessionId = `test-sess-lowconf-${Date.now()}`;
     await prisma.session.create({
       data: {
@@ -354,7 +394,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: lowConfSessionId,
-        image: 'MOCK_FACE:LOW_CONFIDENCE',
+        image: face1Base64, // Real face but not enrolled (confidence ~0.07 < 0.50)
       }),
     });
     assert(
@@ -364,7 +404,7 @@ async function runTests() {
     );
 
     // ──────────────────────────────────────────────────────────────────────────
-    // CASE 9: No Face Detected in Frame Guard
+    // CASE 9: No Face Detected in Frame Guard (Real Blank Image)
     // ──────────────────────────────────────────────────────────────────────────
     const noFaceRes = await fetch(`${API_BASE}/attendance/face`, {
       method: 'POST',
@@ -374,7 +414,7 @@ async function runTests() {
       },
       body: JSON.stringify({
         sessionId: lowConfSessionId,
-        image: 'MOCK_FACE:NO_FACE',
+        image: blankBase64, // Real blank frame with 0 faces
       }),
     });
     assert(
@@ -424,14 +464,42 @@ async function runTests() {
           in: [testSessionId, unEnrolledSessionId, closedSessionId, lowConfSessionId],
         },
       },
-    });
+    }).catch(() => {});
+
     await prisma.session.deleteMany({
       where: {
         id: {
           in: [testSessionId, unEnrolledSessionId, closedSessionId, lowConfSessionId],
         },
       },
-    });
+    }).catch(() => {});
+
+    // Restore trainee identities in database
+    await prisma.user.update({
+      where: { id: trainee1.id },
+      data: { faceIdentity: originalTrainee1FaceId, faceEnrolled: originalTrainee1Enrolled },
+    }).catch((e) => console.warn('Warning restoring trainee1 face:', e.message));
+
+    await prisma.user.update({
+      where: { id: trainee2.id },
+      data: { faceIdentity: originalTrainee2FaceId, faceEnrolled: originalTrainee2Enrolled },
+    }).catch((e) => console.warn('Warning restoring trainee2 face:', e.message));
+
+    // Remove test_student via microservice and fallback
+    try {
+      await fetch(`${FACE_SERVICE_URL}/identities/test_student`, { method: 'DELETE' });
+    } catch (_) {}
+
+    const enrolledPklPath = path.resolve(__dirname, '../FACE/enrolled.pkl');
+    if (fs.existsSync(enrolledPklPath)) {
+      const { execSync } = await import('child_process');
+      try {
+        execSync(
+          `& "C:\\Users\\KARTHIKEYAN\\AppData\\Local\\Programs\\Python\\Python311\\python.exe" -c "import pickle; p = r'${enrolledPklPath}'; f = open(p, 'rb'); d = pickle.load(f); f.close(); d.pop('test_student', None); f = open(p, 'wb'); pickle.dump(d, f); f.close()"`,
+          { shell: 'powershell.exe' }
+        );
+      } catch (_) {}
+    }
 
     console.log('\n================================================================');
     console.log(`🎉 TEST SUMMARY: ${passedTests} PASSED, ${failedTests} FAILED`);

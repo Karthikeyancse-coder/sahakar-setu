@@ -14,6 +14,7 @@ import io
 import time
 import pickle
 import base64
+import json
 import numpy as np
 import cv2
 from typing import Optional
@@ -47,6 +48,7 @@ app.add_middleware(
 # Global model and database holder
 face_app = None
 enrolled_db = {}
+_last_mtime = 0.0
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -56,33 +58,62 @@ def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
     return float(np.dot(a, b) / denom)
 
 
-def load_database():
-    global enrolled_db
+def load_database(force: bool = False) -> dict:
+    global enrolled_db, _last_mtime
     if not os.path.exists(ENROLLED_PATH):
         enrolled_db = {}
         return enrolled_db
-    with open(ENROLLED_PATH, "rb") as f:
-        data = pickle.load(f)
-    if isinstance(data, np.ndarray):
-        enrolled_db = {"person": data}
-    else:
-        enrolled_db = data
+    try:
+        current_mtime = os.path.getmtime(ENROLLED_PATH)
+        if force or current_mtime > _last_mtime or not enrolled_db:
+            with open(ENROLLED_PATH, "rb") as f:
+                data = pickle.load(f)
+            if isinstance(data, np.ndarray):
+                enrolled_db = {"person": data}
+            elif isinstance(data, dict):
+                enrolled_db = data
+            else:
+                print(f"[FaceService] Warning: unexpected data format in {ENROLLED_PATH}: {type(data)}")
+                return enrolled_db
+            _last_mtime = current_mtime
+            print(f"[FaceService] Loaded {len(enrolled_db)} identities from {ENROLLED_PATH}: {list(enrolled_db.keys())}")
+    except Exception as e:
+        print(f"[FaceService] Error loading database: {e}")
     return enrolled_db
 
 
-def save_database(db):
-    with open(ENROLLED_PATH, "wb") as f:
+def save_database(db: dict):
+    global _last_mtime
+    # Write to a temporary file first, then atomically replace
+    tmp_path = ENROLLED_PATH + ".tmp"
+    with open(tmp_path, "wb") as f:
         pickle.dump(db, f)
+    os.replace(tmp_path, ENROLLED_PATH)
+    _last_mtime = os.path.getmtime(ENROLLED_PATH)
 
 
-def get_embedding(model, frame: np.ndarray):
+def get_embedding(model, frame: np.ndarray, quality_check: bool = False):
     """Detect face(s) in frame and return the embedding of the largest detected face."""
     faces = model.get(frame)
     if not faces or len(faces) == 0:
-        return None, None
+        return None, None, 0
     # Pick largest detected face by area
     faces.sort(key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]), reverse=True)
-    return faces[0].embedding, faces[0].bbox
+    best_face = faces[0]
+    bbox = best_face.bbox
+    w = bbox[2] - bbox[0]
+    h = bbox[3] - bbox[1]
+    det_score = getattr(best_face, "det_score", 1.0)
+
+    if quality_check:
+        if det_score < 0.50:
+            print(f"[FACE QUALITY] Rejected: det_score {det_score:.3f} < 0.50")
+            return None, None, len(faces)
+        if w < 50 or h < 50:
+            print(f"[FACE QUALITY] Rejected: face size ({w:.0f}x{h:.0f}) too small (< 50px)")
+            return None, None, len(faces)
+
+    return best_face.embedding, bbox, len(faces)
 
 
 def decode_image_bytes(image_bytes: bytes) -> Optional[np.ndarray]:
@@ -100,7 +131,7 @@ def startup_event():
             providers=["CPUExecutionProvider"]
         )
         face_app.prepare(ctx_id=-1, det_size=(640, 640))
-        load_database()
+        load_database(force=True)
         print(f"[FaceService] Model ready. Loaded {len(enrolled_db)} enrolled faces: {list(enrolled_db.keys())}")
     except Exception as e:
         print(f"[FaceService] Fatal error initializing model: {e}")
@@ -117,6 +148,7 @@ class Base64EnrollRequest(BaseModel):
 
 @app.get("/health")
 def health():
+    load_database()
     return {
         "status": "ok",
         "service": "Sahakar Setu Face Recognition AI",
@@ -129,10 +161,22 @@ def health():
 
 @app.get("/identities")
 def get_identities():
+    load_database()
     return {
         "success": True,
         "identities": list(enrolled_db.keys())
     }
+
+
+@app.delete("/identities/{identity}")
+def delete_identity(identity: str):
+    db = load_database(force=True)
+    if identity in db:
+        del db[identity]
+        save_database(db)
+        print(f"[FaceService] Deleted identity: {identity}. Remaining: {list(db.keys())}")
+        return {"success": True, "message": f"Deleted {identity}"}
+    return {"success": False, "message": f"{identity} not found"}
 
 
 @app.post("/recognize")
@@ -145,58 +189,27 @@ async def recognize(request: Request):
     if face_app is None:
         raise HTTPException(status_code=503, detail="Face recognition model not yet initialized")
 
+    # Refresh DB if updated on disk
+    load_database()
+
     frame = None
     content_type = request.headers.get("content-type", "")
 
     if "application/json" in content_type:
-        data = await request.json()
-        raw_b64 = data.get("image", "")
+        try:
+            body_bytes = await request.body()
+            data = json.loads(body_bytes.decode("utf-8", errors="replace"))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+
+        raw_b64 = data.get("image", "").strip()
         if not raw_b64:
             raise HTTPException(status_code=400, detail="Missing 'image' field in JSON payload")
         if "," in raw_b64:
             raw_b64 = raw_b64.split(",", 1)[1]
 
-        # Headless testing / simulation hook
-        if raw_b64.startswith("MOCK_FACE:"):
-            target_mock = raw_b64.split(":", 1)[1].strip()
-            if target_mock == "NO_FACE":
-                return {
-                    "success": True,
-                    "matched": False,
-                    "identity": None,
-                    "confidence": 0.0,
-                    "message": "No face detected in the frame",
-                    "bbox": None
-                }
-            if target_mock == "LOW_CONFIDENCE":
-                return {
-                    "success": True,
-                    "matched": False,
-                    "identity": "karthik",
-                    "recognizedName": "karthik",
-                    "confidence": 0.32,
-                    "message": "Low confidence match",
-                    "bbox": [100, 100, 200, 200]
-                }
-            if target_mock == "UNKNOWN":
-                return {
-                    "success": True,
-                    "matched": False,
-                    "identity": "UNKNOWN",
-                    "recognizedName": None,
-                    "confidence": 0.15,
-                    "message": "Face not recognized",
-                    "bbox": [100, 100, 200, 200]
-                }
-            return {
-                "success": True,
-                "matched": True,
-                "recognizedName": target_mock,
-                "identity": target_mock,
-                "confidence": 0.985,
-                "raw_best_identity": target_mock,
-                "bbox": [120, 80, 280, 320]
-            }
+        # Strip whitespace/newlines if any
+        raw_b64 = "".join(raw_b64.split())
 
         try:
             img_bytes = base64.b64decode(raw_b64)
@@ -214,16 +227,30 @@ async def recognize(request: Request):
     if frame is None:
         raise HTTPException(status_code=400, detail="Invalid image or unreadable format provided")
 
-    emb, bbox = get_embedding(face_app, frame)
+    print("[FACE] Image received")
+    print(f"[FACE] Image decoded: {frame.shape[1]}x{frame.shape[0]}")
+
+    emb, bbox, face_count = get_embedding(face_app, frame, quality_check=False)
+    print(f"[FACE] Face count: {face_count}")
+
     if emb is None:
+        print("[FACE] Result: NO FACE")
         return {
             "success": True,
+            "recognized": False,
             "matched": False,
             "identity": None,
+            "name": None,
             "confidence": 0.0,
+            "score": 0.0,
+            "threshold": THRESHOLD,
+            "face_detected": False,
+            "embedding_generated": False,
             "message": "No face detected in the frame",
             "bbox": None
         }
+
+    print("[FACE] Embedding generated")
 
     best_name = None
     best_score = -1.0
@@ -237,13 +264,24 @@ async def recognize(request: Request):
     matched = bool(best_score >= THRESHOLD and best_name is not None)
     confidence = round(float(best_score), 4)
 
+    print(f"[FACE] Best match: {best_name}")
+    print(f"[FACE] Distance/similarity: {confidence}")
+    print(f"[FACE] Threshold: {THRESHOLD}")
+    print(f"[FACE] Result: {'MATCH (' + str(best_name) + ')' if matched else 'UNKNOWN'}")
+
     return {
         "success": True,
+        "recognized": matched,
         "matched": matched,
-        "recognizedName": best_name if matched else None,
         "identity": best_name if matched else "UNKNOWN",
+        "name": best_name if matched else "UNKNOWN",
+        "recognizedName": best_name if matched else None,
         "confidence": confidence,
-        "raw_best_identity": best_name,
+        "score": confidence,
+        "threshold": THRESHOLD,
+        "face_detected": True,
+        "embedding_generated": True,
+        "best_match": best_name,
         "bbox": [int(v) for v in bbox] if bbox is not None else None
     }
 
@@ -253,22 +291,32 @@ async def enroll(request: Request):
     """
     Enroll a new face identity into enrolled.pkl.
     Supports either JSON { "identity": "name", "image": "<base64>" } or multipart/form-data.
+    NEVER overwrites existing enrolled identities; safely appends/updates target identity.
     """
     global face_app, enrolled_db
     if face_app is None:
         raise HTTPException(status_code=503, detail="Face recognition model not yet initialized")
+
+    # Load latest database from disk first to guarantee zero overwrites
+    db = load_database(force=True)
 
     target_identity = None
     frame = None
     content_type = request.headers.get("content-type", "")
 
     if "application/json" in content_type:
-        data = await request.json()
+        try:
+            body_bytes = await request.body()
+            data = json.loads(body_bytes.decode("utf-8", errors="replace"))
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid JSON payload: {e}")
+
         target_identity = data.get("identity", "").strip()
-        raw_b64 = data.get("image", "")
+        raw_b64 = data.get("image", "").strip()
         if raw_b64:
             if "," in raw_b64:
                 raw_b64 = raw_b64.split(",", 1)[1]
+            raw_b64 = "".join(raw_b64.split())
             try:
                 img_bytes = base64.b64decode(raw_b64)
                 frame = decode_image_bytes(img_bytes)
@@ -288,19 +336,32 @@ async def enroll(request: Request):
     if frame is None:
         raise HTTPException(status_code=400, detail="Valid image is required for enrollment")
 
-    emb, bbox = get_embedding(face_app, frame)
-    if emb is None:
-        raise HTTPException(status_code=400, detail="No face detected in enrollment frame")
+    print(f"[ENROLL] Identity: {target_identity}")
 
-    # Update database
-    enrolled_db[target_identity] = emb
-    save_database(enrolled_db)
-    print(f"[FaceService] Successfully enrolled face for identity: '{target_identity}'. Total: {len(enrolled_db)}")
+    emb, bbox, face_count = get_embedding(face_app, frame, quality_check=True)
+    print(f"[ENROLL] Face detected: {face_count}")
+
+    if emb is None:
+        raise HTTPException(
+            status_code=400,
+            detail="No clear face detected in enrollment frame or face is too small. Please position your face clearly in the camera."
+        )
+
+    print("[ENROLL] Embedding generated: YES")
+    print(f"[ENROLL] Existing identities: {list(db.keys())}")
+
+    # Safely merge target identity into database (preserving all other identities!)
+    db[target_identity] = emb
+    save_database(db)
+    enrolled_db = db
+
+    print(f"[ENROLL] Saved successfully: YES. Total identities now: {len(enrolled_db)}")
 
     return {
         "success": True,
         "identity": target_identity,
         "enrolled_count": len(enrolled_db),
+        "identities": list(enrolled_db.keys()),
         "message": f"Identity '{target_identity}' enrolled successfully"
     }
 

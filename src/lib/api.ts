@@ -26,15 +26,17 @@ function getApiBaseUrl(): string {
   // This makes the frontend work from ANY LAN IP without code changes.
   if (typeof window !== 'undefined') {
     const { hostname, protocol } = window.location;
-    // Always use HTTP for local/LAN (backend is not TLS in dev)
-    // The Vite proxy intercepts /api on the same origin, so '' works for dev.
-    // For direct non-proxy access (mobile, other machines), use the explicit host.
+    // On localhost/127.0.0.1 the Vite proxy handles /api -> localhost:5000
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return ''; // Vite proxy handles /api → localhost:5000
+      return '';
     }
-    // LAN IP — Vite proxy on the same machine still works ('' is fine),
-    // but return the explicit URL as a safe fallback for non-Vite contexts.
-    return `${protocol}//${hostname}:5000`;
+    // Only append :5000 for private LAN IP addresses (e.g. 192.168.x, 10.x, 172.16-31.x)
+    const isLanIp = /^192\.168\.|^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname);
+    if (isLanIp) {
+      return `${protocol}//${hostname}:5000`;
+    }
+    // On deployed public domains (e.g. *.vercel.app), do NOT append :5000
+    return '';
   }
 
   // SSR / Node context — relative path
@@ -42,7 +44,6 @@ function getApiBaseUrl(): string {
 }
 
 const BASE_URL = getApiBaseUrl();
-
 
 const getToken = () => localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
 
@@ -78,11 +79,18 @@ async function request<T = any>(
     if (token) headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body != null ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body != null ? JSON.stringify(body) : undefined,
+    });
+  } catch (netErr: any) {
+    throw new Error(
+      'Backend server is unreachable. Please verify that your backend is deployed and VITE_API_URL is configured in your Vercel project settings.'
+    );
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: `HTTP ${res.status}` }));

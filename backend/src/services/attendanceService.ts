@@ -426,6 +426,7 @@ export const attendanceService = {
     const FACE_MATCH_THRESHOLD = parseFloat(process.env.FACE_MATCH_THRESHOLD || '0.50');
     let faceResult: any = null;
     try {
+      console.log('[FACE API] Request received for web face recognition');
       const response = await fetch(`${FACE_SERVICE_URL}/recognize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -437,6 +438,7 @@ export const attendanceService = {
         throw new Error(`Face service returned status ${response.status}: ${errText}`);
       }
       faceResult = await response.json();
+      console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
     } catch (err: any) {
       console.error('[AttendanceService] Python service error:', err.message);
       throw createError(503, `Face recognition AI service unavailable: ${err.message}`);
@@ -751,6 +753,7 @@ export const attendanceService = {
     // 8. Python Face AI Verification
     let faceResult: any = null;
     try {
+      console.log('[FACE API] Request received for physical classroom face verification');
       const response = await fetch(`${FACE_SERVICE_URL}/recognize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -762,6 +765,7 @@ export const attendanceService = {
         throw new Error(`Face service returned status ${response.status}: ${errText}`);
       }
       faceResult = await response.json();
+      console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
     } catch (fetchErr: any) {
       console.error('[AttendanceService] Python Face Service error:', fetchErr.message);
       throw createError(503, `Face recognition AI service unavailable: ${fetchErr.message}`);
@@ -924,6 +928,7 @@ export const attendanceService = {
     // Call Python Face Service /enroll
     let pyResult: any = null;
     try {
+      console.log('[FACE API] Request received for face enrollment: identity=' + targetIdentity);
       const response = await fetch(`${FACE_SERVICE_URL}/enroll`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -938,6 +943,7 @@ export const attendanceService = {
         throw new Error(errText);
       }
       pyResult = await response.json();
+      console.log('[FACE API] Python response received for enrollment: success=' + pyResult.success + ', total=' + pyResult.enrolled_count);
     } catch (err: any) {
       console.error('[AttendanceService] Face Enrollment error:', err);
       throw createError(503, `Face enrollment service error: ${err.message}`);

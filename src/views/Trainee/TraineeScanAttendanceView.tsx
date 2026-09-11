@@ -119,7 +119,11 @@ export const TraineeScanAttendanceView: React.FC = () => {
   useEffect(() => {
     loadData();
     const interval = setInterval(loadData, 10000); // Poll active sessions every 10s
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      stopAttendanceCamera();
+      stopEnrollCamera();
+    };
   }, [loadData]);
 
   // ─── Camera Handler for Web-based Face Attendance ──────────────────────────
@@ -130,14 +134,26 @@ export const TraineeScanAttendanceView: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
       });
+      console.log('[CAMERA] Permission granted');
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
         setIsCameraActive(true);
+        console.log('[CAMERA] Video ready');
       }
     } catch (err: any) {
-      console.warn('Camera access denied:', err);
-      setCameraError('Webcam access was denied or is unavailable. Please grant camera permissions.');
+      console.warn('[Webcam] Camera access error:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        setCameraError('Camera permission was denied. Please allow camera access in your browser settings.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        setCameraError('No camera was found on this device. Please connect a webcam.');
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        setCameraError('Camera is currently being used by another application.');
+      } else if (err.name === 'SecurityError') {
+        setCameraError('Camera access is not available in this environment (requires HTTPS or localhost).');
+      } else {
+        setCameraError(err.message || 'Webcam access was denied or is unavailable. Please grant camera permissions.');
+      }
       setIsCameraActive(false);
     }
   };
@@ -159,15 +175,21 @@ export const TraineeScanAttendanceView: React.FC = () => {
 
     try {
       const video = videoRef.current;
+      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        throw new Error('Camera video feed is initializing. Please wait 1 second and try again.');
+      }
+
       const canvas = canvasRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context unavailable');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.88);
+      console.log('[CAMERA] Frame captured: ' + canvas.width + 'x' + canvas.height);
+      const imageBase64 = canvas.toDataURL('image/jpeg', 0.90);
+      console.log('[CAMERA] Sending frame to verification backend');
 
       // Post to Express Backend -> Python ArcFace Service
       const res = await api.attendance.markWebFace(selectedSession.id, imageBase64);
@@ -219,10 +241,12 @@ export const TraineeScanAttendanceView: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
       });
+      console.log('[CAMERA] Permission granted for enrollment');
       if (enrollVideoRef.current) {
         enrollVideoRef.current.srcObject = stream;
         await enrollVideoRef.current.play();
         setIsEnrollCameraActive(true);
+        console.log('[CAMERA] Video ready for enrollment');
       }
     } catch (err: any) {
       console.warn('Camera access denied for enrollment:', err);
@@ -248,15 +272,21 @@ export const TraineeScanAttendanceView: React.FC = () => {
 
     try {
       const video = enrollVideoRef.current;
+      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        throw new Error('Enrollment camera is initializing. Please wait 1 second and try again.');
+      }
+
       const canvas = enrollCanvasRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
 
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context unavailable');
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.88);
+      console.log('[CAMERA] Frame captured for enrollment: ' + canvas.width + 'x' + canvas.height);
+      const imageBase64 = canvas.toDataURL('image/jpeg', 0.90);
+      console.log('[CAMERA] Sending frame for enrollment');
 
       const res = await api.attendance.enrollFace(
         currentUser.id,

@@ -27,7 +27,8 @@ if sys.platform == "win32":
 
 from insightface.app import FaceAnalysis
 
-ENROLLED_PATH = "enrolled.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+ENROLLED_PATH = os.path.join(BASE_DIR, "enrolled.pkl")
 THRESHOLD = 0.5  # tune this after testing on your own data
 NUM_ENROLL_SHOTS = 5
 

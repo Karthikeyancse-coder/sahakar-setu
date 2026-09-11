@@ -192,10 +192,12 @@ export const FacultyAttendanceView: React.FC = () => {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 640, height: 480, facingMode: 'user' },
       });
+      console.log('[CAMERA] Permission granted');
       if (testVideoRef.current) {
         testVideoRef.current.srcObject = stream;
         testVideoRef.current.play();
         setIsTestCameraActive(true);
+        console.log('[CAMERA] Video ready');
       }
     } catch (err) {
       console.warn('Webcam stream error:', err);
@@ -224,14 +226,20 @@ export const FacultyAttendanceView: React.FC = () => {
 
     try {
       const video = testVideoRef.current;
+      if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+        throw new Error('Camera feed is still initializing. Please wait 1 second.');
+      }
+
       const canvas = testCanvasRef.current;
-      canvas.width = video.videoWidth || 640;
-      canvas.height = video.videoHeight || 480;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
       const ctx = canvas.getContext('2d');
       if (!ctx) throw new Error('Canvas context unavailable');
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+      console.log('[CAMERA] Frame captured: ' + canvas.width + 'x' + canvas.height);
+      const imageBase64 = canvas.toDataURL('image/jpeg', 0.90);
+      console.log('[CAMERA] Sending frame to /recognize');
 
       // Call Face AI service
       const res = await fetch('http://127.0.0.1:8000/recognize', {
