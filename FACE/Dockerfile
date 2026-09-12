@@ -20,11 +20,14 @@ RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name
              /root/.insightface/models/buffalo_l/2d106det.onnx \
              /root/.insightface/models/buffalo_l/genderage.onnx
 
-# Copy service code and enrolled faces
+# Invalidate cache for service code to ensure fresh build on Render
+ARG CACHEBUST=20260912_v2
 COPY service.py .
 COPY enrolled.pkl .
 
 ENV PORT=8000
+ENV PYTHONUNBUFFERED=1
+ENV WEB_CONCURRENCY=1
 ENV OMP_NUM_THREADS=1
 ENV OPENBLAS_NUM_THREADS=1
 ENV MKL_NUM_THREADS=1

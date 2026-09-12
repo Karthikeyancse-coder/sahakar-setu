@@ -119,21 +119,44 @@ def decode_image_bytes(image_bytes: bytes) -> Optional[np.ndarray]:
     return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global face_app, enrolled_db
-    print("[FaceService] Initializing InsightFace buffalo_l (detection + recognition) on CPUExecutionProvider...")
-    try:
-        face_app = FaceAnalysis(
+def get_face_app():
+    global face_app
+    if face_app is None:
+        print("[FaceService] Initializing InsightFace buffalo_l (detection + recognition) with memory arena disabled...")
+        try:
+            import onnxruntime as ort
+            orig_init = ort.InferenceSession.__init__
+            def patched_init(self, *args, **kwargs):
+                so = kwargs.get('sess_options') or ort.SessionOptions()
+                so.enable_cpu_mem_arena = False
+                so.intra_op_num_threads = 1
+                so.inter_op_num_threads = 1
+                kwargs['sess_options'] = so
+                return orig_init(self, *args, **kwargs)
+            ort.InferenceSession.__init__ = patched_init
+        except Exception as e:
+            print(f"[FaceService] Note: onnxruntime session patch skipped: {e}")
+
+        app = FaceAnalysis(
             name="buffalo_l",
             allowed_modules=["detection", "recognition"],
             providers=["CPUExecutionProvider"]
         )
-        face_app.prepare(ctx_id=-1, det_size=(320, 320))
-        load_database(force=True)
+        app.prepare(ctx_id=-1, det_size=(320, 320))
+        face_app = app
         print(f"[FaceService] Model ready. Loaded {len(enrolled_db)} enrolled faces: {list(enrolled_db.keys())}")
+    return face_app
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    global face_app, enrolled_db
+    print("[FaceService] FastAPI starting up...")
+    load_database(force=True)
+    try:
+        get_face_app()
     except Exception as e:
-        print(f"[FaceService] Fatal error initializing model: {e}")
+        print(f"[FaceService] Model initialization deferred: {e}")
     yield
 
 
@@ -198,9 +221,9 @@ async def recognize(request: Request):
     Recognize a person in the submitted image frame.
     Supports either JSON { "image": "<base64>" } or multipart/form-data with "file".
     """
-    global face_app, enrolled_db
-    if face_app is None:
-        raise HTTPException(status_code=503, detail="Face recognition model not yet initialized")
+    model = get_face_app()
+    if model is None:
+        raise HTTPException(status_code=503, detail="Face recognition model could not be initialized")
 
     # Refresh DB if updated on disk
     load_database()
@@ -243,7 +266,7 @@ async def recognize(request: Request):
     print("[FACE] Image received")
     print(f"[FACE] Image decoded: {frame.shape[1]}x{frame.shape[0]}")
 
-    emb, bbox, face_count = get_embedding(face_app, frame, quality_check=False)
+    emb, bbox, face_count = get_embedding(model, frame, quality_check=False)
     print(f"[FACE] Face count: {face_count}")
 
     if emb is None:
@@ -351,7 +374,8 @@ async def enroll(request: Request):
 
     print(f"[ENROLL] Identity: {target_identity}")
 
-    emb, bbox, face_count = get_embedding(face_app, frame, quality_check=True)
+    model = get_face_app()
+    emb, bbox, face_count = get_embedding(model, frame, quality_check=True)
     print(f"[ENROLL] Face detected: {face_count}")
 
     if emb is None:
@@ -382,5 +406,5 @@ async def enroll(request: Request):
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    print(f"[FaceService] Starting HTTP Face Service on port {port}...")
-    uvicorn.run("service:app", host="0.0.0.0", port=port, reload=False)
+    print(f"[FaceService] Starting HTTP Face Service on port {port} (single worker)...")
+    uvicorn.run("service:app", host="0.0.0.0", port=port, reload=False, workers=1, access_log=False)
