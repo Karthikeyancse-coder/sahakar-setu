@@ -22,6 +22,13 @@ from fastapi import FastAPI, Request, File, UploadFile, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+# Limit threads to prevent memory explosion on cloud free tiers (e.g. Render 512MB RAM)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["VECLIB_MAXIMUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+
 # Windows DLL path resolution for CUDA / cuDNN
 if sys.platform == "win32":
     cuda_path = os.environ.get("CUDA_PATH", r"C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.8")
@@ -29,21 +36,12 @@ if sys.platform == "win32":
     if os.path.exists(cuda_bin) and hasattr(os, "add_dll_directory"):
         os.add_dll_directory(cuda_bin)
 
+from contextlib import asynccontextmanager
 from insightface.app import FaceAnalysis
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ENROLLED_PATH = os.path.join(BASE_DIR, "enrolled.pkl")
 THRESHOLD = 0.50  # ArcFace cosine similarity threshold
-
-app = FastAPI(title="Sahakar Setu Face Recognition Service", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 # Global model and database holder
 face_app = None
@@ -121,20 +119,33 @@ def decode_image_bytes(image_bytes: bytes) -> Optional[np.ndarray]:
     return cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
 
-@app.on_event("startup")
-def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     global face_app, enrolled_db
-    print("[FaceService] Initializing InsightFace buffalo_l on CPUExecutionProvider...")
+    print("[FaceService] Initializing InsightFace buffalo_l (detection + recognition) on CPUExecutionProvider...")
     try:
         face_app = FaceAnalysis(
             name="buffalo_l",
+            allowed_modules=["detection", "recognition"],
             providers=["CPUExecutionProvider"]
         )
-        face_app.prepare(ctx_id=-1, det_size=(640, 640))
+        face_app.prepare(ctx_id=-1, det_size=(320, 320))
         load_database(force=True)
         print(f"[FaceService] Model ready. Loaded {len(enrolled_db)} enrolled faces: {list(enrolled_db.keys())}")
     except Exception as e:
         print(f"[FaceService] Fatal error initializing model: {e}")
+    yield
+
+
+app = FastAPI(title="Sahakar Setu Face Recognition Service", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class Base64RecognizeRequest(BaseModel):
