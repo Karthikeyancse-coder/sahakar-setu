@@ -147,6 +147,8 @@ class Base64EnrollRequest(BaseModel):
 
 
 @app.get("/health")
+@app.get("/healthz")
+@app.get("/")
 def health():
     load_database()
     return {
