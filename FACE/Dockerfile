@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download: buffalo_l for recognition (w600k_r50.onnx) and buffalo_sc for lightweight detection (det_500m.onnx)
-RUN python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_l', allowed_modules=['recognition'], providers=['CPUExecutionProvider']).prepare(ctx_id=-1); FaceAnalysis(name='buffalo_sc', allowed_modules=['detection'], providers=['CPUExecutionProvider']).prepare(ctx_id=-1)" \
+RUN python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_l', allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider']); FaceAnalysis(name='buffalo_sc', allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider'])" \
     && cp /root/.insightface/models/buffalo_sc/det_500m.onnx /root/.insightface/models/buffalo_l/det_500m.onnx \
     && rm -rf /root/.insightface/models/buffalo_sc \
     && rm -f /root/.insightface/models/buffalo_l/det_10g.onnx \
@@ -24,7 +24,7 @@ RUN python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buff
              /root/.insightface/models/buffalo_l/genderage.onnx
 
 # Invalidate cache for service code to ensure fresh build on Render
-ARG CACHEBUST=20260912_v4
+ARG CACHEBUST=20260912_v5
 COPY service.py .
 COPY enrolled.pkl .
 
