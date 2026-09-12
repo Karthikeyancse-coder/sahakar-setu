@@ -22,7 +22,7 @@ import { notificationRepository } from '../repositories/notificationRepository';
 import { deviceService } from './deviceService';
 import { createError } from '../middleware/errorHandler';
 
-const FACE_SERVICE_URL = process.env.FACE_SERVICE_URL || 'http://127.0.0.1:8000';
+const FACE_SERVICE_URL = (process.env.FACE_SERVICE_URL || 'http://127.0.0.1:8000').trim().replace(/\/+$/, '');
 const CONFIDENCE_THRESHOLD = 0.50; // ArcFace cosine similarity threshold
 
 // Short-lived verification tokens cache: token -> { traineeId, sessionId, expiresAt }
