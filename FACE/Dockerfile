@@ -15,13 +15,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Pre-download only detection & recognition models and clean up unused models to save memory
-RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_l', allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider']); app.prepare(ctx_id=-1, det_size=(320, 320))" \
+RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_l', allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider']); app.prepare(ctx_id=-1, det_size=(256, 256))" \
     && rm -f /root/.insightface/models/buffalo_l/1k3d68.onnx \
              /root/.insightface/models/buffalo_l/2d106det.onnx \
              /root/.insightface/models/buffalo_l/genderage.onnx
 
 # Invalidate cache for service code to ensure fresh build on Render
-ARG CACHEBUST=20260912_v2
+ARG CACHEBUST=20260912_v3
 COPY service.py .
 COPY enrolled.pkl .
 
