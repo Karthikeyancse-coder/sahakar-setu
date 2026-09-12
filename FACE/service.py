@@ -142,7 +142,7 @@ def get_face_app():
             allowed_modules=["detection", "recognition"],
             providers=["CPUExecutionProvider"]
         )
-        app.prepare(ctx_id=-1, det_size=(256, 256))
+        app.prepare(ctx_id=-1, det_size=(320, 320))
         face_app = app
         import gc
         gc.collect()
@@ -155,7 +155,10 @@ async def lifespan(app: FastAPI):
     print("[FaceService] FastAPI starting up...")
     load_database(force=True)
     print(f"[FaceService] Database loaded with {len(enrolled_db)} identities.")
-    print("[FaceService] Zero-RAM startup complete: model deferred to first request.")
+    try:
+        get_face_app()
+    except Exception as e:
+        print(f"[FaceService] Model loading deferred: {e}")
     yield
 
 

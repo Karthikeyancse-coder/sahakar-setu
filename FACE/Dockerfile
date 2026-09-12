@@ -14,14 +14,17 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Pre-download only detection & recognition models and clean up unused models to save memory
-RUN python -c "from insightface.app import FaceAnalysis; app = FaceAnalysis(name='buffalo_l', allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider']); app.prepare(ctx_id=-1, det_size=(256, 256))" \
-    && rm -f /root/.insightface/models/buffalo_l/1k3d68.onnx \
+# Pre-download: buffalo_l for recognition (w600k_r50.onnx) and buffalo_sc for lightweight detection (det_500m.onnx)
+RUN python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buffalo_l', allowed_modules=['recognition'], providers=['CPUExecutionProvider']).prepare(ctx_id=-1); FaceAnalysis(name='buffalo_sc', allowed_modules=['detection'], providers=['CPUExecutionProvider']).prepare(ctx_id=-1)" \
+    && cp /root/.insightface/models/buffalo_sc/det_500m.onnx /root/.insightface/models/buffalo_l/det_500m.onnx \
+    && rm -rf /root/.insightface/models/buffalo_sc \
+    && rm -f /root/.insightface/models/buffalo_l/det_10g.onnx \
+             /root/.insightface/models/buffalo_l/1k3d68.onnx \
              /root/.insightface/models/buffalo_l/2d106det.onnx \
              /root/.insightface/models/buffalo_l/genderage.onnx
 
 # Invalidate cache for service code to ensure fresh build on Render
-ARG CACHEBUST=20260912_v3
+ARG CACHEBUST=20260912_v4
 COPY service.py .
 COPY enrolled.pkl .
 
