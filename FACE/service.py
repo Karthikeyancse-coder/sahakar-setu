@@ -122,7 +122,7 @@ def decode_image_bytes(image_bytes: bytes) -> Optional[np.ndarray]:
 def get_face_app():
     global face_app
     if face_app is None:
-        print("[FaceService] Initializing InsightFace buffalo_l (detection + recognition) with memory arena disabled...")
+        print("[FaceService] Initializing InsightFace buffalo_sc (MobileFaceNet low-memory CPU)...")
         try:
             import onnxruntime as ort
             orig_init = ort.InferenceSession.__init__
@@ -138,7 +138,7 @@ def get_face_app():
             print(f"[FaceService] Note: onnxruntime session patch skipped: {e}")
 
         app = FaceAnalysis(
-            name="buffalo_l",
+            name="buffalo_sc",
             allowed_modules=["detection", "recognition"],
             providers=["CPUExecutionProvider"]
         )
@@ -190,7 +190,7 @@ def health():
     return {
         "status": "ok",
         "service": "Sahakar Setu Face Recognition AI",
-        "model": "ArcFace buffalo_l",
+        "model": "ArcFace buffalo_sc",
         "enrolled_count": len(enrolled_db),
         "identities": list(enrolled_db.keys()),
         "threshold": THRESHOLD,
