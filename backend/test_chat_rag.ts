@@ -6,8 +6,8 @@ async function login(): Promise<string> {
   // Try trainee first, then admin
   for (const creds of [
     { identifier: 'rameshwar.pacs@gmail.com', password: 'Demo@1234' },
-    { identifier: 'superadmin.demo@example.com', password: 'Super@1234' },
-    { identifier: 'admin.demo@example.com', password: 'Admin@1234' },
+    { identifier: 'superadmin@ncct.gov.in', password: 'Super@1234' },
+    { identifier: 'admin.vamnicom@ncct.gov.in', password: 'Admin@1234' },
   ]) {
     try {
       const r = await fetch('http://localhost:5000/api/auth/login', {

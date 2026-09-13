@@ -1,7 +1,7 @@
 {
   "name": "sahakar-setu-backend",
   "version": "1.0.0",
-  "description": "Sahakar Setu — Express + Prisma + SQLite backend (Trainee role)",
+  "description": "Sahakar Setu — Express + Prisma + Supabase PostgreSQL Backend",
   "type": "commonjs",
   "scripts": {
     "dev": "tsx watch src/index.ts",
