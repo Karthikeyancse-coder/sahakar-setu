@@ -279,9 +279,10 @@ export const SEED_INSTITUTES: Institute[] = [
 ];
 
 export const SEED_USERS: User[] = [
-  // Trainees
+  // 1. Trainees (8 registered)
   {
     id: 'usr-trainee-1',
+    employeeId: 'NCCT-TRN-2026-MH-44091',
     name: 'Rameshwar Patil',
     nameHi: 'रामेश्वर पाटिल',
     email: 'rameshwar.pacs@gmail.com',
@@ -297,6 +298,7 @@ export const SEED_USERS: User[] = [
   },
   {
     id: 'usr-trainee-2',
+    employeeId: 'NCCT-TRN-2026-UP-71234',
     name: 'Sunita Devi',
     nameHi: 'सुनीता देवी',
     email: 'sunita.shg@yahoo.com',
@@ -312,6 +314,7 @@ export const SEED_USERS: User[] = [
   },
   {
     id: 'usr-trainee-3',
+    employeeId: 'NCCT-TRN-2026-MH-99012',
     name: 'Ganesh Shinde',
     nameHi: 'गणेश शिंदे',
     email: 'ganesh.dairy@gmail.com',
@@ -327,6 +330,7 @@ export const SEED_USERS: User[] = [
   },
   {
     id: 'usr-trainee-4',
+    employeeId: 'NCCT-TRN-2026-RJ-33441',
     name: 'Anjali Sharma',
     nameHi: 'अंजलि शर्मा',
     email: 'anjali.coop@gmail.com',
@@ -342,6 +346,7 @@ export const SEED_USERS: User[] = [
   },
   {
     id: 'usr-trainee-5',
+    employeeId: 'NCCT-TRN-2026-OD-66772',
     name: 'Manoj Kumar Nayak',
     nameHi: 'मनोज कुमार नायक',
     email: 'manoj.nayak@coop.in',
@@ -357,6 +362,7 @@ export const SEED_USERS: User[] = [
   },
   {
     id: 'usr-trainee-6',
+    employeeId: 'NCCT-TRN-2026-MH-11223',
     name: 'Kavita Jadhav',
     nameHi: 'कविता जाधव',
     email: 'kavita.j@shg-mah.org',
@@ -370,10 +376,43 @@ export const SEED_USERS: User[] = [
     aadhaarMock: 'XXXX-XXXX-1122',
     isKycVerified: true,
   },
+  {
+    id: 'usr-trainee-mtschwr6',
+    employeeId: 'NCCT-TRN-2026-MH-81837',
+    name: 'Karthik N.',
+    nameHi: 'कार्तिक एन.',
+    email: 'ks@gmail.com',
+    phone: '+91 98234 81837',
+    role: 'trainee',
+    languagePreference: 'en',
+    instituteId: 'inst-vamnicom',
+    cooperativeAffiliation: 'Shri Datta PACS, Niphad',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    demoPhotoHash: 'karthik',
+    aadhaarMock: 'XXXX-XXXX-8183',
+    isKycVerified: true,
+  },
+  {
+    id: 'usr-trainee-mtsfqdf6',
+    employeeId: 'NCCT-TRN-2026-MH-67220',
+    name: 'Aditya S.',
+    nameHi: 'आदित्य एस.',
+    email: 'ad@gmail.com',
+    phone: '+91 98234 67220',
+    role: 'trainee',
+    languagePreference: 'en',
+    instituteId: 'inst-vamnicom',
+    cooperativeAffiliation: 'Shri Datta PACS, Niphad',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    demoPhotoHash: 'aditya',
+    aadhaarMock: 'XXXX-XXXX-6722',
+    isKycVerified: true,
+  },
 
-  // Institute Admins
+  // 2. Institute Admin
   {
     id: 'usr-admin-vamnicom',
+    employeeId: 'NCCT-ADM-2026-MH-001',
     name: 'Dr. Rajesh Deshmukh',
     nameHi: 'डॉ. राजेश देशमुख',
     email: 'admin.vamnicom@ncct.gov.in',
@@ -383,36 +422,27 @@ export const SEED_USERS: User[] = [
     instituteId: 'inst-vamnicom',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
   },
-  {
-    id: 'usr-admin-lko',
-    name: 'Shri Anand Tripathi',
-    nameHi: 'श्री आनंद त्रिपाठी',
-    email: 'admin.lko@ncct.gov.in',
-    phone: '+91 522 238 9010',
-    role: 'institute_admin',
-    languagePreference: 'hi',
-    instituteId: 'inst-icm-lko',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-  },
 
-  // Super Admin
+  // 3. Super Admin
   {
-    id: 'usr-super-admin',
-    name: 'Dr. Vivek Swaroop (Secretary, NCCT)',
-    nameHi: 'डॉ. विवेक स्वरूप (सचिव, एनसीसीटी)',
-    email: 'secretary@ncct.gov.in',
+    id: 'usr-superadmin',
+    employeeId: 'NCCT-HQ-2026-DL-001',
+    name: 'Shri Arvind Mehta',
+    nameHi: 'श्री अरविंद मेहता',
+    email: 'superadmin@ncct.gov.in',
     phone: '+91 11 2686 2151',
     role: 'super_admin',
     languagePreference: 'en',
     avatarUrl: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
   },
 
-  // Faculty
+  // 4. Faculty
   {
     id: 'usr-faculty-1',
+    employeeId: 'NCCT-FAC-2026-MH-101',
     name: 'Prof. Meenakshi Sundaram',
     nameHi: 'प्रो. मीनाक्षी सुंदरम',
-    email: 'faculty.erp@vamnicom.gov.in',
+    email: 'faculty@ncct.gov.in',
     phone: '+91 94220 55667',
     role: 'faculty',
     languagePreference: 'en',
@@ -420,30 +450,24 @@ export const SEED_USERS: User[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?w=150&auto=format&fit=crop&q=80',
   },
 
-  // Employers
+  // 5. Employer
   {
-    id: 'usr-employer-amul',
-    name: 'K. Patel (Head of Talent, GCMMF / Amul)',
-    nameHi: 'के. पटेल (प्रतिभा प्रमुख, अमूल)',
-    email: 'careers@amul.coop',
-    phone: '+91 2692 258506',
+    id: 'usr-employer-1',
+    employeeId: 'NCCT-EMP-2026-KA-501',
+    name: 'Shri Vikram Nair',
+    nameHi: 'श्री विक्रम नायर',
+    email: 'employer@ncct.gov.in',
+    phone: '+91 80 2558 1001',
     role: 'employer',
     languagePreference: 'en',
+    cooperativeAffiliation: 'National Cooperative Development Corporation (NCDC)',
     avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
   },
-  {
-    id: 'usr-employer-iffco',
-    name: 'S. N. Singh (GM HR, IFFCO)',
-    nameHi: 'एस. एन. सिंह (महाप्रबंधक, इफको)',
-    email: 'recruitment@iffco.in',
-    phone: '+91 11 4259 2600',
-    role: 'employer',
-    languagePreference: 'hi',
-    avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-  },
-  // Device Operator (Hardware Kiosk & Field Tech)
+
+  // 6. Device Operator (Hardware Kiosk & Field Tech)
   {
     id: 'usr-device-operator',
+    employeeId: 'NCCT-DEV-2026-MH-001',
     name: 'Karthik Hardware Operator',
     nameHi: 'कार्तिक हार्डवेयर ऑपरेटर',
     email: 'device.demo@example.com',

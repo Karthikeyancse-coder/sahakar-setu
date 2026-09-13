@@ -777,9 +777,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const switchUser = (userId: string) => {
-    const target = SEED_USERS.find(u => u.id === userId);
+  const switchUser = async (userId: string) => {
+    const target = SEED_USERS.find(u => u.id === userId) || users.find(u => u.id === userId);
     if (target) {
+      const defaultPasswords: Record<string, string> = {
+        'usr-trainee-1': 'Demo@1234',
+        'usr-trainee-2': 'Demo@1234',
+        'usr-trainee-3': 'Demo@1234',
+        'usr-trainee-4': 'Demo@1234',
+        'usr-trainee-5': 'Demo@1234',
+        'usr-trainee-6': 'Demo@1234',
+        'usr-trainee-mtschwr6': 'Demo@1234',
+        'usr-trainee-mtsfqdf6': 'Demo@1234',
+        'usr-admin-vamnicom': 'Admin@1234',
+        'usr-superadmin': 'Super@1234',
+        'usr-faculty-1': 'Faculty@1234',
+        'usr-employer-1': 'Employer@1234',
+        'usr-device-operator': 'Demo@1234',
+      };
+      const pass = defaultPasswords[target.id] || (
+        target.role === 'institute_admin' ? 'Admin@1234' :
+        target.role === 'super_admin' ? 'Super@1234' :
+        target.role === 'faculty' ? 'Faculty@1234' :
+        target.role === 'employer' ? 'Employer@1234' : 'Demo@1234'
+      );
+
+      try {
+        await login(target.email || target.id, pass, true);
+        return;
+      } catch (err) {
+        console.warn('Real login fallback during switchUser:', err);
+      }
+
       setCurrentUser(target);
       setIsAuthenticated(true);
       localStorage.setItem('ss_auth', 'true');

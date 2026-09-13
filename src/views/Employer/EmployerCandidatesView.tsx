@@ -20,25 +20,52 @@ import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import { PageContainer } from '../../components/layout/PageContainer';
 import { GlobalModal } from '../../components/common/GlobalModal';
 import { User } from '../../types';
+import { api } from '../../lib/api';
 
 export const EmployerCandidatesView: React.FC = () => {
-  const { certificates, institutes, navigate } = useApp();
+  const { currentUser, certificates, institutes, navigate, users } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedInstitute, setSelectedInstitute] = useState('all');
+  const [liveCandidates, setLiveCandidates] = useState<User[]>([]);
+
+  const orgName = currentUser?.cooperativeAffiliation || 'National Cooperative Development Corporation (NCDC)';
 
   // Contact Modal State
   const [contactModalTrainee, setContactModalTrainee] = useState<User | null>(null);
-  const [contactSubject, setContactSubject] = useState('Interview Opportunity - GCMMF / Amul Cooperative Operations');
+  const [contactSubject, setContactSubject] = useState(`Interview Opportunity - ${orgName}`);
   const [contactMessage, setContactMessage] = useState(
-    'Dear Trainee,\n\nWe reviewed your NCCT verified credentials and would like to invite you for an exploratory interview for open positions at GCMMF (AMUL).'
+    `Dear Trainee,\n\nWe reviewed your NCCT verified credentials and would like to invite you for an exploratory interview for open positions at ${orgName}.`
   );
   const [isContactSent, setIsContactSent] = useState(false);
 
-  // All certified trainees
-  const certifiedTrainees = SEED_USERS.filter(u => u.role === 'trainee');
+  React.useEffect(() => {
+    // Attempt live recruiter candidate fetch
+    api.jobs.recruiterCandidates()
+      .then((res: any[]) => {
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped: User[] = res.map((r: any) => ({
+            id: r.id || r.userId,
+            name: r.traineeName || r.name,
+            email: r.traineeEmail || r.email,
+            phone: r.phone || '+91 98234 11223',
+            role: 'trainee',
+            languagePreference: 'en',
+            instituteId: r.instituteId || 'inst-vamnicom',
+            cooperativeAffiliation: r.cooperativeAffiliation || r.coop || 'Cooperative Society',
+            avatarUrl: r.avatarUrl,
+            isKycVerified: true,
+          }));
+          setLiveCandidates(mapped);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // All certified trainees (live candidates > users list > SEED_USERS)
+  const candidatePool = liveCandidates.length > 0 ? liveCandidates : (users.filter(u => u.role === 'trainee').length > 0 ? users.filter(u => u.role === 'trainee') : SEED_USERS.filter(u => u.role === 'trainee'));
 
   // Filter candidates strictly without exposing internal Aadhaar/KYC
-  const filteredCandidates = certifiedTrainees.filter(trainee => {
+  const filteredCandidates = candidatePool.filter(trainee => {
     const query = searchQuery.toLowerCase().trim();
     const matchesQuery =
       !query ||
@@ -52,9 +79,9 @@ export const EmployerCandidatesView: React.FC = () => {
   const handleOpenContact = (trainee: User) => {
     setContactModalTrainee(trainee);
     setIsContactSent(false);
-    setContactSubject(`Interview Opportunity for ${trainee.name} - GCMMF / Amul`);
+    setContactSubject(`Interview Opportunity for ${trainee.name} - ${orgName}`);
     setContactMessage(
-      `Dear ${trainee.name},\n\nWe were impressed by your verified NCCT credentials and your association with ${trainee.cooperativeAffiliation || 'cooperative societies'}. GCMMF (AMUL) has active opportunities matching your profile.\n\nPlease let us know your availability for an introductory interaction.`
+      `Dear ${trainee.name},\n\nWe were impressed by your verified NCCT credentials and your association with ${trainee.cooperativeAffiliation || 'cooperative societies'}. ${orgName} has active opportunities matching your profile.\n\nPlease let us know your availability for an introductory interaction.`
     );
   };
 
@@ -89,7 +116,7 @@ export const EmployerCandidatesView: React.FC = () => {
 
           <div className="flex items-center gap-2 text-xs font-bold text-govTeal-800 bg-govTeal-50 px-3.5 py-2 rounded-xl border border-govTeal-200 self-start sm:self-auto">
             <Users className="w-4 h-4 text-govTeal-600" />
-            <span>{certifiedTrainees.length} Certified Candidates Available</span>
+            <span>{candidatePool.length} Certified Candidates Available</span>
           </div>
         </div>
 

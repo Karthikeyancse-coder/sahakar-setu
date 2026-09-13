@@ -17,6 +17,7 @@ export interface Institute {
 
 export interface User {
   id: string;
+  employeeId?: string;
   name: string;
   nameHi?: string;
   email: string;
