@@ -16,6 +16,7 @@ const lessonSchema = z.object({
 
 router.get('/my', requireAuth, enrollmentController.getMyEnrollments);
 router.get('/me', requireAuth, enrollmentController.getMyEnrollments);
+router.get('/mine', requireAuth, enrollmentController.getMyEnrollments);
 router.get('/:id', requireAuth, enrollmentController.getById);
 router.post('/', requireAuth, validate(enrollSchema), enrollmentController.enroll);
 router.patch('/:id/progress', requireAuth, validate(lessonSchema), enrollmentController.updateProgress);

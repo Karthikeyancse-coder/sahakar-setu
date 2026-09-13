@@ -12,6 +12,7 @@ router.get('/applications/me', requireAuth, jobController.getMyApplications);
 
 // Recruiter: view all candidate applicants (sorted by eligible first, match score descending)
 router.get('/recruiter/candidates', requireAuth, jobController.getRecruiterCandidates);
+router.get('/candidates', requireAuth, jobController.getRecruiterCandidates);
 
 // Recruiter: update application review status
 router.patch('/applications/:id/status', requireAuth, jobController.updateStatus);

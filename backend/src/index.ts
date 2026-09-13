@@ -123,6 +123,7 @@ app.use('/api/institute', instituteRoutes);
 app.use('/api/national', nationalRoutes);
 app.use('/api/employer', employerRoutes);
 app.use('/api/device', deviceRoutes);
+app.use('/api/devices', deviceRoutes);
 app.get('/api/institutes', async (_req, res, next) => {
   try {
     const { instituteService } = await import('./services/instituteService');
@@ -135,9 +136,16 @@ app.get('/api/institutes', async (_req, res, next) => {
 // ─── Error handler (must be last) ─────────────────────────────────────────────
 app.use(errorHandler);
 
+export { app };
+
 // ─── Start ─────────────────────────────────────────────────────────────────────
 const PORT = Number(process.env.PORT) || 5000;
 const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
-  console.log(`\n🌿 Sahakar Setu API running → http://${HOST}:${PORT}\n`);
-});
+
+if (require.main === module || process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, HOST, () => {
+    console.log(`\n🌿 Sahakar Setu API running → http://${HOST}:${PORT}\n`);
+  });
+}
+
+export default app;
