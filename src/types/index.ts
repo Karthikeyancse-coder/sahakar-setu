@@ -1,4 +1,4 @@
-export type UserRole = 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer';
+export type UserRole = 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer' | 'device_operator';
 export type Language = 'en' | 'hi' | 'mr';
 
 export interface Institute {

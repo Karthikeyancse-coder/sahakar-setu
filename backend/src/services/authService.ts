@@ -40,6 +40,9 @@ export const authService = {
       'INSTITUTE': 'institute_admin',
       'EMPLOYER': 'employer',
       'PARTNER': 'employer',
+      'DEVICE_OPERATOR': 'device_operator',
+      'DEVICE': 'device_operator',
+      'device_operator': 'device_operator',
     };
 
     const role = roleMapping[rawRole];
@@ -63,6 +66,8 @@ export const authService = {
       employeeId = `NCCT-INS-2026-MH-${Math.floor(100 + Math.random() * 900)}`;
     } else if (role === 'employer') {
       employeeId = `NCCT-EMP-2026-KA-${Math.floor(100 + Math.random() * 900)}`;
+    } else if (role === 'device_operator') {
+      employeeId = `NCCT-DEV-2026-MH-${Math.floor(100 + Math.random() * 900)}`;
     }
 
     const passwordHash = await hashPassword(data.password);

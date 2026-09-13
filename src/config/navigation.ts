@@ -26,6 +26,10 @@ import {
   User,
   Compass,
   Send,
+  Activity,
+  Wrench,
+  AlertTriangle,
+  RefreshCw,
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -167,6 +171,37 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       items: [
         { id: 'trainee_directory', label: 'Candidates', route: '/employer/candidates', icon: Users, badge: 'Verified' },
         { id: 'jobs', label: 'Job Postings', route: '/employer/jobs', icon: Briefcase },
+      ],
+    },
+  ],
+
+  device_operator: [
+    {
+      title: 'MAIN',
+      items: [
+        { id: 'home', label: 'Hardware Dashboard', route: '/device/dashboard', icon: LayoutDashboard },
+        { id: 'device_monitoring', label: 'Live Monitoring', route: '/device/monitoring', icon: Activity, badge: 'Live' },
+      ],
+    },
+    {
+      title: 'HARDWARE & KIOSKS',
+      items: [
+        { id: 'device_fleet', label: 'Device Fleet', route: '/device/devices', icon: Cpu },
+        { id: 'device_test', label: 'Hardware Diagnostics', route: '/device/test', icon: Wrench },
+        { id: 'device_sync_queue', label: 'Offline Sync Queue', route: '/device/sync-queue', icon: RefreshCw },
+      ],
+    },
+    {
+      title: 'SERVICE & REPAIR',
+      items: [
+        { id: 'device_incidents', label: 'Incidents & Alerts', route: '/device/incidents', icon: AlertTriangle },
+        { id: 'device_maintenance', label: 'Maintenance Logs', route: '/device/maintenance', icon: Wrench },
+      ],
+    },
+    {
+      title: 'SYSTEM',
+      items: [
+        { id: 'settings', label: 'Settings', route: '/device/settings', icon: Settings },
       ],
     },
   ],

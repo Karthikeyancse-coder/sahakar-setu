@@ -441,6 +441,18 @@ export const SEED_USERS: User[] = [
     languagePreference: 'hi',
     avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
   },
+  // Device Operator (Hardware Kiosk & Field Tech)
+  {
+    id: 'usr-device-operator',
+    name: 'Karthik Hardware Operator',
+    nameHi: 'कार्तिक हार्डवेयर ऑपरेटर',
+    email: 'device.demo@example.com',
+    phone: '+91 98200 77889',
+    role: 'device_operator',
+    languagePreference: 'en',
+    instituteId: 'inst-vamnicom',
+    avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+  },
 ];
 
 export const SEED_COURSES: Course[] = [

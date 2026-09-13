@@ -205,7 +205,39 @@ export const LoginCard: React.FC<LoginCardProps> = ({
     </div>
 
     {/* Horizontal Divider */}
-    <div className="h-[1px] bg-[#E9EEEB] my-3.5" />
+    <div className="h-[1px] bg-[#E9EEEB] my-3" />
+
+    {/* 6 Core Demo Role Switcher (from PDF Specification) */}
+    <div className="mb-3.5">
+      <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[#536A65] mb-1.5">
+        <span>6 Core Roles (1-Click Fill)</span>
+        <span className="text-emerald-700 font-semibold font-mono">PDF Spec</span>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {[
+          { label: 'Trainee', code: 'NCCT-TRN-2026-MH-44091', email: 'rameshwar.pacs@gmail.com', pass: 'Demo@1234' },
+          { label: 'Faculty', code: 'NCCT-FAC-2026-MH-101', email: 'faculty@ncct.gov.in', pass: 'Faculty@1234' },
+          { label: 'Inst Admin', code: 'NCCT-ADM-2026-MH-001', email: 'admin.vamnicom@ncct.gov.in', pass: 'Admin@1234' },
+          { label: 'Super Admin', code: 'NCCT-HQ-2026-DL-001', email: 'superadmin@ncct.gov.in', pass: 'Super@1234' },
+          { label: 'Employer', code: 'NCCT-EMP-2026-KA-501', email: 'employer@ncct.gov.in', pass: 'Employer@1234' },
+          { label: 'Device Op', code: 'NCCT-DEV-2026-MH-001', email: 'device.demo@example.com', pass: 'Demo@1234' },
+        ].map(r => (
+          <button
+            key={r.label}
+            type="button"
+            onClick={() => {
+              setEmail(r.email);
+              setPassword(r.pass);
+            }}
+            className="py-1 px-1.5 rounded-lg border border-[#DCE4DE] bg-[#F7F9F7] hover:bg-[#E6F4EA] hover:border-[#005B46] text-left transition-all text-[10.5px] font-bold text-gray-800 cursor-pointer group"
+            title={`${r.label}: ${r.code} (${r.email})`}
+          >
+            <div className="truncate group-hover:text-[#005B46]">{r.label}</div>
+            <div className="text-[9px] text-gray-400 font-mono truncate">{r.code.split('-')[1]}</div>
+          </button>
+        ))}
+      </div>
+    </div>
 
     {/* Error Alert */}
     {errorMessage && (

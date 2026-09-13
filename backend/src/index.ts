@@ -22,6 +22,7 @@ import curriculumRoutes from './routes/curriculum';
 import instituteRoutes from './routes/institute';
 import nationalRoutes from './routes/national';
 import employerRoutes from './routes/employer';
+import deviceRoutes from './routes/device';
 import { learningController } from './controllers/learningController';
 import { requireAuth } from './middleware/auth';
 
@@ -121,6 +122,7 @@ app.use('/api', skillCardRoutes);
 app.use('/api/institute', instituteRoutes);
 app.use('/api/national', nationalRoutes);
 app.use('/api/employer', employerRoutes);
+app.use('/api/device', deviceRoutes);
 app.get('/api/institutes', async (_req, res, next) => {
   try {
     const { instituteService } = await import('./services/instituteService');

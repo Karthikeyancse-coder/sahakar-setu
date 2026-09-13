@@ -103,6 +103,7 @@ export const ROLE_PREFIXES: Record<UserRole, string> = {
   super_admin: '/super-admin',
   faculty: '/faculty',
   employer: '/employer',
+  device_operator: '/device',
 };
 
 export const normalizeRole = (role?: string): UserRole => {
@@ -112,6 +113,7 @@ export const normalizeRole = (role?: string): UserRole => {
   if (r === 'institute_admin' || r === 'instituteadmin') return 'institute_admin';
   if (r === 'faculty') return 'faculty';
   if (r === 'employer') return 'employer';
+  if (r === 'device_operator' || r === 'deviceoperator' || r === 'device') return 'device_operator';
   return 'trainee';
 };
 
@@ -126,6 +128,7 @@ export const getRoleFromPrefix = (path: string): UserRole | null => {
   if (path.startsWith('/super-admin') || path.startsWith('/admin')) return 'super_admin';
   if (path.startsWith('/faculty')) return 'faculty';
   if (path.startsWith('/employer')) return 'employer';
+  if (path.startsWith('/device')) return 'device_operator';
   return null;
 };
 
@@ -412,6 +415,33 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/employer/jobs' || path === '/dashboard/employer/jobs') {
     if (path !== '/employer/jobs') window.history.replaceState({}, '', '/employer/jobs');
     return { view: 'jobs', params: null };
+  }
+
+  // 6. DEVICE OPERATOR ROUTES (/device/...)
+  if (path === '/device/dashboard' || path === '/device' || path === '/dashboard/device') {
+    if (path !== '/device/dashboard') window.history.replaceState({}, '', '/device/dashboard');
+    return { view: 'home', params: null };
+  }
+  if (path === '/device/monitoring' || path === '/device/live') {
+    return { view: 'device_monitoring', params: null };
+  }
+  if (path === '/device/devices' || path === '/device/fleet') {
+    return { view: 'device_fleet', params: null };
+  }
+  if (path === '/device/test' || path === '/device/diagnostics') {
+    return { view: 'device_test', params: null };
+  }
+  if (path === '/device/sync-queue' || path === '/device/sync') {
+    return { view: 'device_sync_queue', params: null };
+  }
+  if (path === '/device/incidents' || path === '/device/issues') {
+    return { view: 'device_incidents', params: null };
+  }
+  if (path === '/device/maintenance') {
+    return { view: 'device_maintenance', params: null };
+  }
+  if (path === '/device/settings') {
+    return { view: 'settings', params: null };
   }
 
   // Fallback to role dashboard
@@ -993,6 +1023,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         targetView = 'jobs';
       } else {
         targetPath = '/employer/dashboard';
+        targetView = 'home';
+      }
+    } else if (currentUser.role === 'device_operator') {
+      if (destination === 'home' || destination === 'dashboard') {
+        targetPath = '/device/dashboard';
+        targetView = 'home';
+      } else if (destination === 'device_monitoring' || destination === 'monitoring') {
+        targetPath = '/device/monitoring';
+        targetView = 'device_monitoring';
+      } else if (destination === 'device_fleet' || destination === 'devices') {
+        targetPath = '/device/devices';
+        targetView = 'device_fleet';
+      } else if (destination === 'device_test' || destination === 'test') {
+        targetPath = '/device/test';
+        targetView = 'device_test';
+      } else if (destination === 'device_sync_queue' || destination === 'sync_queue' || destination === 'sync') {
+        targetPath = '/device/sync-queue';
+        targetView = 'device_sync_queue';
+      } else if (destination === 'device_incidents' || destination === 'incidents') {
+        targetPath = '/device/incidents';
+        targetView = 'device_incidents';
+      } else if (destination === 'device_maintenance' || destination === 'maintenance') {
+        targetPath = '/device/maintenance';
+        targetView = 'device_maintenance';
+      } else if (destination === 'settings') {
+        targetPath = '/device/settings';
+        targetView = 'settings';
+      } else {
+        targetPath = '/device/dashboard';
         targetView = 'home';
       }
     }

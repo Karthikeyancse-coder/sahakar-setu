@@ -53,6 +53,7 @@ import { EmployerCandidatesView } from './views/Employer/EmployerCandidatesView'
 import { EmployerJobsView } from './views/Employer/EmployerJobsView';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
 import { TraineeDirectory } from './views/Common/TraineeDirectory';
+import { DeviceOperatorDashboard } from './views/DeviceOperator/DeviceOperatorDashboard';
 
 export const AppContent: React.FC = () => {
   const { currentUser, activeView, isAuthenticated, navigate } = useApp();
@@ -231,6 +232,29 @@ export const AppContent: React.FC = () => {
     }
   };
 
+  const renderDeviceOperatorView = () => {
+    switch (activeView) {
+      case 'home':
+        return <DeviceOperatorDashboard initialTab="dashboard" />;
+      case 'device_monitoring':
+        return <DeviceOperatorDashboard initialTab="monitoring" />;
+      case 'device_fleet':
+        return <DeviceOperatorDashboard initialTab="devices" />;
+      case 'device_test':
+        return <DeviceOperatorDashboard initialTab="test" />;
+      case 'device_sync_queue':
+        return <DeviceOperatorDashboard initialTab="sync" />;
+      case 'device_incidents':
+        return <DeviceOperatorDashboard initialTab="incidents" />;
+      case 'device_maintenance':
+        return <DeviceOperatorDashboard initialTab="incidents" />;
+      case 'settings':
+        return <SettingsView />;
+      default:
+        return <DeviceOperatorDashboard initialTab="dashboard" />;
+    }
+  };
+
   const renderMainView = () => {
     switch (currentUser.role) {
       case 'institute_admin':
@@ -241,6 +265,8 @@ export const AppContent: React.FC = () => {
         return renderFacultyView();
       case 'employer':
         return renderEmployerView();
+      case 'device_operator':
+        return renderDeviceOperatorView();
       case 'trainee':
       default:
         return renderTraineeView();
