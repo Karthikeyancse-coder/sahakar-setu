@@ -39,3 +39,10 @@ backend/prisma/*.db-journal
 
 # Development scratch / debug scripts — never commit these
 backend/scratch/
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/

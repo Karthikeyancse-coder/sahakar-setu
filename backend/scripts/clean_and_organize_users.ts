@@ -43,8 +43,10 @@ async function main() {
     await prisma.appNotification.deleteMany({ where: { userId: id } }).catch(() => {});
     await prisma.chatMessage.deleteMany({ where: { userId: id } }).catch(() => {});
     await prisma.nomination.deleteMany({ where: { userId: id } }).catch(() => {});
-    await prisma.user.delete({ where: { id } }).catch(() => {});
-    console.log(`   ✓ Removed ephemeral user ${id}`);
+    const res = await prisma.user.deleteMany({ where: { id } });
+    if (res.count > 0) {
+      console.log(`   ✓ Removed ephemeral user ${id}`);
+    }
   }
 
   // 2. Remove redundant *-demo clone accounts
@@ -57,8 +59,10 @@ async function main() {
 
   console.log('\n2. Removing redundant demo clones...');
   for (const id of redundantDemoIds) {
-    await prisma.user.delete({ where: { id } }).catch(() => {});
-    console.log(`   ✓ Removed redundant clone ${id}`);
+    const res = await prisma.user.deleteMany({ where: { id } });
+    if (res.count > 0) {
+      console.log(`   ✓ Removed redundant clone ${id}`);
+    }
   }
 
   // 3. Unify Rameshwar Patil
