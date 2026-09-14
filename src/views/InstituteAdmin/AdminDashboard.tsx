@@ -85,10 +85,16 @@ interface DashboardData {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { navigate, t } = useApp();
+  const { navigate, t, isOffline } = useApp();
 
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(() => {
+    try {
+      const cached = localStorage.getItem('ss_admin_dash_cache');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return null;
+  });
+  const [loading, setLoading] = useState(!data);
   const [error, setError] = useState<string | null>(null);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [selectedNomination, setSelectedNomination] = useState<any | null>(null);
@@ -98,17 +104,40 @@ export const AdminDashboard: React.FC = () => {
 
   // ─── Fetch live data from PostgreSQL / Supabase ───────────────────────────
   const fetchDashboard = useCallback(async () => {
+    if (isOffline || !navigator.onLine) {
+      try {
+        const cached = localStorage.getItem('ss_admin_dash_cache');
+        if (cached) {
+          setData(JSON.parse(cached));
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
     try {
       setError(null);
       const res = await api.institute.getDashboard();
       setData(res);
+      try {
+        localStorage.setItem('ss_admin_dash_cache', JSON.stringify(res));
+      } catch {}
     } catch (err: any) {
-      console.error('Failed to load institute dashboard from database:', err);
+      console.warn('Failed to load institute dashboard from database, checking cache:', err);
+      try {
+        const cached = localStorage.getItem('ss_admin_dash_cache');
+        if (cached) {
+          setData(JSON.parse(cached));
+          setError(null);
+          return;
+        }
+      } catch {}
       setError(err.message || 'Unable to load institute dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isOffline]);
 
   useEffect(() => {
     fetchDashboard();

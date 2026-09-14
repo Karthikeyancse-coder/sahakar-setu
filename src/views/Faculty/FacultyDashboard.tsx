@@ -192,23 +192,51 @@ export const FacultyDashboard: React.FC = () => {
 
   const facultyName = currentUser?.name || 'Prof. Meenakshi Sundaram';
 
+  const applyDashboardData = (data: any) => {
+    if (!data) return;
+    if (data.stats) setStats(data.stats);
+    if (data.upcomingSessions) setUpcomingSessions(data.upcomingSessions);
+    if (data.myCourses) setFacultyCourses(data.myCourses);
+    if (data.atRiskTrainees) setAtRiskTrainees(data.atRiskTrainees);
+    if (data.assessmentPerformance) setAssessmentPerf(data.assessmentPerformance);
+    if (data.certificates) setCertPipeline(data.certificates);
+    if (data.employmentReadiness) setEmploymentReadiness(data.employmentReadiness);
+  };
+
   // Load authoritative data from backend
   const fetchDashboardData = async () => {
+    if (!navigator.onLine) {
+      try {
+        const cached = localStorage.getItem('ss_faculty_dash_cache');
+        if (cached) {
+          applyDashboardData(JSON.parse(cached));
+          setError(null);
+          setLoading(false);
+          return;
+        }
+      } catch {}
+    }
+
     setLoading(true);
     setError(null);
     try {
       const data = await api.faculty.getDashboard();
       if (data) {
-        setStats(data.stats);
-        setUpcomingSessions(data.upcomingSessions || []);
-        setFacultyCourses(data.myCourses || []);
-        setAtRiskTrainees(data.atRiskTrainees || []);
-        setAssessmentPerf(data.assessmentPerformance || null);
-        setCertPipeline(data.certificates || null);
-        setEmploymentReadiness(data.employmentReadiness || null);
+        applyDashboardData(data);
+        try {
+          localStorage.setItem('ss_faculty_dash_cache', JSON.stringify(data));
+        } catch {}
       }
     } catch (err: any) {
-      console.error('Failed to load faculty dashboard data from backend:', err);
+      console.warn('Failed to load faculty dashboard data from backend, checking cache:', err);
+      try {
+        const cached = localStorage.getItem('ss_faculty_dash_cache');
+        if (cached) {
+          applyDashboardData(JSON.parse(cached));
+          setError(null);
+          return;
+        }
+      } catch {}
       setError('Unable to load faculty dashboard data.');
     } finally {
       setLoading(false);

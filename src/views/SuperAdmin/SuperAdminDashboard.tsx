@@ -36,12 +36,31 @@ import { api, NationalDashboardData } from '../../lib/api';
 export const SuperAdminDashboard: React.FC = () => {
   const { t } = useApp();
 
-  const [dashboardData, setDashboardData] = useState<NationalDashboardData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [dashboardData, setDashboardData] = useState<NationalDashboardData | null>(() => {
+    try {
+      const cached = localStorage.getItem('ss_national_dash_cache');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return null;
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(!dashboardData);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboardData = useCallback(async (isManualRefresh = false) => {
+    if (!navigator.onLine) {
+      try {
+        const cached = localStorage.getItem('ss_national_dash_cache');
+        if (cached) {
+          setDashboardData(JSON.parse(cached));
+          setError(null);
+          setIsLoading(false);
+          setIsRefreshing(false);
+          return;
+        }
+      } catch {}
+    }
+
     if (isManualRefresh) {
       setIsRefreshing(true);
     } else {
@@ -52,8 +71,19 @@ export const SuperAdminDashboard: React.FC = () => {
     try {
       const res = await api.national.getDashboard();
       setDashboardData(res);
+      try {
+        localStorage.setItem('ss_national_dash_cache', JSON.stringify(res));
+      } catch {}
     } catch (err: any) {
-      console.error('Failed to load national dashboard analytics:', err);
+      console.warn('Failed to load national dashboard analytics, checking cache:', err);
+      try {
+        const cached = localStorage.getItem('ss_national_dash_cache');
+        if (cached) {
+          setDashboardData(JSON.parse(cached));
+          setError(null);
+          return;
+        }
+      } catch {}
       setError(err?.message || 'Unable to load national analytics from database.');
     } finally {
       setIsLoading(false);

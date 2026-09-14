@@ -209,7 +209,14 @@ export const QuizView: React.FC = () => {
       })
       .catch((err) => {
         if (isCancelled) return;
-        console.error('[QuizView] Failed to fetch quiz:', err);
+        console.warn('[QuizView] Failed to fetch quiz from server, checking local fallback:', err);
+        if (localQuiz) {
+          const extracted = extractQuiz(localQuiz);
+          if (extracted) {
+            setQuiz(extracted);
+            return;
+          }
+        }
         setQuizError('Unable to load assessment. Please check your connection and try again.');
       })
       .finally(() => {
@@ -217,7 +224,7 @@ export const QuizView: React.FC = () => {
       });
 
     return () => { isCancelled = true; };
-  }, [quizIdentifier, retryKey]);
+  }, [quizIdentifier, retryKey, localQuiz]);
 
   // ── Quiz state machine
   const [phase, setPhase] = useState<Phase>('answering');
