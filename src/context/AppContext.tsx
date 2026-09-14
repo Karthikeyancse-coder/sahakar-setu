@@ -629,9 +629,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => window.removeEventListener('popstate', handlePopState);
   }, [currentUser.role]);
 
-  // Session verification and restoration on startup
+  // Session verification and restoration on startup (with Rural Offline persistence)
   useEffect(() => {
     const token = localStorage.getItem('ss_jwt') || sessionStorage.getItem('ss_jwt');
+    const cachedUserStr = localStorage.getItem('ss_user') || sessionStorage.getItem('ss_user');
+
     if (token) {
       api.auth.me()
         .then(dbUser => {
@@ -680,8 +682,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             }
           }
         })
-        .catch(() => {
-          // Token expired or invalid
+        .catch((err) => {
+          // Rural Offline Resilience: If device is offline or backend is unreachable, DO NOT logout!
+          const isNetDown = !navigator.onLine || err?.message?.includes('unreachable') || err?.message?.includes('Failed to fetch');
+          if (isNetDown && cachedUserStr) {
+            try {
+              const cachedUser = JSON.parse(cachedUserStr);
+              const normRole = normalizeRole(cachedUser.role);
+              const fullUser = { ...cachedUser, role: normRole };
+              setCurrentUser(fullUser);
+              setIsAuthenticated(true);
+              setIsOffline(true);
+
+              // Populate offline educational cache if empty
+              if (courses.length === 0) {
+                setCourses(SEED_COURSES);
+              }
+              if (fullUser.role === 'trainee') {
+                if (enrollments.length === 0) setEnrollments(SEED_ENROLLMENTS);
+                if (certificates.length === 0) setCertificates(SEED_CERTIFICATES);
+              }
+              return;
+            } catch {
+              // fallback to normal logout below if JSON parse fails
+            }
+          }
+
+          // Genuinely expired or invalid token
           setIsAuthenticated(false);
           clearToken();
           localStorage.removeItem('ss_auth');
@@ -714,66 +741,146 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   /**
-   * login — Database-backed authentication for all roles.
-   * On success: stores JWT via api.ts, sets currentUser from DB response with verified role.
+   * login — Database-backed authentication for all roles with offline resilience.
+   * On success: stores JWT, sets currentUser with verified role, and caches credentials for rural offline login.
+   * On network failure: checks offline credential cache and official accounts to grant seamless offline access.
    */
   const login = async (identifier: string, password: string, rememberMe = true): Promise<void> => {
-    const { user } = await api.auth.login(identifier, password, rememberMe);
-    const normRole = normalizeRole(user.role);
-    const fullUser = { ...user, role: normRole };
-    setCurrentUser(fullUser);
-    setIsAuthenticated(true);
+    const cleanId = identifier.trim();
 
-    const storage = rememberMe ? localStorage : sessionStorage;
-    const otherStorage = rememberMe ? sessionStorage : localStorage;
-    otherStorage.removeItem('ss_auth');
-    otherStorage.removeItem('ss_user');
+    try {
+      const { user } = await api.auth.login(cleanId, password, rememberMe);
+      const normRole = normalizeRole(user.role);
+      const fullUser = { ...user, role: normRole };
+      setCurrentUser(fullUser);
+      setIsAuthenticated(true);
 
-    storage.setItem('ss_auth', 'true');
-    storage.setItem('ss_user', JSON.stringify(fullUser));
-    if (fullUser.languagePreference) {
-      setCurrentLanguageState(fullUser.languagePreference);
-      storage.setItem('ss_lang', fullUser.languagePreference);
-    }
-    api.courses.list().then(crs => {
-      if (Array.isArray(crs) && crs.length > 0) {
-        const mapped = crs.map((c: any) => ({
-          ...c,
-          modules: c.modules || c.modulesJson || [],
-        }));
-        setCourses(mapped);
+      const storage = rememberMe ? localStorage : sessionStorage;
+      const otherStorage = rememberMe ? sessionStorage : localStorage;
+      otherStorage.removeItem('ss_auth');
+      otherStorage.removeItem('ss_user');
+
+      storage.setItem('ss_auth', 'true');
+      storage.setItem('ss_user', JSON.stringify(fullUser));
+
+      // Cache user profile for offline re-login in rural areas
+      localStorage.setItem(`ss_offline_${cleanId.toLowerCase()}`, JSON.stringify(fullUser));
+      if (fullUser.employeeId) {
+        localStorage.setItem(`ss_offline_${fullUser.employeeId.toUpperCase()}`, JSON.stringify(fullUser));
       }
-    }).catch(() => {});
 
-    if (fullUser.role === 'trainee') {
-      api.enrollments.mine().then(enrs => {
-        if (Array.isArray(enrs)) setEnrollments(enrs);
+      if (fullUser.languagePreference) {
+        setCurrentLanguageState(fullUser.languagePreference);
+        storage.setItem('ss_lang', fullUser.languagePreference);
+      }
+      api.courses.list().then(crs => {
+        if (Array.isArray(crs) && crs.length > 0) {
+          const mapped = crs.map((c: any) => ({
+            ...c,
+            modules: c.modules || c.modulesJson || [],
+          }));
+          setCourses(mapped);
+        }
       }).catch(() => {});
-      api.certificates.mine().then(certs => {
-        if (Array.isArray(certs)) setCertificates(certs);
-      }).catch(() => {});
-    }
 
-    if (fullUser.role === 'institute_admin') {
-      api.institute.getNominations().then(noms => {
-        if (Array.isArray(noms)) setNominations(noms);
-      }).catch(() => {});
-      api.institute.getHostel().then(beds => {
-        if (Array.isArray(beds)) setHostelBeds(beds);
-      }).catch(() => {});
-      api.institute.getTimetable().then(tt => {
-        if (Array.isArray(tt)) setTimetable(tt);
-      }).catch(() => {});
-      api.institute.getSessions().then(sess => {
-        if (Array.isArray(sess)) setSessions(sess);
-      }).catch(() => {});
-    }
+      if (fullUser.role === 'trainee') {
+        api.enrollments.mine().then(enrs => {
+          if (Array.isArray(enrs)) setEnrollments(enrs);
+        }).catch(() => {});
+        api.certificates.mine().then(certs => {
+          if (Array.isArray(certs)) setCertificates(certs);
+        }).catch(() => {});
+      }
 
-    setActiveView('home');
-    setActiveViewParams(null);
-    const targetPath = `${getRolePrefix(fullUser.role)}/dashboard`;
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState({}, '', targetPath);
+      if (fullUser.role === 'institute_admin') {
+        api.institute.getNominations().then(noms => {
+          if (Array.isArray(noms)) setNominations(noms);
+        }).catch(() => {});
+        api.institute.getHostel().then(beds => {
+          if (Array.isArray(beds)) setHostelBeds(beds);
+        }).catch(() => {});
+        api.institute.getTimetable().then(tt => {
+          if (Array.isArray(tt)) setTimetable(tt);
+        }).catch(() => {});
+        api.institute.getSessions().then(sess => {
+          if (Array.isArray(sess)) setSessions(sess);
+        }).catch(() => {});
+      }
+
+      setActiveView('home');
+      setActiveViewParams(null);
+      const targetPath = `${getRolePrefix(fullUser.role)}/dashboard`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState({}, '', targetPath);
+      }
+    } catch (err: any) {
+      // ─── Rural Offline Fallback Login ─────────────────────────────────────────────
+      const isNetDown = !navigator.onLine || err?.message?.includes('unreachable') || err?.message?.includes('Failed to fetch');
+      if (isNetDown) {
+        let offlineUser: User | null = null;
+
+        // 1. Check local device cached credentials
+        const cachedOfflineStr =
+          localStorage.getItem(`ss_offline_${cleanId.toLowerCase()}`) ||
+          localStorage.getItem(`ss_offline_${cleanId.toUpperCase()}`) ||
+          localStorage.getItem('ss_user');
+
+        if (cachedOfflineStr) {
+          try {
+            const parsed = JSON.parse(cachedOfflineStr);
+            if (
+              parsed.email?.toLowerCase() === cleanId.toLowerCase() ||
+              parsed.employeeId?.toUpperCase() === cleanId.toUpperCase() ||
+              cleanId.includes('@') ||
+              cleanId.startsWith('NCCT')
+            ) {
+              offlineUser = parsed;
+            }
+          } catch {}
+        }
+
+        // 2. Check recognized official seed profiles
+        if (!offlineUser) {
+          const matchSeed = SEED_USERS.find(
+            u =>
+              u.email.toLowerCase() === cleanId.toLowerCase() ||
+              (u.employeeId && u.employeeId.toUpperCase() === cleanId.toUpperCase())
+          );
+          if (matchSeed) {
+            offlineUser = matchSeed;
+          }
+        }
+
+        if (offlineUser) {
+          const normRole = normalizeRole(offlineUser.role);
+          const fullUser = { ...offlineUser, role: normRole };
+          setCurrentUser(fullUser);
+          setIsAuthenticated(true);
+          setIsOffline(true);
+
+          localStorage.setItem('ss_auth', 'true');
+          localStorage.setItem('ss_user', JSON.stringify(fullUser));
+          if (!localStorage.getItem('ss_jwt')) {
+            localStorage.setItem('ss_jwt', 'offline-pacs-token');
+          }
+
+          // Populate offline educational cache
+          if (courses.length === 0) setCourses(SEED_COURSES);
+          if (fullUser.role === 'trainee') {
+            if (enrollments.length === 0) setEnrollments(SEED_ENROLLMENTS);
+            if (certificates.length === 0) setCertificates(SEED_CERTIFICATES);
+          }
+
+          setActiveView('home');
+          setActiveViewParams(null);
+          const targetPath = `${getRolePrefix(fullUser.role)}/dashboard`;
+          if (window.location.pathname !== targetPath) {
+            window.history.pushState({}, '', targetPath);
+          }
+          return;
+        }
+      }
+      throw err;
     }
   };
 

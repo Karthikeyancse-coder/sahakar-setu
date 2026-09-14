@@ -18,7 +18,8 @@ import {
   Wheat,
   Users,
   TreePine,
-  Check
+  Check,
+  WifiOff
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Language } from '../../types';
@@ -238,6 +239,14 @@ export const LoginCard: React.FC<LoginCardProps> = ({
         ))}
       </div>
     </div>
+
+    {/* Rural Offline Alert */}
+    {!navigator.onLine && (
+      <div className="mb-3 px-3 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-2 animate-fadeIn">
+        <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
+        <span>Rural Offline Mode: You can log in using saved credentials or demo accounts without internet.</span>
+      </div>
+    )}
 
     {/* Error Alert */}
     {errorMessage && (
