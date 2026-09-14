@@ -15,6 +15,9 @@ export default defineConfig({
       // and are handled by the runtime CacheFirst rule below instead.
       includeAssets: ['icon-192.png', 'icon-512.png', '*.jpg', 'manifest.webmanifest'],
       workbox: {
+        // Activate updated service worker immediately without waiting for user to close all tabs
+        skipWaiting: true,
+        clientsClaim: true,
         // Increase precache file size limit to 6 MiB to support bundle assets
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Precache all built JS/CSS/HTML + small images.
