@@ -11,24 +11,36 @@ import './index.css';
 // users shouldn't have to manage updates manually.
 import { registerSW } from 'virtual:pwa-register';
 
-registerSW({
+let refreshing = false;
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
+const updateSW = registerSW({
   immediate: true,
   onNeedRefresh() {
-    // New content available — SW will auto-activate on next navigation
-    // (autoUpdate strategy handles this without a UI prompt)
+    console.log('[Sahakar Setu] New version detected, updating Service Worker...');
+    updateSW(true);
   },
   onOfflineReady() {
     console.log('[Sahakar Setu] App is ready to work offline.');
   },
   onRegistered(r) {
-    // Check for SW updates every hour while the page is open
-    r &&
+    if (r) {
+      // Check for SW updates on every registration and every 5 minutes
+      r.update();
       setInterval(
         () => {
           r.update();
         },
-        60 * 60 * 1000,
+        5 * 60 * 1000,
       );
+    }
   },
   onRegisterError(error) {
     console.error('[Sahakar Setu] Service worker registration error:', error);
