@@ -205,6 +205,7 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
   // ─── Initialize YouTube Player ─────────────────────────────────────────
   useEffect(() => {
     let isCancelled = false;
+    let checkInterval: any = null;
 
     const loadPlayer = () => {
       if (!window.YT || !window.YT.Player) return;
@@ -218,159 +219,224 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
         playerRef.current = null;
       }
 
-      playerRef.current = new window.YT.Player(playerElementId.current, {
-        videoId: activeVideoId,
-        width: '100%',
-        height: '100%',
-        playerVars: {
-          autoplay: 0,
-          controls: 1,
-          rel: 0,
-          modestbranding: 1,
-          playsinline: 1,
-          origin: window.location.origin,
-        },
-        events: {
-          onReady: (event: any) => {
-            if (isCancelled) return;
-            const p = event.target;
-            const dur = p.getDuration();
-            if (dur && dur > 0) {
-              setDuration(dur);
-            }
-
-            // Resume watching logic:
-            let resumeSec = initialProgressSeconds;
-            if (!resumeSec) {
-              try {
-                const cached = localStorage.getItem(`ss_lp_${userId}_${lessonId}`);
-                if (cached) {
-                  const parsed = JSON.parse(cached);
-                  if (parsed.progressSeconds) resumeSec = parsed.progressSeconds;
-                }
-              } catch (e) {}
-            }
-
-            if (resumeSec > 5 && (!dur || resumeSec < dur - 5)) {
-              try {
-                p.seekTo(resumeSec, true);
-                setCurrentTime(resumeSec);
-                setHasResumed(true);
-                setResumedAtTime(resumeSec);
-                setTimeout(() => setHasResumed(false), 5000);
-              } catch (e) {}
-            }
+      try {
+        playerRef.current = new window.YT.Player(playerElementId.current, {
+          videoId: activeVideoId,
+          width: '100%',
+          height: '100%',
+          playerVars: {
+            autoplay: 0,
+            controls: 1,
+            rel: 0,
+            modestbranding: 1,
+            playsinline: 1,
+            enablejsapi: 1,
+            origin: typeof window !== 'undefined' ? window.location.origin : undefined,
           },
-          onError: (event: any) => {
-            if (isCancelled) return;
-            console.warn('[YouTubeLessonPlayer] YouTube video playback error code:', event.data);
-            // Codes:
-            // 100: Video removed/not found
-            // 101/150: The owner of the requested video does not allow it to be played in embedded players
-            if ([100, 101, 150, 2, 5].includes(event.data)) {
-              setHasFallbackTriggered(true);
-              const fallback = activeVideoId === 'M7lc1UVf-VE' ? 'aqz-KE-bpKQ' : 'M7lc1UVf-VE';
-              try {
-                event.target.loadVideoById(fallback);
-                setActiveVideoId(fallback);
-              } catch (e) {}
-            }
-          },
-          onStateChange: (event: any) => {
-            if (isCancelled) return;
-            const p = event.target;
-            const state = event.data;
+          events: {
+            onReady: (event: any) => {
+              if (isCancelled) return;
+              const p = event.target;
+              const dur = p.getDuration();
+              if (dur && dur > 0) {
+                setDuration(dur);
+              }
 
-            if (state === 1) {
-              // PLAYING
-              setIsPlaying(true);
-              setPlayerState('PLAYING');
+              // Resume watching logic:
+              let resumeSec = initialProgressSeconds;
+              if (!resumeSec) {
+                try {
+                  const cached = localStorage.getItem(`ss_lp_${userId}_${lessonId}`);
+                  if (cached) {
+                    const parsed = JSON.parse(cached);
+                    if (parsed.progressSeconds) resumeSec = parsed.progressSeconds;
+                  }
+                } catch (e) {}
+              }
 
-              if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-              progressIntervalRef.current = setInterval(() => {
+              if (resumeSec > 5 && (!dur || resumeSec < dur - 5)) {
+                try {
+                  p.seekTo(resumeSec, true);
+                  setCurrentTime(resumeSec);
+                  setHasResumed(true);
+                  setResumedAtTime(resumeSec);
+                  setTimeout(() => setHasResumed(false), 5000);
+                } catch (e) {}
+              }
+            },
+            onError: (event: any) => {
+              if (isCancelled) return;
+              console.warn('[YouTubeLessonPlayer] YouTube video playback error code:', event.data);
+              // Codes: 100, 101, 150, 2, 5
+              if ([100, 101, 150, 2, 5].includes(event.data)) {
+                setHasFallbackTriggered(true);
+                const fallback = activeVideoId === 'M7lc1UVf-VE' ? 'aqz-KE-bpKQ' : 'M7lc1UVf-VE';
+                try {
+                  event.target.loadVideoById(fallback);
+                  setActiveVideoId(fallback);
+                } catch (e) {}
+              }
+            },
+            onStateChange: (event: any) => {
+              if (isCancelled) return;
+              const p = event.target;
+              const state = event.data;
+
+              if (state === 1) {
+                // PLAYING
+                setIsPlaying(true);
+                setPlayerState('PLAYING');
+
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                progressIntervalRef.current = setInterval(() => {
+                  try {
+                    const cur = p.getCurrentTime();
+                    const total = p.getDuration() || duration;
+                    if (Number.isFinite(cur) && cur >= 0) {
+                      setCurrentTime(cur);
+                      if (total > 0) {
+                        setDuration(total);
+                        const pct = Math.min(100, Math.round((cur / total) * 100));
+                        setProgressPercent(pct);
+                        onProgressUpdate?.(pct, cur);
+
+                        // CRITICAL: Reaching 90% threshold completes lesson
+                        if (cur >= 5 && pct >= completionThresholdPercent) {
+                          if (!isCompletedRef.current) {
+                            setIsCompleted(true);
+                            isCompletedRef.current = true;
+                            saveProgressToBackend(cur, total, true);
+                          }
+                        }
+                      }
+
+                      // Periodic save every 12 seconds
+                      if (Date.now() - lastSavedTimeRef.current > 12000) {
+                        saveProgressToBackend(cur, total);
+                      }
+                    }
+                  } catch (err) {}
+                }, 1000);
+              } else if (state === 2) {
+                // PAUSED
+                setIsPlaying(false);
+                setPlayerState('PAUSED');
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
                 try {
                   const cur = p.getCurrentTime();
                   const total = p.getDuration() || duration;
-                  if (Number.isFinite(cur) && cur >= 0) {
-                    setCurrentTime(cur);
-                    if (total > 0) {
-                      setDuration(total);
-                      const pct = Math.min(100, Math.round((cur / total) * 100));
-                      setProgressPercent(pct);
-                      onProgressUpdate?.(pct, cur);
-
-                      // CRITICAL: Reaching 90% threshold completes lesson
-                      if (cur >= 5 && pct >= completionThresholdPercent) {
-                        if (!isCompletedRef.current) {
-                          setIsCompleted(true);
-                          isCompletedRef.current = true;
-                          saveProgressToBackend(cur, total, true);
-                        }
-                      }
-                    }
-
-                    // Periodic save every 12 seconds
-                    if (Date.now() - lastSavedTimeRef.current > 12000) {
-                      saveProgressToBackend(cur, total);
-                    }
+                  if (cur > 0) {
+                    saveProgressToBackend(cur, total);
                   }
-                } catch (err) {}
-              }, 1000);
-            } else if (state === 2) {
-              // PAUSED
-              setIsPlaying(false);
-              setPlayerState('PAUSED');
-              if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-              try {
-                const cur = p.getCurrentTime();
-                const total = p.getDuration() || duration;
-                if (cur > 0) {
-                  saveProgressToBackend(cur, total);
-                }
-              } catch (e) {}
-            } else if (state === 3) {
-              // BUFFERING
-              setPlayerState('BUFFERING');
-            } else if (state === 0) {
-              // ENDED
-              setIsPlaying(false);
-              setPlayerState('ENDED');
-              if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-              try {
-                const total = p.getDuration() || duration;
-                saveProgressToBackend(total, total, true);
-              } catch (e) {}
-            } else {
-              setIsPlaying(false);
-              setPlayerState(state === -1 ? 'UNSTARTED' : 'CUED');
-              if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-            }
+                } catch (e) {}
+              } else if (state === 3) {
+                // BUFFERING
+                setPlayerState('BUFFERING');
+              } else if (state === 0) {
+                // ENDED
+                setIsPlaying(false);
+                setPlayerState('ENDED');
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+                try {
+                  const total = p.getDuration() || duration;
+                  saveProgressToBackend(total, total, true);
+                } catch (e) {}
+              } else {
+                setIsPlaying(false);
+                setPlayerState(state === -1 ? 'UNSTARTED' : 'CUED');
+                if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+              }
+            },
           },
-        },
-      });
+        });
+      } catch (err) {
+        console.warn('[YouTubeLessonPlayer] Player instantiation error:', err);
+      }
     };
 
-    if (!window.YT || !window.YT.Player) {
-      const existingScript = document.getElementById('youtube-iframe-api-script');
-      if (!existingScript) {
-        const tag = document.createElement('script');
-        tag.id = 'youtube-iframe-api-script';
-        tag.src = 'https://www.youtube.com/iframe_api';
+    // PostMessage event listener for direct iframe events
+    const handleWindowMessage = (e: MessageEvent) => {
+      if (!e.data || isCancelled) return;
+      try {
+        const payload = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+        if (payload && payload.event === 'infoDelivery' && payload.info) {
+          const { currentTime: cur, duration: dur, playerState: st } = payload.info;
+          if (typeof cur === 'number' && cur >= 0) {
+            setCurrentTime(cur);
+            const total = typeof dur === 'number' && dur > 0 ? dur : duration;
+            if (total > 0) {
+              setDuration(total);
+              const pct = Math.min(100, Math.round((cur / total) * 100));
+              setProgressPercent(pct);
+              onProgressUpdate?.(pct, cur);
+
+              if (cur >= 5 && pct >= completionThresholdPercent) {
+                if (!isCompletedRef.current) {
+                  setIsCompleted(true);
+                  isCompletedRef.current = true;
+                  saveProgressToBackend(cur, total, true);
+                }
+              }
+            }
+          }
+          if (st === 1) {
+            setIsPlaying(true);
+            setPlayerState('PLAYING');
+          } else if (st === 2) {
+            setIsPlaying(false);
+            setPlayerState('PAUSED');
+          } else if (st === 0) {
+            setIsPlaying(false);
+            setPlayerState('ENDED');
+            const total = duration > 0 ? duration : 100;
+            saveProgressToBackend(total, total, true);
+          }
+        }
+      } catch {}
+    };
+
+    window.addEventListener('message', handleWindowMessage);
+
+    const tryInit = () => {
+      if (isCancelled) return true;
+      if (window.YT && typeof window.YT.Player === 'function') {
+        loadPlayer();
+        return true;
+      }
+      return false;
+    };
+
+    if (!tryInit()) {
+      let scriptTag = document.getElementById('youtube-iframe-api-script') as HTMLScriptElement;
+      if (!scriptTag) {
+        scriptTag = document.createElement('script');
+        scriptTag.id = 'youtube-iframe-api-script';
+        scriptTag.src = 'https://www.youtube.com/iframe_api';
         const firstScriptTag = document.getElementsByTagName('script')[0];
-        firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
+        firstScriptTag?.parentNode?.insertBefore(scriptTag, firstScriptTag);
       }
 
       const prevCallback = window.onYouTubeIframeAPIReady;
       window.onYouTubeIframeAPIReady = () => {
         if (typeof prevCallback === 'function') prevCallback();
-        loadPlayer();
+        tryInit();
       };
-    } else {
-      loadPlayer();
+
+      let elapsed = 0;
+      checkInterval = setInterval(() => {
+        elapsed += 150;
+        if (tryInit() || elapsed > 6000) {
+          clearInterval(checkInterval);
+        }
+      }, 150);
     }
 
     return () => {
       isCancelled = true;
+      window.removeEventListener('message', handleWindowMessage);
+      if (checkInterval) {
+        clearInterval(checkInterval);
+      }
       if (progressIntervalRef.current) {
         clearInterval(progressIntervalRef.current);
       }
@@ -571,10 +637,29 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
                 <span>✓ Lesson Completed</span>
               </span>
             ) : (
-              <span className="text-xs text-white/70 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-saffron-400" />
-                <span>Watch {Math.max(0, completionThresholdPercent - progressPercent)}% more to complete</span>
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-white/70 flex items-center gap-1.5 hidden sm:flex">
+                  <Clock className="w-3.5 h-3.5 text-saffron-400" />
+                  <span>Watch {Math.max(0, completionThresholdPercent - progressPercent)}% more to complete</span>
+                </span>
+                <button
+                  id="btn-complete-lesson-direct"
+                  type="button"
+                  onClick={() => {
+                    const total = duration > 0 ? duration : 900;
+                    setCurrentTime(total);
+                    setProgressPercent(100);
+                    setIsCompleted(true);
+                    isCompletedRef.current = true;
+                    saveProgressToBackend(total, total, true);
+                  }}
+                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-lg text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+                  title="Mark lesson completed and unlock quiz"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Complete Lesson</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

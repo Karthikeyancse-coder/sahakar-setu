@@ -69,22 +69,49 @@ export const CoursePlayer: React.FC = () => {
   }, [fetchLearningData]);
 
   // Combine modules: prefer live learning modules with videoUrls & database fields
-  const modulesList: CourseModule[] = useMemo(() => {
-    if (liveLearningData?.modules && Array.isArray(liveLearningData.modules) && liveLearningData.modules.length > 0) {
-      return liveLearningData.modules;
-    }
-    return course?.modules || [];
+  const modulesList: (CourseModule & { quizzes?: any[] })[] = useMemo(() => {
+    const rawModules =
+      liveLearningData?.modules && Array.isArray(liveLearningData.modules) && liveLearningData.modules.length > 0
+        ? liveLearningData.modules
+        : course?.modules || [];
+
+    return rawModules.map((m: any, idx: number) => {
+      const courseMod = course?.modules?.[idx] || course?.modules?.find((cm) => cm.id === m.id);
+      const moduleQuizzes =
+        Array.isArray(m.quizzes) && m.quizzes.length > 0
+          ? m.quizzes
+          : m.quiz
+          ? [m.quiz]
+          : courseMod?.quiz
+          ? [courseMod.quiz]
+          : [];
+      const primaryQuiz = moduleQuizzes.length > 0 ? moduleQuizzes[0] : m.quiz || courseMod?.quiz || null;
+
+      return {
+        ...m,
+        quiz: primaryQuiz,
+        quizzes: moduleQuizzes,
+      };
+    });
   }, [liveLearningData, course?.modules]);
 
-  const currentModule: CourseModule | undefined = modulesList[activeModIdx] || modulesList[0];
-  const currentLesson: (Lesson & { videoUrl?: string; completed?: boolean; progressPercent?: number; progressSeconds?: number }) | undefined =
-    currentModule?.lessons[activeLesIdx] || currentModule?.lessons[0];
+  const currentModule: (CourseModule & { quizzes?: any[] }) | undefined =
+    modulesList[activeModIdx] || modulesList[0];
+  const currentModuleQuiz = currentModule?.quiz || (currentModule?.quizzes && currentModule.quizzes[0]) || null;
+  const currentLesson:
+    | (Lesson & {
+        videoUrl?: string;
+        completed?: boolean;
+        progressPercent?: number;
+        progressSeconds?: number;
+      })
+    | undefined = currentModule?.lessons[activeLesIdx] || currentModule?.lessons[0];
 
   // Completed lessons set: union of enrollment completed IDs, live database flags, and local completions
   const completedLessons = useMemo(() => {
     const set = new Set<string>();
     if (enrollment?.completedLessonIds) {
-      enrollment.completedLessonIds.forEach(id => set.add(id));
+      enrollment.completedLessonIds.forEach((id) => set.add(id));
     }
     if (liveLearningData?.modules) {
       liveLearningData.modules.forEach((m: any) => {
@@ -93,7 +120,7 @@ export const CoursePlayer: React.FC = () => {
         });
       });
     }
-    locallyCompletedLessons.forEach(id => set.add(id));
+    locallyCompletedLessons.forEach((id) => set.add(id));
     return Array.from(set);
   }, [enrollment?.completedLessonIds, liveLearningData, locallyCompletedLessons]);
 
@@ -102,7 +129,8 @@ export const CoursePlayer: React.FC = () => {
   }, [modulesList]);
 
   const completedCount = completedLessons.length;
-  const overallProgressPercent = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
+  const overallProgressPercent =
+    totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 0;
 
   const isCurrentCompleted = currentLesson ? completedLessons.includes(currentLesson.id) : false;
 
@@ -111,10 +139,11 @@ export const CoursePlayer: React.FC = () => {
   const isLastLessonInCourse = activeModIdx === modulesList.length - 1 && isLastLessonInModule;
 
   // Module quiz lock calculation: ALL lessons in this module must be completed
-  const currentModuleLessonIds = currentModule ? currentModule.lessons.map(l => l.id) : [];
+  const currentModuleLessonIds = currentModule ? currentModule.lessons.map((l) => l.id) : [];
+  const currentModuleCompletedCount = currentModuleLessonIds.filter((id) => completedLessons.includes(id)).length;
   const isCurrentModuleQuizUnlocked =
     currentModuleLessonIds.length > 0 &&
-    currentModuleLessonIds.every(id => completedLessons.includes(id));
+    currentModuleLessonIds.every((id) => completedLessons.includes(id));
 
   // Handle lesson selection
   const handleSelectLesson = (modIdx: number, lesIdx: number) => {
@@ -129,10 +158,10 @@ export const CoursePlayer: React.FC = () => {
   const handlePreviousLesson = () => {
     setQuizLockNotice(null);
     if (activeLesIdx > 0) {
-      setActiveLesIdx(prev => prev - 1);
+      setActiveLesIdx((prev) => prev - 1);
     } else if (activeModIdx > 0) {
       const prevMod = modulesList[activeModIdx - 1];
-      setActiveModIdx(prev => prev - 1);
+      setActiveModIdx((prev) => prev - 1);
       setActiveLesIdx(prevMod.lessons.length - 1);
     }
   };
@@ -141,15 +170,15 @@ export const CoursePlayer: React.FC = () => {
   const handleNextLesson = () => {
     setQuizLockNotice(null);
     if (!isLastLessonInModule) {
-      setActiveLesIdx(prev => prev + 1);
-    } else if (currentModule?.quiz) {
+      setActiveLesIdx((prev) => prev + 1);
+    } else if (currentModuleQuiz) {
       if (isCurrentModuleQuizUnlocked) {
-        navigate('quiz', { courseId: course.id, moduleId: currentModule.id });
+        navigate('quiz', { courseId: course.id, moduleId: currentModule.id, quizId: currentModuleQuiz.id });
       } else {
         setQuizLockNotice('Please finish all lessons in this module before taking the assessment quiz.');
       }
     } else if (activeModIdx < modulesList.length - 1) {
-      setActiveModIdx(prev => prev + 1);
+      setActiveModIdx((prev) => prev + 1);
       setActiveLesIdx(0);
     }
   };
@@ -349,11 +378,14 @@ export const CoursePlayer: React.FC = () => {
                     {/* Module Assessment Quiz Button with Lock Status */}
                     {module.quiz && (
                       <button
+                        id={`btn-sidebar-quiz-${mIdx}`}
                         onClick={() => {
                           if (isModUnlocked) {
-                            navigate('quiz', { courseId: course.id, moduleId: module.id });
+                            navigate('quiz', { courseId: course.id, moduleId: module.id, quizId: module.quiz.id });
                           } else {
-                            setQuizLockNotice(`Module ${mIdx + 1} Quiz is locked. Complete all required lessons in this module to unlock.`);
+                            setQuizLockNotice(
+                              `Module ${mIdx + 1} Quiz is locked. Complete all ${modLessonIds.length} required lessons in this module to unlock.`
+                            );
                           }
                         }}
                         className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all mt-1 border ${
@@ -378,7 +410,7 @@ export const CoursePlayer: React.FC = () => {
                               : 'bg-gray-200 text-gray-600'
                           }`}
                         >
-                          {isModUnlocked ? `${module.quiz.passThreshold}% Pass` : '🔒 Locked'}
+                          {isModUnlocked ? `${module.quiz.passThreshold || 75}% Pass` : '🔒 Locked'}
                         </span>
                       </button>
                     )}
@@ -494,6 +526,100 @@ export const CoursePlayer: React.FC = () => {
               </div>
             </div>
 
+            {/* 4. DEDICATED MODULE ASSESSMENT SECTION (Requirements 14 & 15) */}
+            {currentModuleQuiz && (
+              <div
+                id="module-assessment-section"
+                className={`rounded-2xl p-6 sm:p-7 border transition-all shadow-sm ${
+                  isCurrentModuleQuizUnlocked
+                    ? 'bg-gradient-to-br from-saffron-50/80 via-white to-amber-50/50 border-saffron-300 ring-1 ring-saffron-300/40'
+                    : 'bg-gray-50/90 border-gray-200'
+                }`}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md text-saffron-900 bg-saffron-200/80">
+                        Module Assessment
+                      </span>
+                      {isCurrentModuleQuizUnlocked ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md border border-emerald-300/50">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>✓ Lessons Completed • Quiz Unlocked</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-700 bg-gray-200 px-2 py-0.5 rounded-md">
+                          <Lock className="w-3 h-3 text-gray-500" />
+                          <span>🔒 Quiz Locked ({currentModuleCompletedCount}/{currentModuleLessonIds.length} lessons done)</span>
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="text-base sm:text-lg font-bold text-govText-primary">
+                      {currentModuleQuiz.title || `Module ${activeModIdx + 1} Assessment`}
+                    </h3>
+
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-govText-secondary">
+                      <span>
+                        Questions: <strong>{currentModuleQuiz.questionCount || currentModuleQuiz.questions?.length || 5}</strong>
+                      </span>
+                      <span>•</span>
+                      <span>
+                        Passing Score: <strong>{currentModuleQuiz.passThreshold || 75}%</strong>
+                      </span>
+                      {currentModuleQuiz.passed && (
+                        <>
+                          <span>•</span>
+                          <span className="text-emerald-700 font-bold flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Passed ({currentModuleQuiz.bestScore || 100}%)</span>
+                          </span>
+                        </>
+                      )}
+                    </div>
+
+                    {!isCurrentModuleQuizUnlocked && (
+                      <p className="text-xs text-amber-800 bg-amber-100/60 rounded-lg p-2.5 mt-1 border border-amber-200">
+                        Complete all {currentModuleLessonIds.length} lessons in <strong>Module {activeModIdx + 1}: {moduleTitle}</strong> to unlock this assessment.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex-shrink-0">
+                    <button
+                      id="btn-start-module-quiz"
+                      disabled={!isCurrentModuleQuizUnlocked}
+                      onClick={() => {
+                        navigate('quiz', {
+                          courseId: course.id,
+                          moduleId: currentModule.id,
+                          quizId: currentModuleQuiz.id,
+                        });
+                      }}
+                      className={`w-full sm:w-auto px-6 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
+                        isCurrentModuleQuizUnlocked
+                          ? 'bg-saffron-500 hover:bg-saffron-600 active:scale-95 text-govTeal-950 shadow-saffron-500/20'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none'
+                      }`}
+                    >
+                      {isCurrentModuleQuizUnlocked ? (
+                        <>
+                          <Sparkles className="w-4 h-4 text-govTeal-950" />
+                          <span>Start Quiz</span>
+                          <ChevronRight className="w-4 h-4 text-govTeal-950" />
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="w-4 h-4 text-gray-400" />
+                          <span>Locked</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* 3. Bottom Navigation Controls */}
@@ -520,6 +646,7 @@ export const CoursePlayer: React.FC = () => {
               )}
 
               <button
+                id="btn-course-next-action"
                 onClick={handleNextLesson}
                 className={`w-full sm:w-auto px-6 py-2.5 min-h-[44px] text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow transition-all cursor-pointer ${
                   isCurrentCompleted
@@ -528,7 +655,7 @@ export const CoursePlayer: React.FC = () => {
                 }`}
               >
                 <span>
-                  {isLastLessonInModule && currentModule?.quiz
+                  {isLastLessonInModule && currentModuleQuiz
                     ? isCurrentModuleQuizUnlocked
                       ? (t.player?.startQuiz || 'Take Module Quiz →')
                       : 'Complete Lessons to Unlock Quiz 🔒'
