@@ -90,9 +90,31 @@ export const learningService = {
 
     const targetCourseIds = Array.from(new Set([course.id, ...(COURSE_ALIASES[course.id] || []), ...(COURSE_ALIASES[courseId] || [])]));
     const curriculum = await learningRepository.getCourseCurriculum(targetCourseIds);
-    let enrollment = await learningRepository.findEnrollment(userId, course.id);
-    if (!enrollment && courseId !== course.id) {
-      enrollment = await learningRepository.findEnrollment(userId, courseId);
+    const allLessonIds = curriculum.flatMap((m) => m.lessons.map((l) => l.id));
+
+    // 1. Fetch ALL enrollments for this user across targetCourseIds
+    const userEnrollments = await prisma.enrollment.findMany({
+      where: {
+        userId,
+        courseId: { in: targetCourseIds },
+      },
+      include: {
+        lessonProgress: true,
+        quizAttempts: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    // 2. Fetch ALL LessonProgress records for this user across the curriculum lessons
+    const userLessonProgressRecords = await prisma.lessonProgress.findMany({
+      where: {
+        userId,
+        lessonId: { in: allLessonIds },
+      },
+    });
+
+    let enrollment = userEnrollments.find((e) => e.courseId === course.id) || userEnrollments[0] || null;
+    if (!enrollment) {
+      enrollment = await learningRepository.findEnrollment(userId, course.id);
     }
 
     // Build completed map & progress map
@@ -105,39 +127,85 @@ export const learningService = {
       lastWatchedAt: Date | null;
     }>();
 
-    if (enrollment?.lessonProgress) {
-      enrollment.lessonProgress.forEach((lp: any) => {
-        if (lp.status === 'COMPLETED' || lp.completed) completedLessonSet.add(lp.lessonId);
-        lessonProgressMap.set(lp.lessonId, {
-          status: lp.status,
-          progressSeconds: lp.progressSeconds || 0,
-          progressPercent: lp.progressPercent || (lp.status === 'COMPLETED' || lp.completed ? 100 : 0),
-          completed: Boolean(lp.completed || lp.status === 'COMPLETED'),
-          lastWatchedAt: lp.lastWatchedAt || null,
-        });
+    // Populate from all user LessonProgress records
+    userLessonProgressRecords.forEach((lp) => {
+      const isDone = Boolean(lp.completed || lp.status === 'COMPLETED' || (lp.progressPercent && lp.progressPercent >= 90));
+      if (isDone) completedLessonSet.add(lp.lessonId);
+      lessonProgressMap.set(lp.lessonId, {
+        status: isDone ? 'COMPLETED' : lp.status,
+        progressSeconds: lp.progressSeconds || 0,
+        progressPercent: lp.progressPercent || (isDone ? 100 : 0),
+        completed: isDone,
+        lastWatchedAt: lp.lastWatchedAt || null,
       });
-    }
-    if (Array.isArray(enrollment?.completedLessonIds)) {
-      (enrollment?.completedLessonIds as string[]).forEach((id) => completedLessonSet.add(id));
-    }
+    });
 
-    // Build quiz attempts map & passed status
+    // Populate from all user enrollments (merging across aliases)
+    userEnrollments.forEach((enr) => {
+      if (Array.isArray(enr.completedLessonIds)) {
+        (enr.completedLessonIds as string[]).forEach((id) => {
+          if (allLessonIds.includes(id)) completedLessonSet.add(id);
+        });
+      }
+      if (enr.lessonProgress) {
+        enr.lessonProgress.forEach((lp: any) => {
+          const isDone = Boolean(lp.completed || lp.status === 'COMPLETED' || (lp.progressPercent && lp.progressPercent >= 90));
+          if (isDone && allLessonIds.includes(lp.lessonId)) completedLessonSet.add(lp.lessonId);
+          if (!lessonProgressMap.has(lp.lessonId)) {
+            lessonProgressMap.set(lp.lessonId, {
+              status: isDone ? 'COMPLETED' : lp.status,
+              progressSeconds: lp.progressSeconds || 0,
+              progressPercent: lp.progressPercent || (isDone ? 100 : 0),
+              completed: isDone,
+              lastWatchedAt: lp.lastWatchedAt || null,
+            });
+          }
+        });
+      }
+    });
+
+    // Build quiz attempts map & passed status across all enrollments
     const quizPassedMap = new Map<string, { passed: boolean; bestScore: number; attempts: number }>();
-    if (enrollment?.quizAttempts) {
-      enrollment.quizAttempts.forEach((attempt) => {
-        const current = quizPassedMap.get(attempt.quizId) || { passed: false, bestScore: 0, attempts: 0 };
-        current.attempts += 1;
-        if (attempt.passed) current.passed = true;
-        if (attempt.percentage > current.bestScore) current.bestScore = attempt.percentage;
-        quizPassedMap.set(attempt.quizId, current);
-      });
-    }
-    if (Array.isArray(enrollment?.completedQuizIds)) {
-      (enrollment?.completedQuizIds as string[]).forEach((qid) => {
-        const current = quizPassedMap.get(qid) || { passed: true, bestScore: 100, attempts: 1 };
-        current.passed = true;
-        quizPassedMap.set(qid, current);
-      });
+    userEnrollments.forEach((enr) => {
+      if (enr.quizAttempts) {
+        enr.quizAttempts.forEach((attempt) => {
+          const current = quizPassedMap.get(attempt.quizId) || { passed: false, bestScore: 0, attempts: 0 };
+          current.attempts += 1;
+          if (attempt.passed) current.passed = true;
+          if (attempt.percentage > current.bestScore) current.bestScore = attempt.percentage;
+          quizPassedMap.set(attempt.quizId, current);
+        });
+      }
+      if (Array.isArray(enr.completedQuizIds)) {
+        (enr.completedQuizIds as string[]).forEach((qid) => {
+          const current = quizPassedMap.get(qid) || { passed: true, bestScore: 100, attempts: 1 };
+          current.passed = true;
+          quizPassedMap.set(qid, current);
+        });
+      }
+    });
+
+    // Synchronize enrollment if progress is out of date
+    const totalLessons = allLessonIds.length;
+    const computedCompletedCount = completedLessonSet.size;
+    const computedProgressPercent = totalLessons > 0
+      ? Math.min(100, Math.round((computedCompletedCount / totalLessons) * 100))
+      : 0;
+
+    if (enrollment) {
+      const currentIds = Array.isArray(enrollment.completedLessonIds) ? (enrollment.completedLessonIds as string[]) : [];
+      const isMissingLessons = Array.from(completedLessonSet).some(id => !currentIds.includes(id));
+      if (isMissingLessons || enrollment.progressPercent !== computedProgressPercent) {
+        await prisma.enrollment.update({
+          where: { id: enrollment.id },
+          data: {
+            completedLessonIds: Array.from(completedLessonSet),
+            progressPercent: computedProgressPercent,
+          },
+        }).catch(() => {});
+        enrollment.completedLessonIds = Array.from(completedLessonSet);
+        enrollment.progressPercent = computedProgressPercent;
+      }
     }
 
     // Process modules and strip sensitive quiz answers from this overview
@@ -305,18 +373,30 @@ export const learningService = {
       ? 'IN_PROGRESS'
       : enrollment.status;
 
-    await learningRepository.updateEnrollment(enrollment.id, {
-      completedLessonIds: updatedLessonIds,
-      progressPercent,
-      lastAccessedLessonId: lessonId,
-      status: newStatus,
-      ...(courseCompleted && !enrollment.completedAt
-        ? {
-            completedAt: new Date(),
-            completionDate: new Date().toISOString().split('T')[0],
-          }
-        : {}),
-    });
+      // Update all user enrollments for targetCourseIds so aliases stay in sync
+      const allUserEnrs = await prisma.enrollment.findMany({
+        where: { userId, courseId: { in: targetCourseIds } },
+      });
+      for (const enr of allUserEnrs) {
+        const enrLessons = new Set<string>(
+          Array.isArray(enr.completedLessonIds) ? (enr.completedLessonIds as string[]) : []
+        );
+        enrLessons.add(lessonId);
+        const enrDone = Array.from(enrLessons);
+        const enrProgress = totalLessons > 0 ? Math.min(100, Math.round((enrDone.length / totalLessons) * 100)) : 100;
+        await learningRepository.updateEnrollment(enr.id, {
+          completedLessonIds: enrDone,
+          progressPercent: enrProgress,
+          lastAccessedLessonId: lessonId,
+          status: newStatus,
+          ...(courseCompleted && !enr.completedAt
+            ? {
+                completedAt: new Date(),
+                completionDate: new Date().toISOString().split('T')[0],
+              }
+            : {}),
+        }).catch(() => {});
+      }
 
     return {
       success: true,
@@ -442,18 +522,30 @@ export const learningService = {
         ? 'IN_PROGRESS'
         : enrollment.status;
 
-      await learningRepository.updateEnrollment(enrollment.id, {
-        completedLessonIds: updatedLessonIds,
-        progressPercent: enrollmentProgressPercent,
-        lastAccessedLessonId: lessonId,
-        status: enrollmentStatus,
-        ...(courseCompleted && !enrollment.completedAt
-          ? {
-              completedAt: new Date(),
-              completionDate: new Date().toISOString().split('T')[0],
-            }
-          : {}),
+      // Update all user enrollments for targetCourseIds so aliases stay in sync
+      const allUserEnrs = await prisma.enrollment.findMany({
+        where: { userId, courseId: { in: targetCourseIds } },
       });
+      for (const enr of allUserEnrs) {
+        const enrLessons = new Set<string>(
+          Array.isArray(enr.completedLessonIds) ? (enr.completedLessonIds as string[]) : []
+        );
+        enrLessons.add(lessonId);
+        const enrDone = Array.from(enrLessons);
+        const enrProgress = totalLessons > 0 ? Math.min(100, Math.round((enrDone.length / totalLessons) * 100)) : 100;
+        await learningRepository.updateEnrollment(enr.id, {
+          completedLessonIds: enrDone,
+          progressPercent: enrProgress,
+          lastAccessedLessonId: lessonId,
+          status: enrollmentStatus,
+          ...(courseCompleted && !enr.completedAt
+            ? {
+                completedAt: new Date(),
+                completionDate: new Date().toISOString().split('T')[0],
+              }
+            : {}),
+        }).catch(() => {});
+      }
     }
 
     return {

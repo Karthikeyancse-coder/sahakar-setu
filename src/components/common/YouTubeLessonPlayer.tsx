@@ -141,7 +141,7 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
         setSyncStatus('saved');
         setTimeout(() => setSyncStatus(prev => prev === 'saved' ? 'idle' : prev), 3000);
 
-        if (willBeCompleted && !isCompletedRef.current) {
+        if (willBeCompleted) {
           setIsCompleted(true);
           isCompletedRef.current = true;
           onLessonCompleted?.(lessonId);
@@ -303,8 +303,6 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
                         // CRITICAL: Reaching 90% threshold completes lesson
                         if (cur >= 5 && pct >= completionThresholdPercent) {
                           if (!isCompletedRef.current) {
-                            setIsCompleted(true);
-                            isCompletedRef.current = true;
                             saveProgressToBackend(cur, total, true);
                           }
                         }
@@ -649,8 +647,6 @@ export const YouTubeLessonPlayer: React.FC<YouTubeLessonPlayerProps> = ({
                     const total = duration > 0 ? duration : 900;
                     setCurrentTime(total);
                     setProgressPercent(100);
-                    setIsCompleted(true);
-                    isCompletedRef.current = true;
                     saveProgressToBackend(total, total, true);
                   }}
                   className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold rounded-lg text-[11px] transition-all cursor-pointer flex items-center gap-1 shadow-xs"

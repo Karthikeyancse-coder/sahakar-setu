@@ -35,7 +35,23 @@ export const CoursePlayer: React.FC = () => {
 
   const courseId = activeViewParams?.courseId || courses[0]?.id;
   const course = courses.find(c => c.id === courseId) || courses[0];
-  const enrollment = enrollments.find(e => e.userId === currentUser.id && (e.courseId === course.id || e.courseId === 'crs-shg-101' || e.courseId === 'crs-shg-gov-301'));
+
+  const COURSE_ALIASES: Record<string, string[]> = useMemo(() => ({
+    'crs-shg-101': ['crs-shg-101', 'crs-shg-gov-301'],
+    'crs-shg-gov-301': ['crs-shg-gov-301', 'crs-shg-101'],
+    'crs-dairy-101': ['crs-dairy-101', 'crs-dairy-mgmt-201'],
+    'crs-dairy-mgmt-201': ['crs-dairy-mgmt-201', 'crs-dairy-101'],
+    'crs-pacs-101': ['crs-pacs-101', 'crs-pacs-erp-101'],
+    'crs-pacs-erp-101': ['crs-pacs-erp-101', 'crs-pacs-101'],
+  }), []);
+
+  const allowedCourseIds = useMemo(() => {
+    return course?.id ? (COURSE_ALIASES[course.id] || [course.id]) : [];
+  }, [course?.id, COURSE_ALIASES]);
+
+  const enrollment = useMemo(() => {
+    return enrollments.find(e => e.userId === currentUser?.id && allowedCourseIds.includes(e.courseId)) || null;
+  }, [enrollments, currentUser?.id, allowedCourseIds]);
 
   const [activeModIdx, setActiveModIdx] = useState(0);
   const [activeLesIdx, setActiveLesIdx] = useState(0);
@@ -107,12 +123,16 @@ export const CoursePlayer: React.FC = () => {
       })
     | undefined = currentModule?.lessons[activeLesIdx] || currentModule?.lessons[0];
 
-  // Completed lessons set: union of enrollment completed IDs, live database flags, and local completions
+  // Completed lessons set: union of enrollment completed IDs across course and aliases, live database flags, and local completions
   const completedLessons = useMemo(() => {
     const set = new Set<string>();
-    if (enrollment?.completedLessonIds) {
-      enrollment.completedLessonIds.forEach((id) => set.add(id));
-    }
+    enrollments
+      .filter((e) => e.userId === currentUser?.id && allowedCourseIds.includes(e.courseId))
+      .forEach((e) => {
+        if (Array.isArray(e.completedLessonIds)) {
+          e.completedLessonIds.forEach((id) => set.add(id));
+        }
+      });
     if (liveLearningData?.modules) {
       liveLearningData.modules.forEach((m: any) => {
         m.lessons?.forEach((l: any) => {
@@ -122,7 +142,7 @@ export const CoursePlayer: React.FC = () => {
     }
     locallyCompletedLessons.forEach((id) => set.add(id));
     return Array.from(set);
-  }, [enrollment?.completedLessonIds, liveLearningData, locallyCompletedLessons]);
+  }, [enrollments, allowedCourseIds, currentUser?.id, liveLearningData, locallyCompletedLessons]);
 
   const totalLessons = useMemo(() => {
     return modulesList.reduce((acc, m) => acc + (m.lessons?.length || 0), 0);
