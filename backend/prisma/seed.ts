@@ -16,13 +16,14 @@ async function main() {
   console.log('🌱  Seeding Sahakar Setu database…');
 
   // ─── Hash demo passwords ───────────────────────────────────────────────────
-  const [pwTrainee, pwAdmin, pwSuper, pwFaculty, pwEmployer, pwDevice] = await Promise.all([
+  const [pwTrainee, pwAdmin, pwSuper, pwFaculty, pwEmployer, pwDevice, pwHostel] = await Promise.all([
     bcrypt.hash('Demo@1234', SALT),
     bcrypt.hash('Admin@1234', SALT),
     bcrypt.hash('Super@1234', SALT),
     bcrypt.hash('Faculty@1234', SALT),
     bcrypt.hash('Employer@1234', SALT),
     bcrypt.hash('Demo@1234', SALT),
+    bcrypt.hash('Hostel@1234', SALT),
   ]);
 
   // ─── Institutes (all 20 NCCT institutes) ──────────────────────────────────
@@ -73,12 +74,14 @@ async function main() {
     { id: 'usr-employer-1', name: 'Shri Vikram Nair', nameHi: 'श्री विक्रम नायर', email: 'employer@ncct.gov.in', employeeId: 'NCCT-EMP-2026-KA-501', passwordHash: pwEmployer, phone: '+91 80 4567 8901', role: 'employer', languagePreference: 'en', avatarUrl: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80', isKycVerified: true, status: 'active' },
     // Device Operator (demo: device.demo@example.com or NCCT-DEV-2026-MH-001 / Demo@1234)
     { id: 'usr-device-operator', name: 'Karthik Hardware Operator', nameHi: 'कार्तिक हार्डवेयर ऑपरेटर', email: 'device.demo@example.com', employeeId: 'NCCT-DEV-2026-MH-001', passwordHash: pwDevice, phone: '+91 98200 77889', role: 'device_operator', languagePreference: 'en', instituteId: 'inst-vamnicom', avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80', isKycVerified: true, status: 'active' },
+    // Hostel Admin / Chief Warden (demo: hostel.warden@ncct.gov.in / Hostel@1234)
+    { id: 'usr-warden-1', name: 'Shri Rajesh Kulkarni', nameHi: 'श्री राजेश कुलकर्णी', email: 'hostel.warden@ncct.gov.in', employeeId: 'NCCT-HST-2026-MH-001', passwordHash: pwHostel, phone: '+91 20 2553 7988', role: 'hostel_admin', languagePreference: 'en', instituteId: 'inst-vamnicom', avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', isKycVerified: true, status: 'active' },
   ];
 
   for (const u of users) {
     await prisma.user.upsert({ where: { id: u.id }, update: u, create: u as any });
   }
-  console.log('  ✓ 11 users (6 trainees + admin + superadmin + faculty + employer + device_operator)');
+  console.log('  ✓ 12 users (6 trainees + admin + superadmin + faculty + employer + device_operator + hostel_admin)');
 
   // ─── Courses with full module/quiz JSON ────────────────────────────────────
   const pacsModules = [

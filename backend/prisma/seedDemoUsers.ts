@@ -143,6 +143,21 @@ async function run() {
         isKycVerified: true,
         status: 'active',
       },
+      // Hostel Admin / Chief Warden
+      {
+        id: 'usr-warden-1',
+        email: 'hostel.warden@ncct.gov.in',
+        employeeId: 'NCCT-HST-2026-MH-001',
+        passwordHash: await bcrypt.hash('Hostel@1234', SALT),
+        name: 'Shri Rajesh Kulkarni',
+        nameHi: 'श्री राजेश कुलकर्णी',
+        phone: '+91 20 2553 7988',
+        role: 'hostel_admin',
+        languagePreference: 'en',
+        instituteId: 'inst-vamnicom',
+        isKycVerified: true,
+        status: 'active',
+      },
     ];
 
     for (const u of usersToUpsert) {

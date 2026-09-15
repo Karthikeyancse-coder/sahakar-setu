@@ -104,6 +104,7 @@ export const ROLE_PREFIXES: Record<UserRole, string> = {
   faculty: '/faculty',
   employer: '/employer',
   device_operator: '/device',
+  hostel_admin: '/hostel-admin',
 };
 
 export const normalizeRole = (role?: string): UserRole => {
@@ -114,6 +115,7 @@ export const normalizeRole = (role?: string): UserRole => {
   if (r === 'faculty') return 'faculty';
   if (r === 'employer') return 'employer';
   if (r === 'device_operator' || r === 'deviceoperator' || r === 'device') return 'device_operator';
+  if (r === 'hostel_admin' || r === 'hosteladmin' || r === 'hostel' || r === 'warden') return 'hostel_admin';
   return 'trainee';
 };
 
@@ -129,6 +131,7 @@ export const getRoleFromPrefix = (path: string): UserRole | null => {
   if (path.startsWith('/faculty')) return 'faculty';
   if (path.startsWith('/employer')) return 'employer';
   if (path.startsWith('/device')) return 'device_operator';
+  if (path.startsWith('/hostel-admin') || path.startsWith('/hostel')) return 'hostel_admin';
   return null;
 };
 
@@ -294,6 +297,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/trainee/settings') {
     return { view: 'settings', params: null };
   }
+  if (path === '/trainee/hostel' || path === '/hostel') {
+    if (path !== '/trainee/hostel') window.history.replaceState({}, '', '/trainee/hostel');
+    return { view: 'trainee_hostel', params: null };
+  }
   if (path === '/trainee/help' || path === '/help') {
     if (path !== '/trainee/help') window.history.replaceState({}, '', '/trainee/help');
     return { view: 'help', params: null };
@@ -442,6 +449,38 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   }
   if (path === '/device/settings') {
     return { view: 'settings', params: null };
+  }
+
+  // 7. HOSTEL ADMIN ROUTES (/hostel-admin/...)
+  if (path === '/hostel-admin/dashboard' || path === '/hostel-admin' || path === '/hostel-admin/operations') {
+    return { view: 'hostel_operations', params: null };
+  }
+  if (path === '/hostel-admin/blocks') {
+    return { view: 'hostel_blocks', params: null };
+  }
+  if (path === '/hostel-admin/rooms') {
+    return { view: 'hostel_rooms', params: null };
+  }
+  if (path === '/hostel-admin/requests') {
+    return { view: 'hostel_requests', params: null };
+  }
+  if (path === '/hostel-admin/allocations') {
+    return { view: 'hostel_allocations', params: null };
+  }
+  if (path === '/hostel-admin/checkin' || path === '/hostel-admin/gate') {
+    return { view: 'hostel_checkin', params: null };
+  }
+  if (path === '/hostel-admin/complaints' || path === '/hostel-admin/maintenance') {
+    return { view: 'hostel_complaints', params: null };
+  }
+  if (path === '/hostel-admin/reports' || path === '/hostel-admin/mess') {
+    return { view: 'hostel_reports', params: null };
+  }
+  if (path === '/hostel-admin/settings') {
+    return { view: 'settings', params: null };
+  }
+  if (path === '/hostel-admin/profile') {
+    return { view: 'profile', params: null };
   }
 
   // Fallback to role dashboard
@@ -901,12 +940,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         'usr-faculty-1': 'Faculty@1234',
         'usr-employer-1': 'Employer@1234',
         'usr-device-operator': 'Demo@1234',
+        'usr-warden-1': 'Hostel@1234',
       };
       const pass = defaultPasswords[target.id] || (
         target.role === 'institute_admin' ? 'Admin@1234' :
         target.role === 'super_admin' ? 'Super@1234' :
         target.role === 'faculty' ? 'Faculty@1234' :
-        target.role === 'employer' ? 'Employer@1234' : 'Demo@1234'
+        target.role === 'employer' ? 'Employer@1234' :
+        target.role === 'hostel_admin' ? 'Hostel@1234' : 'Demo@1234'
       );
 
       try {
@@ -1088,6 +1129,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (destination === 'settings') {
         targetPath = '/trainee/settings';
         targetView = 'settings';
+      } else if (destination === 'trainee_hostel' || destination === 'hostel' || destination === 'hostel_pass') {
+        targetPath = '/trainee/hostel';
+        targetView = 'trainee_hostel';
       } else if (destination === 'help') {
         targetPath = '/trainee/help';
         targetView = 'help';
@@ -1189,6 +1233,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else {
         targetPath = '/device/dashboard';
         targetView = 'home';
+      }
+    } else if (currentUser.role === 'hostel_admin') {
+      if (destination === 'home' || destination === 'dashboard' || destination === 'operations' || destination === 'hostel_operations') {
+        targetPath = '/hostel-admin/dashboard';
+        targetView = 'hostel_operations';
+      } else if (destination === 'hostel_blocks' || destination === 'blocks') {
+        targetPath = '/hostel-admin/blocks';
+        targetView = 'hostel_blocks';
+      } else if (destination === 'hostel_rooms' || destination === 'rooms') {
+        targetPath = '/hostel-admin/rooms';
+        targetView = 'hostel_rooms';
+      } else if (destination === 'hostel_requests' || destination === 'requests') {
+        targetPath = '/hostel-admin/requests';
+        targetView = 'hostel_requests';
+      } else if (destination === 'hostel_allocations' || destination === 'allocations') {
+        targetPath = '/hostel-admin/allocations';
+        targetView = 'hostel_allocations';
+      } else if (destination === 'hostel_checkin' || destination === 'checkin' || destination === 'gate') {
+        targetPath = '/hostel-admin/checkin';
+        targetView = 'hostel_checkin';
+      } else if (destination === 'hostel_complaints' || destination === 'complaints' || destination === 'maintenance') {
+        targetPath = '/hostel-admin/complaints';
+        targetView = 'hostel_complaints';
+      } else if (destination === 'hostel_reports' || destination === 'reports' || destination === 'mess') {
+        targetPath = '/hostel-admin/reports';
+        targetView = 'hostel_reports';
+      } else if (destination === 'settings') {
+        targetPath = '/hostel-admin/settings';
+        targetView = 'settings';
+      } else if (destination === 'profile') {
+        targetPath = '/hostel-admin/profile';
+        targetView = 'profile';
+      } else {
+        targetPath = '/hostel-admin/dashboard';
+        targetView = 'hostel_operations';
       }
     }
 

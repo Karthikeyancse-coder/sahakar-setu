@@ -54,6 +54,19 @@ import { EmployerJobsView } from './views/Employer/EmployerJobsView';
 import { InstitutesDirectory } from './views/Common/InstitutesDirectory';
 import { TraineeDirectory } from './views/Common/TraineeDirectory';
 import { DeviceOperatorDashboard } from './views/DeviceOperator/DeviceOperatorDashboard';
+import {
+  HostelProvider,
+  HostelAdminLayout,
+  HostelOperationsHub,
+  HostelBlocksPage,
+  HostelRoomsPage,
+  HostelRequestsPage,
+  HostelAllocationsPage,
+  HostelGatePage,
+  HostelComplaintsPage,
+  HostelMessPage
+} from './views/HostelAdmin';
+import { TraineeHostelView } from './views/Trainee/TraineeHostelView';
 
 export const AppContent: React.FC = () => {
   const { currentUser, activeView, isAuthenticated, navigate } = useApp();
@@ -160,6 +173,10 @@ export const AppContent: React.FC = () => {
         return <TraineeScanAttendanceView />;
       case 'attendance_kiosk':
         return <TraineeHome />;
+      case 'trainee_hostel':
+      case 'hostel':
+      case 'hostel_pass':
+        return <TraineeHostelView />;
       case 'profile':
         return <ProfileView />;
       case 'settings':
@@ -255,6 +272,63 @@ export const AppContent: React.FC = () => {
     }
   };
 
+  const renderHostelAdminView = () => {
+    let PageComponent: React.ReactNode;
+    switch (activeView) {
+      case 'home':
+      case 'hostel_operations':
+      case 'operations':
+        PageComponent = <HostelOperationsHub />;
+        break;
+      case 'hostel_blocks':
+      case 'blocks':
+        PageComponent = <HostelBlocksPage />;
+        break;
+      case 'hostel_rooms':
+      case 'rooms':
+        PageComponent = <HostelRoomsPage />;
+        break;
+      case 'hostel_requests':
+      case 'requests':
+        PageComponent = <HostelRequestsPage />;
+        break;
+      case 'hostel_allocations':
+      case 'allocations':
+        PageComponent = <HostelAllocationsPage />;
+        break;
+      case 'hostel_checkin':
+      case 'checkin':
+      case 'gate':
+        PageComponent = <HostelGatePage />;
+        break;
+      case 'hostel_complaints':
+      case 'complaints':
+      case 'maintenance':
+        PageComponent = <HostelComplaintsPage />;
+        break;
+      case 'hostel_reports':
+      case 'reports':
+      case 'mess':
+        PageComponent = <HostelMessPage />;
+        break;
+      case 'settings':
+        return <SettingsView />;
+      case 'profile':
+        return <AdminProfileView />;
+      default:
+        PageComponent = <HostelOperationsHub />;
+        break;
+    }
+
+    return (
+      <HostelProvider>
+        <HostelAdminLayout>
+          {PageComponent}
+        </HostelAdminLayout>
+      </HostelProvider>
+    );
+  };
+
   const renderMainView = () => {
     switch (currentUser.role) {
       case 'institute_admin':
@@ -267,6 +341,8 @@ export const AppContent: React.FC = () => {
         return renderEmployerView();
       case 'device_operator':
         return renderDeviceOperatorView();
+      case 'hostel_admin':
+        return renderHostelAdminView();
       case 'trainee':
       default:
         return renderTraineeView();

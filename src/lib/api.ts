@@ -670,6 +670,43 @@ export const api = {
     getPlacements: () => get<PlacementAnalytics>('/api/national/placements'),
     getAnalytics: () => get<NationalAnalyticsData>('/api/national/analytics'),
   },
+  hostel: {
+    getDashboard: (hostelId?: string) => get<any>(`/api/hostel/dashboard${hostelId ? `?hostelId=${hostelId}` : ''}`),
+    getBlocks: (hostelId?: string) => get<any[]>(`/api/hostel/blocks${hostelId ? `?hostelId=${hostelId}` : ''}`),
+    createBlock: (data: any) => post<any>('/api/hostel/blocks', data),
+    getRooms: (blockId?: string) => get<any[]>(`/api/hostel/rooms${blockId ? `?blockId=${blockId}` : ''}`),
+    createRoom: (data: any) => post<any>('/api/hostel/rooms', data),
+    updateBedStatus: (bedId: string, data: { status: string; remarks?: string }) => patch<any>(`/api/hostel/beds/${bedId}/status`, data),
+    getRequests: (params?: { status?: string; search?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.search) q.append('search', params.search);
+      const qs = q.toString();
+      return get<any[]>(`/api/hostel/requests${qs ? `?${qs}` : ''}`);
+    },
+    submitRequest: (data: any) => post<any>('/api/hostel/requests', data),
+    updateRequestStatus: (id: string, data: { status: string; adminRemarks?: string }) => patch<any>(`/api/hostel/requests/${id}/status`, data),
+    allocateBed: (data: { requestId: string; bedId: string; remarks?: string }) => post<any>('/api/hostel/allocations', data),
+    getAllocations: (params?: { status?: string; search?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.search) q.append('search', params.search);
+      const qs = q.toString();
+      return get<any[]>(`/api/hostel/allocations${qs ? `?${qs}` : ''}`);
+    },
+    checkIn: (allocationId: string, data?: { verificationMethod?: string; remarks?: string }) => post<any>(`/api/hostel/allocations/${allocationId}/check-in`, data || {}),
+    checkOut: (allocationId: string, data?: { remarks?: string }) => post<any>(`/api/hostel/allocations/${allocationId}/check-out`, data || {}),
+    getComplaints: (params?: { status?: string; category?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.status) q.append('status', params.status);
+      if (params?.category) q.append('category', params.category);
+      const qs = q.toString();
+      return get<any[]>(`/api/hostel/complaints${qs ? `?${qs}` : ''}`);
+    },
+    submitComplaint: (data: any) => post<any>('/api/hostel/complaints', data),
+    updateComplaint: (id: string, data: { status: string; resolutionNotes?: string }) => patch<any>(`/api/hostel/complaints/${id}`, data),
+    getMyStatus: () => get<any>('/api/hostel/trainee/my-status'),
+  },
 };
 
 export interface NationalSummary {

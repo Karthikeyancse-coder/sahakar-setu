@@ -477,6 +477,20 @@ export const SEED_USERS: User[] = [
     instituteId: 'inst-vamnicom',
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
   },
+
+  // 7. Hostel Admin / Chief Warden
+  {
+    id: 'usr-warden-1',
+    employeeId: 'NCCT-HST-2026-MH-001',
+    name: 'Shri Rajesh Kulkarni',
+    nameHi: 'श्री राजेश कुलकर्णी',
+    email: 'hostel.warden@ncct.gov.in',
+    phone: '+91 20 2553 7988',
+    role: 'hostel_admin',
+    languagePreference: 'en',
+    instituteId: 'inst-vamnicom',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+  },
 ];
 
 export const SEED_COURSES: Course[] = [

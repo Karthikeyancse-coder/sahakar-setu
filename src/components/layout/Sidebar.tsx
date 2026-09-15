@@ -159,6 +159,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
               const isActive =
                 isCurrentRoute ||
                 activeView === item.id ||
+                ((item.id === 'home' || item.id === 'hostel_operations') && (activeView === 'home' || activeView === 'hostel_operations')) ||
+                (item.id === 'hostel_blocks' && activeView === 'hostel_blocks') ||
+                (item.id === 'hostel_rooms' && activeView === 'hostel_rooms') ||
+                (item.id === 'hostel_requests' && activeView === 'hostel_requests') ||
+                (item.id === 'hostel_allocations' && activeView === 'hostel_allocations') ||
+                (item.id === 'hostel_checkin' && (activeView === 'hostel_checkin' || window.location.pathname === '/hostel-admin/gate')) ||
+                (item.id === 'hostel_complaints' && (activeView === 'hostel_complaints' || window.location.pathname === '/hostel-admin/maintenance')) ||
+                (item.id === 'hostel_reports' && (activeView === 'hostel_reports' || window.location.pathname === '/hostel-admin/mess')) ||
                 (item.id === 'my_courses' && (activeView === 'my_courses' || activeView === 'course_player' || activeView === 'quiz' || activeView === 'courses' || activeView === 'course_detail')) ||
                 (item.id === 'certificates' && (activeView === 'certificates' || activeView === 'verify_public')) ||
                 (item.id === 'jobs' && (activeView === 'jobs' || activeView === 'job_detail' || activeView === 'my_applications')) ||

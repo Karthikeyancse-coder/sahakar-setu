@@ -12,7 +12,11 @@ import {
   Users,
   BedDouble,
   CalendarDays,
-  BarChart3
+  BarChart3,
+  Building2,
+  FileCheck,
+  Wrench,
+  Utensils
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -128,6 +132,73 @@ export const MoreBottomSheet: React.FC<MoreBottomSheetProps> = ({ isOpen, onClos
           route: '/institute-admin/settings',
           label: currentLanguage === 'hi' ? 'सेटिंग्स' : currentLanguage === 'mr' ? 'सेटिंग्ज' : 'Settings',
           sub: 'Device configuration & security options',
+          icon: Settings,
+          badge: null,
+        },
+      ]
+    : currentUser.role === 'hostel_admin'
+    ? [
+        {
+          id: 'hostel_blocks',
+          route: '/hostel-admin/blocks',
+          label: currentLanguage === 'hi' ? 'छात्रावास ब्लॉक' : currentLanguage === 'mr' ? 'वसतिगृह ब्लॉक' : 'Blocks & Floors',
+          sub: 'Physical infrastructure, wing capacities & wardens',
+          icon: Building2,
+          badge: null,
+        },
+        {
+          id: 'hostel_rooms',
+          route: '/hostel-admin/rooms',
+          label: currentLanguage === 'hi' ? 'कमरे एवं बेड मैट्रिक्स' : currentLanguage === 'mr' ? 'खोल्या व बेड मॅट्रिक्स' : 'Rooms & Bed Matrix',
+          sub: 'Live interactive room grid & repair toggles',
+          icon: BedDouble,
+          badge: null,
+        },
+        {
+          id: 'hostel_requests',
+          route: '/hostel-admin/requests',
+          label: currentLanguage === 'hi' ? 'प्रशिक्षु आवास अनुरोध' : currentLanguage === 'mr' ? 'प्रशिक्षणार्थी विनंत्या' : 'Trainee Requests',
+          sub: 'Algorithmic outstation priority queue & bed allocation',
+          icon: FileCheck,
+          badge: 'Priority',
+        },
+        {
+          id: 'hostel_allocations',
+          route: '/hostel-admin/allocations',
+          label: currentLanguage === 'hi' ? 'सक्रिय आवंटन एवं पास' : currentLanguage === 'mr' ? 'सक्रिय वाटप व पास' : 'Active Allocations',
+          sub: 'Campus resident directory & digital passes',
+          icon: Users,
+          badge: null,
+        },
+        {
+          id: 'hostel_checkin',
+          route: '/hostel-admin/gate',
+          label: currentLanguage === 'hi' ? 'गेट चेक-इन डेस्क' : currentLanguage === 'mr' ? 'गेट पडताळणी डेस्क' : 'Gate Check-In & Out',
+          sub: 'Main Gate 1 console: NFC, Aadhaar & ID check',
+          icon: QrCode,
+          badge: 'NFC/Pass',
+        },
+        {
+          id: 'hostel_complaints',
+          route: '/hostel-admin/maintenance',
+          label: currentLanguage === 'hi' ? 'शिकायतें एवं रखरखाव' : currentLanguage === 'mr' ? 'तक्रारी व दुरुस्ती' : 'Complaints & Repairs',
+          sub: 'Hygiene, plumbing & electrical welfare tickets',
+          icon: Wrench,
+          badge: null,
+        },
+        {
+          id: 'hostel_reports',
+          route: '/hostel-admin/mess',
+          label: currentLanguage === 'hi' ? 'मेस एवं उपस्थिति ऑडिट' : currentLanguage === 'mr' ? 'मेस व उपस्थिती ऑडिट' : 'Occupancy & Mess Audit',
+          sub: 'Meal headcounts forecast & CSV occupancy export',
+          icon: Utensils,
+          badge: null,
+        },
+        {
+          id: 'settings',
+          route: '/hostel-admin/settings',
+          label: currentLanguage === 'hi' ? 'सेटिंग्स' : currentLanguage === 'mr' ? 'सेटिंग्ज' : 'Settings',
+          sub: 'Warden credentials & security preferences',
           icon: Settings,
           badge: null,
         },

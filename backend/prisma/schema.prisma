@@ -515,3 +515,147 @@ model TimetableEntry {
   programme   Programme @relation(fields: [programmeId], references: [id], onDelete: Cascade)
 }
 
+// ─── HOSTEL MODULE ENTERPRISE DATABASE SCHEMA ──────────────────────────────
+
+model Hostel {
+  id            String   @id @default(cuid())
+  institutionId String   @default("inst-vamnicom")
+  name          String   // e.g. "VAMNICOM Residential Hostel Complex"
+  address       String?
+  status        String   @default("active")
+  contactPerson String?  // Warden name
+  contactPhone  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  blocks        HostelBlock[]
+  complaints    HostelComplaint[]
+}
+
+model HostelBlock {
+  id          String   @id @default(cuid())
+  hostelId    String
+  name        String   // "Block A (Men)", "Block B (Women)", "Executive Guest Block"
+  floorCount  Int      @default(3)
+  category    String   @default("Co-ed") // Men | Women | Co-ed | Executive | VIP
+  status      String   @default("active")
+  wardenName  String?
+  wardenPhone String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  hostel      Hostel       @relation(fields: [hostelId], references: [id], onDelete: Cascade)
+  rooms       HostelRoom[]
+}
+
+model HostelRoom {
+  id         String   @id @default(cuid())
+  blockId    String
+  roomNumber String   // "101", "102", "201"
+  floor      Int      @default(1)
+  roomType   String   @default("Double") // Single | Double | Triple | Dormitory
+  capacity   Int      @default(2)
+  status     String   @default("AVAILABLE") // AVAILABLE | FULL | PARTIALLY_OCCUPIED | MAINTENANCE | BLOCKED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  block      HostelBlock       @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  beds       HostelBedRecord[]
+  complaints HostelComplaint[]
+
+  @@unique([blockId, roomNumber])
+}
+
+model HostelBedRecord {
+  id                  String   @id @default(cuid())
+  roomId              String
+  bedNumber           String   // "Bed 1", "Bed 2"
+  status              String   @default("available") // available | occupied | maintenance | reserved
+  currentOccupantId   String?
+  currentOccupantName String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
+
+  room                HostelRoom         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  allocations         HostelAllocation[]
+
+  @@unique([roomId, bedNumber])
+}
+
+model HostelRequest {
+  id                  String   @id @default(cuid())
+  traineeId           String
+  programmeId         String
+  institutionId       String   @default("inst-vamnicom")
+  required            Boolean  @default(true)
+  requestedFrom       String?
+  requestedTo         String?
+  status              String   @default("SUBMITTED") // NOT_REQUESTED | SUBMITTED | UNDER_REVIEW | APPROVED | ALLOCATED | WAITLISTED | REJECTED | CANCELLED | CHECKED_IN | CHECKED_OUT
+  priority            Int      @default(50) // 0-100
+  priorityReason      String?
+  specialRequirements String?
+  roomTypePreference  String?  @default("Double")
+  foodPreference      String?  @default("Veg") // Veg | Non-Veg | Jain | Standard
+  emergencyContact    String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @default(now()) @updatedAt
+
+  allocations         HostelAllocation[]
+}
+
+model HostelAllocation {
+  id                 String    @id @default(cuid())
+  requestId          String?
+  traineeId          String
+  traineeName        String
+  traineeEmail       String?
+  traineePhone       String?
+  traineeCoop        String?
+  programmeId        String
+  programmeTitle     String?
+  blockId            String
+  blockName          String
+  roomId             String
+  roomNumber         String
+  bedId              String
+  bedNumber          String
+  allocatedFrom      String
+  allocatedTo        String?
+  status             String    @default("ALLOCATED") // RESERVED | ALLOCATED | CHECKED_IN | TRANSFERRED | CHECKED_OUT | CANCELLED
+  checkedInAt        DateTime?
+  checkedOutAt       DateTime?
+  identityVerifiedBy String?
+  verificationMethod String?   @default("NFC")
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+
+  request            HostelRequest?   @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  bed                HostelBedRecord  @relation(fields: [bedId], references: [id], onDelete: Cascade)
+}
+
+model HostelComplaint {
+  id                String    @id @default(cuid())
+  traineeId         String
+  traineeName       String
+  hostelId          String?
+  blockName         String?
+  roomId            String?
+  roomNumber        String?
+  category          String    @default("Electrical") // Electrical | Water | Cleaning | Food | Room | Safety | Internet | Other
+  title             String
+  description       String
+  priority          String    @default("medium") // low | medium | high | urgent
+  status            String    @default("OPEN") // OPEN | ASSIGNED | IN_PROGRESS | RESOLVED | REOPENED | CLOSED
+  assignedTo        String?
+  assignedStaffName String?
+  resolutionNotes   String?
+  photoUrl          String?
+  createdAt         DateTime  @default(now())
+  resolvedAt        DateTime?
+
+  hostel            Hostel?     @relation(fields: [hostelId], references: [id], onDelete: SetNull)
+  room              HostelRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+}
+
+

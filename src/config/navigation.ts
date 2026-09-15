@@ -56,6 +56,7 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
         { id: 'home', label: 'Dashboard', route: '/trainee/dashboard', icon: LayoutDashboard },
         { id: 'my_courses', label: 'My Courses', route: '/trainee/my-courses', icon: BookOpen },
         { id: 'certificates', label: 'Certificates', route: '/trainee/certificates', icon: Award },
+        { id: 'trainee_hostel', label: 'Hostel Accommodation', route: '/trainee/hostel', icon: BedDouble, badge: 'Pass' },
         { id: 'jobs', label: 'Job Opportunities', route: '/trainee/jobs', icon: Briefcase },
         { id: 'attendance_history', label: 'Attendance History', route: '/trainee/attendance', icon: ShieldCheck, badge: 'Biometric' },
       ],
@@ -202,6 +203,43 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       title: 'SYSTEM',
       items: [
         { id: 'settings', label: 'Settings', route: '/device/settings', icon: Settings },
+      ],
+    },
+  ],
+
+  hostel_admin: [
+    {
+      title: 'MAIN',
+      items: [
+        { id: 'home', label: 'Hostel Operations Hub', route: '/hostel-admin/dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'INFRASTRUCTURE & INVENTORY',
+      items: [
+        { id: 'hostel_blocks', label: 'Hostel Blocks', route: '/hostel-admin/blocks', icon: Building2 },
+        { id: 'hostel_rooms', label: 'Rooms & Bed Matrix', route: '/hostel-admin/rooms', icon: BedDouble },
+      ],
+    },
+    {
+      title: 'RESIDENTIAL LIFECYCLE',
+      items: [
+        { id: 'hostel_requests', label: 'Trainee Requests', route: '/hostel-admin/requests', icon: FileCheck, badge: 'Priority' },
+        { id: 'hostel_allocations', label: 'Bed Allocations', route: '/hostel-admin/allocations', icon: Users },
+        { id: 'hostel_checkin', label: 'Check-In & Gate Verification', route: '/hostel-admin/checkin', icon: ShieldCheck, badge: 'NFC/Pass' },
+      ],
+    },
+    {
+      title: 'RESIDENT SERVICES & AUDIT',
+      items: [
+        { id: 'hostel_complaints', label: 'Complaints & Repairs', route: '/hostel-admin/complaints', icon: AlertTriangle },
+        { id: 'hostel_reports', label: 'Occupancy & Mess Audit', route: '/hostel-admin/reports', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'SYSTEM',
+      items: [
+        { id: 'settings', label: 'Settings', route: '/hostel-admin/settings', icon: Settings },
       ],
     },
   ],

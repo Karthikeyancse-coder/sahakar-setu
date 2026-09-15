@@ -1,4 +1,4 @@
-export type UserRole = 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer' | 'device_operator';
+export type UserRole = 'trainee' | 'institute_admin' | 'super_admin' | 'faculty' | 'employer' | 'device_operator' | 'hostel_admin';
 export type Language = 'en' | 'hi' | 'mr';
 
 export interface Institute {
@@ -370,5 +370,227 @@ export interface AppNotification {
   type: 'certificate' | 'job' | 'course' | 'attendance' | 'system';
   linkView?: string;
   linkParams?: any;
+}
+
+// ─── HOSTEL MODULE ENTERPRISE MODELS (Document Specification) ─────────────────
+
+export interface Hostel {
+  id: string;
+  institutionId: string;
+  name: string;
+  address?: string;
+  status: 'active' | 'inactive';
+  contactPerson?: string;
+  contactPhone?: string;
+  totalBlocks?: number;
+  totalRooms?: number;
+  totalBeds?: number;
+  occupiedBeds?: number;
+}
+
+export interface HostelBlock {
+  id: string;
+  hostelId: string;
+  name: string; // e.g. "Block A (Men)", "Block B (Women)", "Executive Guest Block"
+  code?: string;
+  floorCount?: number;
+  totalFloors?: number;
+  category?: 'Men' | 'Women' | 'Co-ed' | 'Executive' | 'VIP';
+  genderPolicy?: 'boys' | 'girls' | 'co-ed' | string;
+  status: 'active' | 'inactive' | 'maintenance';
+  wardenName?: string;
+  wardenPhone?: string;
+  caretakerName?: string;
+  caretakerPhone?: string;
+  totalRooms?: number;
+  totalBeds?: number;
+  occupiedBeds?: number;
+}
+
+export interface HostelRoom {
+  id: string;
+  blockId: string;
+  blockName?: string;
+  roomNumber: string;
+  floor: number;
+  roomType: 'Single' | 'Double' | 'Triple' | 'Dormitory' | string;
+  capacity: number;
+  status: 'AVAILABLE' | 'FULL' | 'PARTIALLY_OCCUPIED' | 'MAINTENANCE' | 'BLOCKED' | string;
+  occupiedBeds?: number;
+  availableBeds?: number;
+  beds?: HostelBedRecord[];
+}
+
+export interface HostelBedRecord {
+  id: string;
+  roomId: string;
+  roomNumber?: string;
+  blockId?: string;
+  blockName?: string;
+  bedNumber: string; // e.g. "Bed 1", "Bed 2"
+  status: 'available' | 'occupied' | 'maintenance' | 'reserved' | string;
+  currentOccupantId?: string;
+  currentOccupantName?: string;
+  occupantName?: string;
+  currentProgrammeTitle?: string;
+}
+
+export type HostelRequestStatus =
+  | 'NOT_REQUESTED'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'ALLOCATED'
+  | 'WAITLISTED'
+  | 'REJECTED'
+  | 'CANCELLED'
+  | 'CHECKED_IN'
+  | 'CHECKED_OUT'
+  | 'pending'
+  | 'approved'
+  | 'allocated'
+  | 'rejected'
+  | string;
+
+export interface HostelRequest {
+  id: string;
+  traineeId: string;
+  traineeName: string;
+  traineeEmail?: string;
+  traineePhone?: string;
+  traineeCity?: string;
+  traineeState?: string;
+  state?: string;
+  district?: string;
+  isOutstation?: boolean;
+  programmeId: string;
+  programmeTitle?: string;
+  programmeName?: string;
+  institutionId?: string;
+  required?: boolean;
+  requestedFrom?: string;
+  requestedTo?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  status: HostelRequestStatus;
+  priority?: number; // calculated score (0-100)
+  priorityScore?: number;
+  priorityReason?: string;
+  specialRequirements?: string;
+  specialRequests?: string;
+  roomTypePreference?: string;
+  foodPreference?: 'Veg' | 'Non-Veg' | 'Jain' | 'Standard' | string;
+  emergencyContact?: string;
+  createdAt: string;
+  updatedAt?: string;
+  allocatedRoom?: string;
+  allocatedBed?: string;
+  allocatedBlock?: string;
+}
+
+export type HostelAllocationStatus =
+  | 'RESERVED'
+  | 'ALLOCATED'
+  | 'CHECKED_IN'
+  | 'TRANSFERRED'
+  | 'CHECKED_OUT'
+  | 'CANCELLED'
+  | 'allocated'
+  | 'checked_in'
+  | 'checked_out'
+  | 'cancelled'
+  | string;
+
+export interface HostelAllocation {
+  id: string;
+  requestId?: string;
+  passNumber?: string;
+  traineeId: string;
+  traineeName: string;
+  traineeEmail?: string;
+  traineePhone?: string;
+  traineeCoop?: string;
+  programmeId: string;
+  programmeTitle?: string;
+  programmeName?: string;
+  blockId: string;
+  blockName: string;
+  roomId: string;
+  roomNumber: string;
+  bedId: string;
+  bedNumber: string;
+  allocatedFrom: string;
+  allocatedTo?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  status: HostelAllocationStatus;
+  checkedInAt?: string;
+  checkedOutAt?: string;
+  identityVerifiedBy?: string;
+  verificationMethod?: 'NFC' | 'Aadhaar' | 'Photo' | 'ID_Card' | string;
+  notes?: string;
+  createdAt: string;
+}
+
+export type HostelComplaintCategory =
+  | 'Electrical'
+  | 'Water'
+  | 'Cleaning'
+  | 'Food'
+  | 'Room'
+  | 'Safety'
+  | 'Internet'
+  | 'Other'
+  | string;
+
+export type HostelComplaintStatus =
+  | 'OPEN'
+  | 'ASSIGNED'
+  | 'IN_PROGRESS'
+  | 'RESOLVED'
+  | 'REOPENED'
+  | 'CLOSED'
+  | 'open'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed'
+  | string;
+
+export interface HostelComplaint {
+  id: string;
+  traineeId: string;
+  traineeName: string;
+  hostelId?: string;
+  blockName?: string;
+  roomId?: string;
+  roomNumber?: string;
+  category: HostelComplaintCategory;
+  title: string;
+  description: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent' | string;
+  status: HostelComplaintStatus;
+  assignedTo?: string;
+  assignedStaffName?: string;
+  resolutionNotes?: string;
+  createdAt: string;
+  resolvedAt?: string;
+  photoUrl?: string;
+}
+
+export interface HostelOccupancyMetrics {
+  totalBlocks: number;
+  totalRooms: number;
+  totalBeds: number;
+  occupiedBeds: number;
+  availableBeds: number;
+  reservedBeds: number;
+  maintenanceBeds: number;
+  occupancyRate: number;
+  pendingRequests: number;
+  todayCheckIns: number;
+  todayCheckOuts: number;
+  openComplaints: number;
+  checkedInCount?: number;
+  activeComplaints?: number;
 }
 
