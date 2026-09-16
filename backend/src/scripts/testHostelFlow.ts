@@ -138,9 +138,9 @@ async function runHostelVerification() {
     // 10. Trainee personal status API check
     console.log('\n[STEP 10] Checking Trainee Personal Hostel Status endpoint...');
     const traineeStatus = await hostelService.getTraineeHostelStatus(testTraineeId);
-    console.log(`✅ Trainee Status: Hostel Availability: ${traineeStatus.hostelAvailability}`);
-    console.log(`   - Warden Contact: ${traineeStatus.contact.warden}`);
-    console.log(`   - Gate Timings: ${traineeStatus.contact.gateTimings}`);
+    console.log(`✅ Trainee Status: Availability: ${traineeStatus.hostelAvailability}, Resident: ${traineeStatus.isHostelResident}`);
+    console.log(`   - Warden Contact: ${traineeStatus.contact?.warden}`);
+    console.log(`   - Gate Timings: ${traineeStatus.contact?.gateTimings}`);
 
     console.log('\n========================================================');
     console.log('🎉 ALL 10 HOSTEL TESTS PASSED WITH 100% INTEGRITY & COMPLIANCE!');

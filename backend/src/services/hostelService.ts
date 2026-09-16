@@ -866,14 +866,25 @@ export const hostelService = {
     await hostelService.seedInitialDataIfEmpty();
 
     const residentInfo = await hostelService.isCurrentlyHostelResident(traineeId);
+    const hostelInfo = await prisma.hostel.findFirst();
+    const contact = {
+      hostelName: hostelInfo?.name || 'VAMNICOM Residential Hostel Complex',
+      address: hostelInfo?.address || 'University Road, Ganeshkhind, Pune',
+      warden: hostelInfo?.contactPerson || 'Shri Rajesh Kulkarni (Chief Warden)',
+      phone: hostelInfo?.contactPhone || '+91 20 2570 1000',
+      gateTimings: 'Main Gate: 06:00 AM - 10:00 PM',
+      messTimings: 'Breakfast: 07:30 - 09:00 | Lunch: 12:30 - 02:00 | Dinner: 07:30 - 09:30',
+    };
 
-    // If not resident, return non-resident eligibility status with no sensitive resident info
+    // If not resident, return non-resident eligibility status with no sensitive resident allocation
     if (!residentInfo.isHostelResident) {
       return {
         isHostelResident: false,
         status: residentInfo.status,
+        hostelAvailability: 'AVAILABLE' as const,
         allocation: null,
         complaints: [],
+        contact,
       };
     }
 
@@ -882,21 +893,13 @@ export const hostelService = {
       orderBy: { createdAt: 'desc' },
     });
 
-    const hostelInfo = await prisma.hostel.findFirst();
-
     return {
       isHostelResident: true,
       status: residentInfo.status,
+      hostelAvailability: 'OCCUPIED' as const,
       allocation: residentInfo.allocation,
       complaints,
-      contact: {
-        hostelName: hostelInfo?.name || 'VAMNICOM Residential Hostel Complex',
-        address: hostelInfo?.address || 'University Road, Ganeshkhind, Pune',
-        warden: hostelInfo?.contactPerson || 'Shri Rajesh Kulkarni (Chief Warden)',
-        phone: hostelInfo?.contactPhone || '+91 20 2570 1000',
-        gateTimings: 'Main Gate: 06:00 AM - 10:00 PM',
-        messTimings: 'Breakfast: 07:30 - 09:00 | Lunch: 12:30 - 02:00 | Dinner: 07:30 - 09:30',
-      },
+      contact,
     };
   },
 };
