@@ -20,6 +20,7 @@ RUN python -c "from insightface.app import FaceAnalysis; FaceAnalysis(name='buff
 # Invalidate cache for service code to ensure fresh build on Render
 ARG CACHEBUST=20260912_v6
 COPY service.py .
+COPY demo.py .
 COPY enrolled.pkl .
 
 ENV PORT=8000

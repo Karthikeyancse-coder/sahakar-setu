@@ -25,6 +25,76 @@ import { createError } from '../middleware/errorHandler';
 const FACE_SERVICE_URL = (process.env.FACE_SERVICE_URL || 'http://127.0.0.1:8000').trim().replace(/\/+$/, '');
 const CONFIDENCE_THRESHOLD = 0.50; // ArcFace cosine similarity threshold
 
+/**
+ * Safely calls the Python Face AI microservice with timeout, retry for cold starts,
+ * and robust HTML/gateway error sanitization (never leaking raw 502 HTML to the client).
+ */
+async function callFaceService(endpoint: string, payload: Record<string, any>, timeoutMs = 45000): Promise<any> {
+  const baseUrl = (process.env.FACE_SERVICE_URL || FACE_SERVICE_URL).trim().replace(/\/+$/, '');
+  const url = `${baseUrl}${endpoint}`;
+
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Connection': 'close',
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      const contentType = response.headers.get('content-type') || '';
+
+      if (!response.ok) {
+        const rawBody = await response.text();
+        console.error(`[FaceService Error (attempt ${attempt})] Endpoint: ${endpoint}, Status: ${response.status}, Content-Type: ${contentType}`);
+        console.error(`[FaceService Error] Snippet: ${rawBody.slice(0, 300)}`);
+
+        // If Render is waking up from idle (502/503), retry once after a short wait
+        if ((response.status === 502 || response.status === 503) && attempt === 1) {
+          console.log(`[FaceService] Upstream is waking up (status ${response.status}). Retrying in 3s...`);
+          await new Promise((resolve) => setTimeout(resolve, 3000));
+          continue;
+        }
+
+        if (contentType.includes('text/html') || rawBody.trim().startsWith('<')) {
+          throw createError(503, 'Face enrollment service is starting up or temporarily unavailable. Please retry in a few moments.');
+        }
+
+        try {
+          const jsonErr = JSON.parse(rawBody);
+          const detail = jsonErr.detail || jsonErr.message || jsonErr.error || 'Face service rejected the request';
+          throw createError(response.status >= 400 && response.status < 500 ? response.status : 503, detail);
+        } catch (e: any) {
+          if (e.status) throw e;
+          throw createError(503, rawBody.slice(0, 150) || 'Face service error occurred');
+        }
+      }
+
+      return await response.json();
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (attempt === 1 && (err.status === 502 || err.status === 503 || err.name === 'AbortError' || err.code === 'ECONNRESET')) {
+        console.log(`[FaceService] Attempt 1 failed (${err.message || err.code}). Retrying in 3s...`);
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        continue;
+      }
+      if (err.status) throw err;
+      console.error(`[FaceService] Network error calling ${endpoint}:`, err.message);
+      if (err.name === 'AbortError') {
+        throw createError(504, 'Face service request timed out. The service may be waking up — please try again in a few seconds.');
+      }
+      throw createError(503, 'Face recognition service is currently unavailable.');
+    }
+  }
+}
+
 // Short-lived verification tokens cache: token -> { traineeId, sessionId, expiresAt }
 const verificationTokens = new Map<string, { traineeId: string; sessionId: string; expiresAt: number }>();
 
@@ -424,25 +494,9 @@ export const attendanceService = {
 
     // 6. Send image to Python Face AI
     const FACE_MATCH_THRESHOLD = parseFloat(process.env.FACE_MATCH_THRESHOLD || '0.50');
-    let faceResult: any = null;
-    try {
-      console.log('[FACE API] Request received for web face recognition');
-      const response = await fetch(`${FACE_SERVICE_URL}/recognize`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Face service returned status ${response.status}: ${errText}`);
-      }
-      faceResult = await response.json();
-      console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
-    } catch (err: any) {
-      console.error('[AttendanceService] Python service error:', err.message);
-      throw createError(503, `Face recognition AI service unavailable: ${err.message}`);
-    }
+    console.log('[FACE API] Request received for web face recognition');
+    const faceResult = await callFaceService('/recognize', { image: imageBase64 });
+    console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
 
     const { matched, recognizedName, identity, confidence, message } = faceResult;
     const recognizedIdentity = (recognizedName || identity || '').trim();
@@ -751,25 +805,9 @@ export const attendanceService = {
     }
 
     // 8. Python Face AI Verification
-    let faceResult: any = null;
-    try {
-      console.log('[FACE API] Request received for physical classroom face verification');
-      const response = await fetch(`${FACE_SERVICE_URL}/recognize`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Face service returned status ${response.status}: ${errText}`);
-      }
-      faceResult = await response.json();
-      console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
-    } catch (fetchErr: any) {
-      console.error('[AttendanceService] Python Face Service error:', fetchErr.message);
-      throw createError(503, `Face recognition AI service unavailable: ${fetchErr.message}`);
-    }
+    console.log('[FACE API] Request received for physical classroom face verification');
+    const faceResult = await callFaceService('/recognize', { image: imageBase64 });
+    console.log('[FACE API] Python response received: matched=' + faceResult.matched + ', identity=' + (faceResult.identity || faceResult.recognizedName) + ', confidence=' + faceResult.confidence);
 
     const { matched, identity, confidence, message } = faceResult;
 
@@ -926,28 +964,12 @@ export const attendanceService = {
     const targetIdentity = (data.identity || trainee.name.split(' ')[0] || trainee.id).toLowerCase();
 
     // Call Python Face Service /enroll
-    let pyResult: any = null;
-    try {
-      console.log('[FACE API] Request received for face enrollment: identity=' + targetIdentity);
-      const response = await fetch(`${FACE_SERVICE_URL}/enroll`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identity: targetIdentity,
-          image: data.imageBase64,
-        }),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(errText);
-      }
-      pyResult = await response.json();
-      console.log('[FACE API] Python response received for enrollment: success=' + pyResult.success + ', total=' + pyResult.enrolled_count);
-    } catch (err: any) {
-      console.error('[AttendanceService] Face Enrollment error:', err);
-      throw createError(503, `Face enrollment service error: ${err.message}`);
-    }
+    console.log('[FACE API] Request received for face enrollment: identity=' + targetIdentity);
+    const pyResult = await callFaceService('/enroll', {
+      identity: targetIdentity,
+      image: data.imageBase64,
+    });
+    console.log('[FACE API] Python response received for enrollment: success=' + pyResult.success + ', total=' + pyResult.enrolled_count);
 
     // Update user in DB
     const updated = await prisma.user.update({
@@ -1073,5 +1095,42 @@ export const attendanceService = {
         rfidUid: a.user?.rfidUid,
       })),
     };
+  },
+
+  /**
+   * Diagnostic health check testing Node -> Python Face Service connectivity.
+   */
+  checkFaceHealth: async () => {
+    try {
+      const targetUrl = (process.env.FACE_SERVICE_URL || FACE_SERVICE_URL).trim().replace(/\/+$/, '');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const res = await fetch(`${targetUrl}/health`, {
+        signal: controller.signal,
+        headers: { 'Connection': 'close' },
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const data: any = await res.json().catch(() => ({}));
+        return {
+          status: 'ok',
+          faceService: 'reachable',
+          model: data.model || 'ArcFace buffalo_sc',
+          enrolledCount: data.enrolled_count ?? undefined,
+        };
+      }
+      return {
+        status: 'error',
+        faceService: 'unreachable',
+        statusCode: res.status,
+      };
+    } catch (err: any) {
+      return {
+        status: 'error',
+        faceService: 'unreachable',
+        error: 'Face service request failed or timed out',
+      };
+    }
   },
 };

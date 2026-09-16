@@ -179,6 +179,15 @@ export const attendanceController = {
     }
   },
 
+  checkFaceHealth: async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      const result = await attendanceService.checkFaceHealth();
+      res.status(result.status === 'ok' ? 200 : 503).json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   getTraineeHistory: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const targetUserId = (req.query.userId as string) || req.user!.userId;

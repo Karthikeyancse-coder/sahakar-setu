@@ -13,7 +13,7 @@ export const errorHandler = (
     console.error(`[Error ${status}]`, err.stack || message);
   }
 
-  res.status(status).json({ message });
+  res.status(status).json({ message, error: message, success: false });
 };
 
 /** Helper: create an error with an HTTP status code */

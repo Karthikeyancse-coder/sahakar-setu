@@ -25,6 +25,7 @@ import employerRoutes from './routes/employer';
 import deviceRoutes from './routes/device';
 import hostelRoutes from './routes/hostel';
 import { learningController } from './controllers/learningController';
+import { attendanceService } from './services/attendanceService';
 import { requireAuth } from './middleware/auth';
 
 const app = express();
@@ -100,6 +101,16 @@ app.use(express.json({ limit: '2mb' }));
 // ─── Health check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Sahakar Setu API', ts: new Date().toISOString() });
+});
+
+/**
+ * Diagnostic health check verifying Node.js Express -> Python Face Service connectivity.
+ * Safe endpoint: does not leak internal secrets or URLs to client.
+ */
+app.get('/api/health/face', async (_req, res) => {
+  const result = await attendanceService.checkFaceHealth();
+  const httpStatus = result.status === 'ok' ? 200 : 503;
+  res.status(httpStatus).json(result);
 });
 
 // ─── Routes ────────────────────────────────────────────────────────────────────

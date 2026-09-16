@@ -64,7 +64,9 @@ router.post('/device/verify-face', validate(deviceVerifyFaceSchema), attendanceC
 
 // ─── Trainee Attendance History & Biometric Enrollment ────────────────────────
 router.get('/history', requireAuth, attendanceController.getTraineeHistory);
+router.get('/face/health', attendanceController.checkFaceHealth);
 router.post('/face/enroll', requireAuth, attendanceController.enrollFace);
+router.post('/face/register', requireAuth, attendanceController.enrollFace);
 
 // ─── Faculty & Admin Session Operations ──────────────────────────────────────
 router.get('/sessions', requireAuth, attendanceController.getSessions);
