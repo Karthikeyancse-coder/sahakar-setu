@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "faces:list": "node scripts/manage_faces.js list",
+    "faces:delete": "node scripts/manage_faces.js delete"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
