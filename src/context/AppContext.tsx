@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { api, clearToken } from '../lib/api';
 import {
   User,
@@ -59,8 +59,11 @@ interface AppContextType {
   offlineQueueCount: number;
   activeView: string;
   activeViewParams: any;
+  isHostelResident: boolean;
+  hostelResidentLoading: boolean;
 
   // Actions
+  refreshHostelResidentStatus: () => Promise<void>;
   login: (identifier: string, password: string, rememberMe?: boolean) => Promise<void>;
   switchUser: (userId: string) => void;
   logout: () => void;
@@ -561,6 +564,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return SEED_USERS.map(u => ({ ...u, status: u.status || 'active' }));
   });
+
+  // Authoritative database-backed hostel resident eligibility (defaults to false / fail-closed)
+  const [isHostelResident, setIsHostelResident] = useState<boolean>(false);
+  const [hostelResidentLoading, setHostelResidentLoading] = useState<boolean>(false);
+
+  const refreshHostelResidentStatus = useCallback(async () => {
+    if (currentUser.role !== 'trainee') {
+      setIsHostelResident(false);
+      return;
+    }
+    try {
+      setHostelResidentLoading(true);
+      const res = await api.hostel.getResidentStatus();
+      setIsHostelResident(Boolean(res && res.isHostelResident));
+    } catch {
+      // Fail closed
+      setIsHostelResident(false);
+    } finally {
+      setHostelResidentLoading(false);
+    }
+  }, [currentUser.role]);
+
+  useEffect(() => {
+    refreshHostelResidentStatus();
+  }, [currentUser.id, currentUser.role, refreshHostelResidentStatus]);
 
   const addUser = (newUser: Omit<User, 'id'>) => {
     const created: User = {
@@ -1752,6 +1780,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleUserStatus,
         setEnrollments,
         setCourses,
+        isHostelResident,
+        hostelResidentLoading,
+        refreshHostelResidentStatus,
       }}
     >
       {children}

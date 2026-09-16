@@ -28,7 +28,10 @@ router.get('/complaints', requireAuth, hostelController.getComplaints);
 router.post('/complaints', requireAuth, hostelController.submitComplaint);
 router.patch('/complaints/:complaintId', requireAuth, hostelController.updateComplaint);
 
-// Trainee Personal Status
+// Trainee Personal Status & Eligibility (Authenticated JWT-only)
+router.get('/resident-status', requireAuth, hostelController.getResidentStatus);
+router.get('/trainee/status', requireAuth, hostelController.getResidentStatus);
 router.get('/my-status', requireAuth, hostelController.getTraineeHostelStatus);
+router.get('/trainee/my-status', requireAuth, hostelController.getTraineeHostelStatus);
 
 export default router;

@@ -231,11 +231,11 @@ export const TraineeHostelView: React.FC = () => {
             <div className="text-xs text-gray-600 space-y-1">
               <div className="flex justify-between">
                 <span>Check-In Authorized:</span>
-                <span className="font-bold text-gray-900">{allocation.checkInDate}</span>
+                <span className="font-bold text-gray-900">{allocation.checkInDate || allocation.allocatedFrom || 'Active Session'}</span>
               </div>
               <div className="flex justify-between">
                 <span>Expected Checkout:</span>
-                <span className="font-bold text-gray-900">{allocation.checkOutDate}</span>
+                <span className="font-bold text-gray-900">{allocation.checkOutDate || allocation.allocatedTo || 'Term End'}</span>
               </div>
             </div>
 
@@ -412,109 +412,16 @@ export const TraineeHostelView: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW C: IF NO REQUEST AT ALL (APPLICATION FORM) */}
-      {!allocation && !request && (
-        <div className="bg-white rounded-2xl border border-[#E0E6E2] p-6 md:p-8 shadow-sm max-w-2xl mx-auto space-y-6">
-          <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>Residential Privilege</span>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">Apply for Campus Hostel Accommodation</h2>
-            <p className="text-xs text-gray-500">
-              Cooperative society staff, board members, and PACS delegates traveling from outside Pune are eligible for subsidized residential stay.
-            </p>
+      {/* VIEW C: IF NOT ALLOCATED / NOT RESIDENT */}
+      {!allocation && (
+        <div className="bg-white rounded-2xl border border-[#E0E6E2] p-8 shadow-sm max-w-lg mx-auto text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-[#005B46] mx-auto">
+            <ShieldCheck className="w-6 h-6" />
           </div>
-
-          <form onSubmit={handleSubmitRequest} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Selected Training Programme</label>
-              <select
-                value={programmeId}
-                onChange={e => setProgrammeId(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005B46]/20 bg-white"
-              >
-                {programmes.map(p => (
-                  <option key={p.id} value={p.id}>{p.title} ({p.mode})</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Check-In Date</label>
-                <input
-                  type="date"
-                  value={checkInDate}
-                  onChange={e => setCheckInDate(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005B46]/20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Check-Out Date</label>
-                <input
-                  type="date"
-                  value={checkOutDate}
-                  onChange={e => setCheckOutDate(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005B46]/20"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">State</label>
-                <input
-                  type="text"
-                  value={stateName}
-                  onChange={e => setStateName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005B46]/20"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">District / Hometown</label>
-                <input
-                  type="text"
-                  value={districtName}
-                  onChange={e => setDistrictName(e.target.value)}
-                  className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#005B46]/20"
-                />
-              </div>
-            </div>
-
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-between">
-              <div>
-                <div className="text-xs font-bold text-emerald-950">Outstation Candidate (+40 Priority Score)</div>
-                <div className="text-[11px] text-emerald-800">Check this if your residence is located more than 50 km from institute.</div>
-              </div>
-              <input
-                type="checkbox"
-                checked={isOutstation}
-                onChange={e => setIsOutstation(e.target.checked)}
-                className="w-5 h-5 text-[#005B46] rounded focus:ring-0 cursor-pointer"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Special Needs or Medical Remarks</label>
-              <input
-                type="text"
-                placeholder="e.g. Ground floor preferred, diabetic diet requirement"
-                value={specialRequests}
-                onChange={e => setSpecialRequests(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-gray-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#005B46]/20"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 rounded-xl bg-[#005B46] hover:bg-[#004736] text-white font-bold text-sm shadow cursor-pointer transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Computing Priority & Submitting...' : 'Submit Accommodation Application'}</span>
-            </button>
-          </form>
+          <h2 className="text-lg font-bold text-gray-900">Hostel Resident Privilege Only</h2>
+          <p className="text-xs text-gray-500 leading-relaxed">
+            Digital gate pass issuance, room & bed records, and welfare desk services are exclusively accessible to registered in-residence trainees who have completed gate check-in.
+          </p>
         </div>
       )}
     </div>

@@ -69,7 +69,7 @@ import {
 import { TraineeHostelView } from './views/Trainee/TraineeHostelView';
 
 export const AppContent: React.FC = () => {
-  const { currentUser, activeView, isAuthenticated, navigate } = useApp();
+  const { currentUser, activeView, isAuthenticated, navigate, isHostelResident, hostelResidentLoading } = useApp();
 
   // Route Guard: Ensure current pathname matches logged-in user's role prefix
   useEffect(() => {
@@ -80,6 +80,16 @@ export const AppContent: React.FC = () => {
       navigate(`/${getRolePrefix(currentUser.role)}/dashboard`);
     }
   }, [currentUser.role, isAuthenticated, activeView, navigate]);
+
+  // Security Route Guard: Direct URL protection for /trainee/hostel
+  useEffect(() => {
+    if (!isAuthenticated || currentUser.role !== 'trainee') return;
+    if (hostelResidentLoading) return;
+    const currentPath = window.location.pathname;
+    if ((currentPath === '/trainee/hostel' || currentPath === '/hostel' || activeView === 'trainee_hostel') && !isHostelResident) {
+      navigate('/trainee/dashboard');
+    }
+  }, [currentUser.role, isAuthenticated, activeView, isHostelResident, hostelResidentLoading, navigate]);
 
   // 1. Standalone Public Verification Routes (No dashboard shell)
   if (activeView === 'skill_card_public') {
@@ -176,6 +186,21 @@ export const AppContent: React.FC = () => {
       case 'trainee_hostel':
       case 'hostel':
       case 'hostel_pass':
+        if (!isHostelResident) {
+          return (
+            <div className="p-6 max-w-lg mx-auto text-center space-y-4 my-8 animate-fadeIn">
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-sm font-semibold">
+                Hostel accommodation is available only to current hostel residents.
+              </div>
+              <button
+                onClick={() => navigate('/trainee/dashboard')}
+                className="px-4 py-2 rounded-xl bg-[#005B46] text-white text-xs font-bold shadow cursor-pointer hover:bg-[#004736]"
+              >
+                Return to Trainee Dashboard
+              </button>
+            </div>
+          );
+        }
         return <TraineeHostelView />;
       case 'profile':
         return <ProfileView />;

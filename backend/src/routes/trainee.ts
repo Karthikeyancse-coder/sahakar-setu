@@ -5,6 +5,8 @@ import { createError } from '../middleware/errorHandler';
 
 const router = Router();
 
+import { hostelController } from '../controllers/hostelController';
+
 router.get('/dashboard', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.userId;
@@ -19,5 +21,9 @@ router.get('/dashboard', requireAuth, async (req: Request, res: Response, next: 
     next(err);
   }
 });
+
+// Trainee Hostel Resident Status & Eligibility
+router.get('/hostel/status', requireAuth, hostelController.getResidentStatus);
+router.get('/hostel/my-status', requireAuth, hostelController.getTraineeHostelStatus);
 
 export default router;

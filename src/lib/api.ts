@@ -705,7 +705,8 @@ export const api = {
     },
     submitComplaint: (data: any) => post<any>('/api/hostel/complaints', data),
     updateComplaint: (id: string, data: { status: string; resolutionNotes?: string }) => patch<any>(`/api/hostel/complaints/${id}`, data),
-    getMyStatus: () => get<any>('/api/hostel/trainee/my-status'),
+    getResidentStatus: () => get<{ isHostelResident: boolean; status: string; allocation?: any }>('/api/trainee/hostel/status'),
+    getMyStatus: () => get<any>('/api/trainee/hostel/my-status'),
   },
 };
 

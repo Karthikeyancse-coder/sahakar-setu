@@ -760,15 +760,18 @@ export const hostelService = {
   },
 
   /**
-   * Submit Maintenance Complaint
+   * Submit Maintenance Complaint (Only for currently checked-in hostel residents)
    */
   submitComplaint: async (traineeId: string, data: any) => {
     const trainee = await prisma.user.findUnique({ where: { id: traineeId } });
     if (!trainee) throw createError(404, 'Trainee not found');
 
-    const activeAlloc = await prisma.hostelAllocation.findFirst({
-      where: { traineeId, status: { in: ['ALLOCATED', 'CHECKED_IN'] } },
-    });
+    const residentCheck = await hostelService.isCurrentlyHostelResident(traineeId);
+    if (!residentCheck.isHostelResident) {
+      throw createError(403, 'Only currently checked-in hostel residents can submit maintenance tickets');
+    }
+
+    const activeAlloc = residentCheck.allocation;
 
     return prisma.hostelComplaint.create({
       data: {
@@ -804,41 +807,87 @@ export const hostelService = {
   },
 
   /**
+   * Determine whether a trainee is ACTUALLY staying in the hostel
+   * Authoritative condition: Verified allocation with status CHECKED_IN and not checked out.
+   */
+  isCurrentlyHostelResident: async (userId: string) => {
+    await hostelService.seedInitialDataIfEmpty();
+
+    const checkedInAllocation = await prisma.hostelAllocation.findFirst({
+      where: {
+        traineeId: userId,
+        status: 'CHECKED_IN',
+        checkedInAt: { not: null },
+        checkedOutAt: null,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (checkedInAllocation) {
+      return {
+        isHostelResident: true,
+        status: 'CHECKED_IN',
+        allocation: checkedInAllocation,
+      };
+    }
+
+    // Inspect other allocation/request states for lifecycle diagnostics
+    const otherAllocation = await prisma.hostelAllocation.findFirst({
+      where: { traineeId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const pendingRequest = await prisma.hostelRequest.findFirst({
+      where: { traineeId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let status = 'NOT_RESIDENT';
+    if (otherAllocation?.status === 'CHECKED_OUT' || otherAllocation?.checkedOutAt) {
+      status = 'CHECKED_OUT';
+    } else if (otherAllocation?.status === 'ALLOCATED') {
+      status = 'ALLOCATED';
+    } else if (pendingRequest?.status) {
+      status = pendingRequest.status; // e.g. 'SUBMITTED', 'UNDER_REVIEW', 'APPROVED'
+    }
+
+    return {
+      isHostelResident: false,
+      status,
+      allocation: null,
+    };
+  },
+
+  /**
    * Trainee: Get my personal hostel status (Eligibility, Request, Allocation, Complaints)
+   * Strictly verifies authenticated user's residency.
    */
   getTraineeHostelStatus: async (traineeId: string) => {
     await hostelService.seedInitialDataIfEmpty();
 
-    const [activeAllocation, currentRequest, complaints] = await Promise.all([
-      prisma.hostelAllocation.findFirst({
-        where: { traineeId, status: { in: ['ALLOCATED', 'CHECKED_IN', 'RESERVED'] } },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.hostelRequest.findFirst({
-        where: { traineeId },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.hostelComplaint.findMany({
-        where: { traineeId },
-        orderBy: { createdAt: 'desc' },
-      }),
-    ]);
+    const residentInfo = await hostelService.isCurrentlyHostelResident(traineeId);
+
+    // If not resident, return non-resident eligibility status with no sensitive resident info
+    if (!residentInfo.isHostelResident) {
+      return {
+        isHostelResident: false,
+        status: residentInfo.status,
+        allocation: null,
+        complaints: [],
+      };
+    }
+
+    const complaints = await prisma.hostelComplaint.findMany({
+      where: { traineeId },
+      orderBy: { createdAt: 'desc' },
+    });
 
     const hostelInfo = await prisma.hostel.findFirst();
 
     return {
-      hostelAvailability: 'AVAILABLE',
-      programme: {
-        title: 'PACS Computerization & ERP Operations',
-        mode: 'Residential Full-Time',
-        hostelStatus: 'AVAILABLE',
-        mealAvailable: true,
-        hostelFee: 0, // Government sponsored
-        institution: 'VAMNICOM Pune (National Apex NCCT)',
-      },
-      hasActiveAllocation: Boolean(activeAllocation),
-      allocation: activeAllocation,
-      request: currentRequest,
+      isHostelResident: true,
+      status: residentInfo.status,
+      allocation: residentInfo.allocation,
       complaints,
       contact: {
         hostelName: hostelInfo?.name || 'VAMNICOM Residential Hostel Complex',

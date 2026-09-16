@@ -18,8 +18,19 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ onLogout, onNavigate }) => {
-  const { currentUser, logout, activeView, navigate, currentLanguage, t } = useApp();
-  const sections = NAVIGATION_BY_ROLE[currentUser.role] || [];
+  const { currentUser, logout, activeView, navigate, currentLanguage, t, isHostelResident } = useApp();
+  const rawSections = NAVIGATION_BY_ROLE[currentUser.role] || [];
+
+  // Security & Role Rule: Only trainees currently staying in the hostel see 'Hostel Accommodation'
+  const sections = rawSections.map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      if (item.id === 'trainee_hostel' && currentUser.role === 'trainee') {
+        return Boolean(isHostelResident);
+      }
+      return true;
+    }),
+  }));
 
   const handleNavClick = (item: NavItem) => {
     navigate(item.route);

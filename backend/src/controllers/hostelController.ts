@@ -130,7 +130,10 @@ export const hostelController = {
 
   submitComplaint: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const traineeId = req.user?.userId || req.body.traineeId;
+      const traineeId = req.user?.userId;
+      if (!traineeId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const data = await hostelService.submitComplaint(traineeId, req.body);
       res.status(201).json(data);
     } catch (err) {
@@ -148,9 +151,25 @@ export const hostelController = {
     }
   },
 
+  getResidentStatus: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const traineeId = req.user?.userId;
+      if (!traineeId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
+      const data = await hostelService.isCurrentlyHostelResident(traineeId);
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  },
+
   getTraineeHostelStatus: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const traineeId = req.user?.userId || (req.query.traineeId as string);
+      const traineeId = req.user?.userId;
+      if (!traineeId) {
+        return res.status(401).json({ message: 'Authentication required' });
+      }
       const data = await hostelService.getTraineeHostelStatus(traineeId);
       res.json(data);
     } catch (err) {
