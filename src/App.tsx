@@ -26,6 +26,12 @@ import { CareerChatView } from './views/Trainee/CareerChatView';
 import { ProfileView } from './views/Trainee/ProfileView';
 import { SettingsView } from './views/Trainee/SettingsView';
 import { HelpSupportView } from './views/Trainee/HelpSupportView';
+import { ProgrammeCatalogView } from './views/Trainee/ProgrammeCatalogView';
+import { ProgrammeDetailView } from './views/Trainee/ProgrammeDetailView';
+import { DocumentVaultView } from './views/Trainee/DocumentVaultView';
+import { ProfileReadinessView } from './views/Trainee/ProfileReadinessView';
+import { TraineeTimetable } from './views/Trainee/TraineeTimetable';
+import { FacultyTimetable } from './views/Faculty/FacultyTimetable';
 
 import { AdminDashboard } from './views/InstituteAdmin/AdminDashboard';
 import { ProgrammesManagement } from './views/InstituteAdmin/ProgrammesManagement';
@@ -157,9 +163,15 @@ export const AppContent: React.FC = () => {
         return <TraineeHome />;
       case 'courses':
         return <CourseCatalog />;
+      case 'programmes':
+      case 'programme_catalogue':
+        return <ProgrammeCatalogView />;
+      case 'programme_detail':
+        return <ProgrammeDetailView />;
       case 'course_detail':
         return <CourseDetail />;
       case 'my_courses':
+      case 'my_programmes':
         return <MyCourses />;
       case 'course_player':
       case 'course_view':
@@ -181,6 +193,16 @@ export const AppContent: React.FC = () => {
       case 'scan_attendance':
       case 'attendance':
         return <TraineeScanAttendanceView />;
+      case 'trainee_timetable':
+      case 'timetable':
+        return <TraineeTimetable />;
+      case 'document_vault':
+      case 'vault':
+      case 'documents':
+        return <DocumentVaultView />;
+      case 'profile_readiness':
+      case 'readiness':
+        return <ProfileReadinessView />;
       case 'attendance_kiosk':
         return <TraineeHome />;
       case 'trainee_hostel':
@@ -248,6 +270,9 @@ export const AppContent: React.FC = () => {
       case 'faculty_attendance':
       case 'sessions':
         return <FacultyAttendanceView />;
+      case 'faculty_timetable':
+      case 'timetable':
+        return <FacultyTimetable />;
       case 'settings':
         return <SettingsView />;
       case 'profile':

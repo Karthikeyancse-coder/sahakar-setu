@@ -1125,32 +1125,90 @@ export class InstituteService {
   }
 
   /**
-   * Create session with conflict check (instructor / room overlap).
+   * Check for multi-dimensional timetable scheduling conflicts (Room, Faculty, Batch).
+   */
+  async checkSessionConflict(params: {
+    sessionId?: string;
+    instituteId: string;
+    date: string;
+    timeSlot: string;
+    room?: string;
+    classroomId?: string;
+    instructor?: string;
+    facultyId?: string;
+    batchId?: string;
+  }) {
+    const where: any = {
+      instituteId: params.instituteId,
+      date: params.date,
+      timeSlot: params.timeSlot,
+    };
+
+    if (params.sessionId) {
+      where.id = { not: params.sessionId };
+    }
+
+    const orConditions: any[] = [];
+    if (params.room) orConditions.push({ room: params.room });
+    if (params.classroomId) orConditions.push({ classroomId: params.classroomId });
+    if (params.instructor) orConditions.push({ instructor: params.instructor });
+    if (params.facultyId) orConditions.push({ facultyId: params.facultyId });
+    if (params.batchId) orConditions.push({ batchId: params.batchId });
+
+    if (orConditions.length === 0) return { hasConflict: false };
+
+    where.OR = orConditions;
+
+    const conflicts = await prisma.session.findMany({
+      where,
+      include: {
+        batch: { select: { id: true, name: true } },
+        programme: { select: { id: true, title: true } },
+      },
+    });
+
+    if (conflicts.length > 0) {
+      const c = conflicts[0];
+      let reason = 'Scheduling conflict detected';
+      if (params.room && c.room === params.room) {
+        reason = `Room / Hall '${params.room}' is already allocated to '${c.title}' during ${params.timeSlot}`;
+      } else if (params.classroomId && c.classroomId === params.classroomId) {
+        reason = `Classroom '${params.classroomId}' is occupied by '${c.title}' during ${params.timeSlot}`;
+      } else if ((params.facultyId && c.facultyId === params.facultyId) || (params.instructor && c.instructor === params.instructor)) {
+        reason = `Faculty '${params.instructor || c.instructor}' is already teaching '${c.title}' during ${params.timeSlot}`;
+      } else if (params.batchId && c.batchId === params.batchId) {
+        reason = `Batch '${c.batch?.name || params.batchId}' already has session '${c.title}' scheduled at ${params.timeSlot}`;
+      }
+      return {
+        hasConflict: true,
+        conflictingSession: c,
+        message: reason,
+      };
+    }
+
+    return { hasConflict: false };
+  }
+
+  /**
+   * Create session with conflict check (instructor / room / batch overlap).
    */
   async createSession(data: any, user: UserAuthContext) {
     const instituteId = this.resolveInstituteId(user);
 
-    // Conflict prevention
-    const existingConflicts = await prisma.session.findMany({
-      where: {
-        instituteId,
-        date: data.date,
-        timeSlot: data.timeSlot,
-        OR: [
-          { room: data.room },
-          { instructor: data.instructor },
-        ],
-      },
+    // Conflict prevention check
+    const conflictResult = await this.checkSessionConflict({
+      instituteId,
+      date: data.date,
+      timeSlot: data.timeSlot,
+      room: data.room,
+      classroomId: data.classroomId,
+      instructor: data.instructor,
+      facultyId: data.facultyId,
+      batchId: data.batchId,
     });
 
-    if (existingConflicts.length > 0) {
-      const conflict = existingConflicts[0];
-      if (conflict.room === data.room) {
-        throw createError(409, `Room '${data.room}' is already booked for '${conflict.title}' during ${data.timeSlot}.`);
-      }
-      if (conflict.instructor === data.instructor) {
-        throw createError(409, `Instructor '${data.instructor}' is already scheduled for '${conflict.title}' during ${data.timeSlot}.`);
-      }
+    if (conflictResult.hasConflict) {
+      throw createError(409, conflictResult.message || 'Timetable scheduling conflict detected');
     }
 
     const qrToken = `QR-${instituteId.toUpperCase()}-${Date.now()}`;
@@ -1160,20 +1218,34 @@ export class InstituteService {
       data: {
         id,
         programmeId: data.programmeId || 'prog-pacs-2026-01',
+        batchId: data.batchId || null,
         title: data.title,
         instructor: data.instructor,
+        facultyId: data.facultyId || null,
         date: data.date,
         timeSlot: data.timeSlot,
         room: data.room,
+        capacity: data.capacity ? Number(data.capacity) : 40,
+        classroomId: data.classroomId || null,
+        attendanceMode: data.attendanceMode || 'FACE_RFID',
         qrToken,
         active: data.active ?? true,
         instituteId,
+        sessionMode: data.sessionMode || 'PHYSICAL',
+        sessionType: data.sessionType || 'LECTURE',
+        attendanceRequired: data.attendanceRequired !== false,
+        meetingUrl: data.meetingUrl || null,
+        notes: data.notes || null,
+      },
+      include: {
+        batch: true,
+        programme: true,
       },
     });
   }
 
   /**
-   * Update session.
+   * Update session with conflict check.
    */
   async updateSession(sessionId: string, data: any, user: UserAuthContext) {
     const instituteId = this.resolveInstituteId(user);
@@ -1186,15 +1258,48 @@ export class InstituteService {
       throw createError(403, 'Unauthorized: Session belongs to another institute.');
     }
 
+    // Conflict prevention check if date or timeSlot or room or faculty changed
+    const targetDate = data.date ?? existing.date;
+    const targetSlot = data.timeSlot ?? existing.timeSlot;
+    const targetRoom = data.room ?? existing.room;
+    const targetFaculty = data.facultyId ?? existing.facultyId;
+    const targetBatch = data.batchId ?? existing.batchId;
+
+    const conflictResult = await this.checkSessionConflict({
+      sessionId,
+      instituteId,
+      date: targetDate,
+      timeSlot: targetSlot,
+      room: targetRoom,
+      classroomId: data.classroomId ?? existing.classroomId ?? undefined,
+      instructor: data.instructor ?? existing.instructor,
+      facultyId: targetFaculty,
+      batchId: targetBatch,
+    });
+
+    if (conflictResult.hasConflict) {
+      throw createError(409, conflictResult.message || 'Timetable scheduling conflict detected');
+    }
+
     return prisma.session.update({
       where: { id: sessionId },
       data: {
         title: data.title ?? existing.title,
         instructor: data.instructor ?? existing.instructor,
-        date: data.date ?? existing.date,
-        timeSlot: data.timeSlot ?? existing.timeSlot,
-        room: data.room ?? existing.room,
+        facultyId: data.facultyId ?? existing.facultyId,
+        batchId: data.batchId ?? existing.batchId,
+        date: targetDate,
+        timeSlot: targetSlot,
+        room: targetRoom,
+        classroomId: data.classroomId ?? existing.classroomId,
+        sessionMode: data.sessionMode ?? existing.sessionMode,
+        sessionType: data.sessionType ?? existing.sessionType,
+        attendanceMode: data.attendanceMode ?? existing.attendanceMode,
         active: data.active ?? existing.active,
+      },
+      include: {
+        batch: true,
+        programme: true,
       },
     });
   }
@@ -1221,6 +1326,133 @@ export class InstituteService {
   }
 
   /**
+   * Get Batches for Institute programmes
+   */
+  async getBatches(programmeId?: string, user?: UserAuthContext) {
+    const where: any = {};
+    if (programmeId && programmeId !== 'all') {
+      where.programmeId = programmeId;
+    }
+    if (user) {
+      const instituteId = this.resolveInstituteId(user);
+      where.programme = { instituteId };
+    }
+
+    return prisma.batch.findMany({
+      where,
+      include: {
+        programme: { select: { id: true, title: true, deliveryMode: true, instituteId: true } },
+        _count: {
+          select: {
+            sessions: true,
+            applications: true,
+          },
+        },
+      },
+      orderBy: { startDate: 'desc' },
+    });
+  }
+
+  /**
+   * Create Batch for Programme Offering
+   */
+  async createBatch(data: any, user: UserAuthContext) {
+    const programme = await prisma.programme.findUnique({ where: { id: data.programmeId } });
+    if (!programme) throw createError(404, 'Programme offering not found');
+
+    return prisma.batch.create({
+      data: {
+        programmeId: data.programmeId,
+        name: data.name,
+        startDate: data.startDate || programme.startDate,
+        endDate: data.endDate || programme.endDate,
+        capacity: data.capacity ? Number(data.capacity) : 30,
+        room: data.room || 'Lecture Hall 1',
+        classroomId: data.classroomId || 'A101',
+        kioskId: data.kioskId || 'kiosk-pi-01',
+        facultyId: data.facultyId || null,
+        status: data.status || 'ACTIVE',
+      },
+      include: {
+        programme: true,
+      },
+    });
+  }
+
+  /**
+   * Get Faculty Timetable (Physical & Hybrid Sessions only)
+   */
+  async getFacultyTimetable(facultyId: string, user: UserAuthContext) {
+    const instituteId = this.resolveInstituteId(user);
+
+    const sessions = await prisma.session.findMany({
+      where: {
+        OR: [
+          { facultyId },
+          { instructor: { contains: 'Meenakshi', mode: 'insensitive' } },
+        ],
+        instituteId,
+      },
+      include: {
+        batch: true,
+        programme: true,
+        attendance: true,
+      },
+      orderBy: [{ date: 'asc' }, { timeSlot: 'asc' }],
+    });
+
+    const daysOrder = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const scheduleByDay: Record<string, any[]> = {};
+    daysOrder.forEach(d => { scheduleByDay[d] = []; });
+
+    const formattedSessions = sessions.map(s => {
+      const dynamicStatus = this.calculateSessionStatus(s.timeSlot, s.date);
+      const dateObj = new Date(s.date);
+      const day = isNaN(dateObj.getTime())
+        ? 'Monday'
+        : dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+
+      const item = {
+        id: s.id,
+        programmeId: s.programmeId,
+        programmeTitle: s.programme?.title || s.title,
+        batchId: s.batchId,
+        batchName: s.batch?.name || 'Regular Batch',
+        title: s.title,
+        instructor: s.instructor,
+        date: s.date,
+        day,
+        timeSlot: s.timeSlot,
+        room: s.room,
+        classroomId: s.classroomId,
+        sessionMode: s.sessionMode || 'PHYSICAL',
+        sessionType: s.sessionType || 'LECTURE',
+        attendanceMode: s.attendanceMode || 'FACE_RFID',
+        active: s.active,
+        status: dynamicStatus,
+        presentCount: s.attendance.length,
+        capacity: s.capacity || 40,
+        qrToken: s.qrToken,
+      };
+
+      if (scheduleByDay[day]) {
+        scheduleByDay[day].push(item);
+      } else {
+        scheduleByDay['Monday'].push(item);
+      }
+
+      return item;
+    });
+
+    return {
+      facultyId,
+      totalSessions: formattedSessions.length,
+      sessions: formattedSessions,
+      scheduleByDay,
+    };
+  }
+
+  /**
    * Get weekly timetable for institute.
    */
   async getTimetable(user: UserAuthContext) {
@@ -1231,7 +1463,6 @@ export class InstituteService {
     });
   }
 
-  /**
   /**
    * Get all registered NCCT institutes for directory filtering.
    */

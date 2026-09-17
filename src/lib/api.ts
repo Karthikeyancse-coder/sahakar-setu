@@ -708,6 +708,98 @@ export const api = {
     getResidentStatus: () => get<{ isHostelResident: boolean; status: string; allocation?: any }>('/api/trainee/hostel/status'),
     getMyStatus: () => get<any>('/api/trainee/hostel/my-status'),
   },
+
+  // ─── NCCT Programmes & Admissions ──────────────────────────────────────────
+  programmes: {
+    getTypes: () => get<any[]>('/api/programmes/types', false),
+    getAll: (params?: {
+      search?: string;
+      programmeTypeCode?: string;
+      deliveryMode?: string;
+      instituteId?: string;
+      academicYear?: string;
+      status?: string;
+      limit?: number;
+      page?: number;
+    }) => {
+      const q = new URLSearchParams();
+      if (params?.search) q.append('search', params.search);
+      if (params?.programmeTypeCode) q.append('programmeTypeCode', params.programmeTypeCode);
+      if (params?.deliveryMode) q.append('deliveryMode', params.deliveryMode);
+      if (params?.instituteId) q.append('instituteId', params.instituteId);
+      if (params?.academicYear) q.append('academicYear', params.academicYear);
+      if (params?.status) q.append('status', params.status);
+      if (params?.limit) q.append('limit', String(params.limit));
+      if (params?.page) q.append('page', String(params.page));
+      const qs = q.toString();
+      return get<{ data: any[]; pagination: any }>(`/api/programmes${qs ? `?${qs}` : ''}`, false);
+    },
+    getById: (id: string) => get<any>(`/api/programmes/${id}`),
+    checkEligibility: (id: string) => get<any>(`/api/programmes/${id}/eligibility`),
+    apply: (id: string, payload: {
+      batchId?: string;
+      hostelRequired?: boolean;
+      notes?: string;
+      consentedDocTypes?: string[];
+      roomTypePreference?: string;
+      foodPreference?: string;
+    }) => post<any>(`/api/programmes/${id}/apply`, payload),
+    getMyApplications: () => get<any[]>('/api/programmes/my-applications'),
+    getMyTimetable: () => get<any>('/api/programmes/my-timetable'),
+  },
+
+  // ─── Reusable Document Vault & Profile Readiness ───────────────────────────
+  vault: {
+    getDocuments: () => get<any[]>('/api/vault'),
+    uploadDocument: (data: {
+      documentType: string;
+      fileName: string;
+      filePath?: string;
+      fileSize?: number;
+      mimeType?: string;
+      metadata?: any;
+    }) => post<any>('/api/vault/upload', data),
+    deleteDocument: (id: string) => del<any>(`/api/vault/${id}`),
+    getReadiness: () => get<{
+      userId: string;
+      readinessScore: number;
+      readinessLevel: string;
+      totalDocuments: number;
+      verifiedDocumentsCount: number;
+      pendingDocumentsCount: number;
+      checklist: any[];
+      canApplyImmediately: boolean;
+    }>('/api/vault/readiness'),
+  },
+
+  // ─── Faculty Timetable ───────────────────────────────────────────────────────
+  facultyTimetable: {
+    getSchedule: () => get<{
+      facultyId: string;
+      totalSessions: number;
+      sessions: any[];
+      scheduleByDay: Record<string, any[]>;
+    }>('/api/faculty/timetable'),
+  },
+
+  // ─── Batches & Timetable Conflict Checking ──────────────────────────────────
+  batches: {
+    getAll: (programmeId?: string) => {
+      const qs = programmeId ? `?programmeId=${programmeId}` : '';
+      return get<any[]>(`/api/institute/batches${qs}`);
+    },
+    create: (data: any) => post<any>('/api/institute/batches', data),
+    checkConflict: (data: {
+      date: string;
+      timeSlot: string;
+      room?: string;
+      classroomId?: string;
+      instructor?: string;
+      facultyId?: string;
+      batchId?: string;
+      sessionId?: string;
+    }) => post<{ hasConflict: boolean; message?: string; conflictingSession?: any }>('/api/institute/sessions/check-conflict', data),
+  },
 };
 
 export interface NationalSummary {

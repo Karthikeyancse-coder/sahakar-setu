@@ -24,6 +24,8 @@ import nationalRoutes from './routes/national';
 import employerRoutes from './routes/employer';
 import deviceRoutes from './routes/device';
 import hostelRoutes from './routes/hostel';
+import programmeRoutes from './routes/programme';
+import vaultRoutes from './routes/vault';
 import { learningController } from './controllers/learningController';
 import { attendanceService } from './services/attendanceService';
 import { requireAuth } from './middleware/auth';
@@ -137,6 +139,8 @@ app.use('/api/employer', employerRoutes);
 app.use('/api/device', deviceRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/hostel', hostelRoutes);
+app.use('/api/programmes', programmeRoutes);
+app.use('/api/vault', vaultRoutes);
 app.get('/api/institutes', async (_req, res, next) => {
   try {
     const { instituteService } = await import('./services/instituteService');

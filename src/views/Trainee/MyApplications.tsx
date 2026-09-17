@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  GraduationCap,
   Briefcase,
   MapPin,
   Building,
@@ -11,60 +12,84 @@ import {
   ExternalLink,
   Sparkles,
   AlertTriangle,
-  BookOpen
+  BookOpen,
+  Calendar,
+  BedDouble,
+  ShieldCheck,
+  FolderKanban,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageContainer } from '../../components/layout/PageContainer';
-import { SimulatedBadge } from '../../components/common/SimulatedBadge';
 import api from '../../lib/api';
 
 export const MyApplications: React.FC = () => {
   const { jobs, jobInterests, currentUser, navigate, t } = useApp();
-  const [applications, setApplications] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [activeTab, setActiveTab] = useState<'programmes' | 'jobs'>('programmes');
+
+  // Programme Applications
+  const [programmeApps, setProgrammeApps] = useState<any[]>([]);
+  const [progLoading, setProgLoading] = useState<boolean>(true);
+
+  // Job Applications
+  const [jobApplications, setJobApplications] = useState<any[]>([]);
+  const [jobLoading, setJobLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
+    // Load Programme Applications
+    api.programmes
+      .getMyApplications()
+      .then(apps => {
+        setProgrammeApps(apps || []);
+      })
+      .catch(err => {
+        console.warn('Failed to load programme applications:', err);
+      })
+      .finally(() => {
+        setProgLoading(false);
+      });
 
+    // Load Job Applications
     api.jobs
       .myApplications()
       .then(serverApps => {
-        if (isMounted && Array.isArray(serverApps)) {
-          setApplications(serverApps);
-          setIsLoading(false);
+        if (Array.isArray(serverApps)) {
+          setJobApplications(serverApps);
         }
       })
       .catch(err => {
-        if (isMounted) {
-          console.warn('Falling back to local job interests:', err);
-          // Fallback to context
-          const localApps = jobInterests
-            .filter(i => i.userId === currentUser.id)
-            .map(interest => {
-              const job = jobs.find(j => j.id === interest.jobPostingId);
-              return { ...interest, job };
-            })
-            .filter(item => item.job !== undefined);
-          setApplications(localApps);
-          setIsLoading(false);
-        }
+        console.warn('Falling back to local job interests:', err);
+        const localApps = jobInterests
+          .filter(i => i.userId === currentUser.id)
+          .map(interest => {
+            const job = jobs.find(j => j.id === interest.jobPostingId);
+            return { ...interest, job };
+          })
+          .filter(item => item.job !== undefined);
+        setJobApplications(localApps);
+      })
+      .finally(() => {
+        setJobLoading(false);
       });
-
-    return () => {
-      isMounted = false;
-    };
   }, [currentUser.id, jobInterests, jobs]);
 
   const getStatusBadge = (status: string) => {
     const s = (status || 'APPLIED').toUpperCase();
     switch (s) {
+      case 'ENROLLED':
+      case 'APPROVED':
+      case 'SELECTED':
+        return (
+          <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{s === 'ENROLLED' ? 'Enrolled & Confirmed' : s}</span>
+          </span>
+        );
       case 'APPLIED':
       case 'SUBMITTED':
         return (
           <span className="px-3 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-blue-600" />
-            <span>Applied</span>
+            <span>Submitted</span>
           </span>
         );
       case 'UNDER_REVIEW':
@@ -78,34 +103,13 @@ export const MyApplications: React.FC = () => {
       case 'SHORTLISTED':
         return (
           <span className="px-3 py-1 rounded-xl bg-purple-50 border border-purple-300 text-purple-900 text-xs font-bold flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-purple-600" />
-            <span>Shortlisted for Interview</span>
-          </span>
-        );
-      case 'INTERVIEW':
-        return (
-          <span className="px-3 py-1 rounded-xl bg-cyan-50 border border-cyan-300 text-cyan-900 text-xs font-bold flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-600" />
-            <span>Interview Scheduled</span>
-          </span>
-        );
-      case 'SELECTED':
-        return (
-          <span className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-bold flex items-center gap-1.5">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Selected</span>
-          </span>
-        );
-      case 'REJECTED':
-        return (
-          <span className="px-3 py-1 rounded-xl bg-rose-50 border border-rose-300 text-rose-800 text-xs font-bold flex items-center gap-1.5">
-            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
-            <span>Not Selected</span>
+            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+            <span>Shortlisted</span>
           </span>
         );
       default:
         return (
-          <span className="px-3 py-1 rounded-xl bg-gray-100 text-gray-800 text-xs font-bold">
+          <span className="px-3 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">
             {status}
           </span>
         );
@@ -114,147 +118,220 @@ export const MyApplications: React.FC = () => {
 
   return (
     <PageContainer>
-      {/* 1. Header Banner */}
-      <div className="bg-white p-4 sm:p-6 rounded-2xl border border-govText-border shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-govTeal-700 uppercase tracking-wider">
-              Recruitment Direct Pathway
-            </span>
-            <SimulatedBadge text="Cooperative Placement Portal" />
+      <div className="space-y-8 animate-fadeIn max-w-6xl mx-auto pb-16">
+        {/* ─── Hero Header ──────────────────────────────────────────────────── */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#003B2B] to-[#005B46] text-white p-8 shadow-xl border border-emerald-700/40 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold uppercase tracking-wider text-emerald-200">
+              <Send className="w-3.5 h-3.5 text-amber-300" /> Application Tracking Center
+            </div>
+            <h1 className="text-3xl font-black tracking-tight">My Applications</h1>
+            <p className="text-emerald-100 text-xs md:text-sm leading-relaxed">
+              Track your admission status for NCCT institutional programmes and employment applications submitted across state cooperative federations.
+            </p>
           </div>
-          <h1 className="text-xl sm:text-2xl font-extrabold text-govText-primary mt-1">
-            {t.myApplications?.title || 'My Registered Job Applications'}
-          </h1>
-          <p className="text-xs text-govText-secondary mt-1">
-            {t.myApplications?.subtitle || 'Track your direct expressions of interest submitted to cooperative employers.'}
-          </p>
         </div>
 
-        <button
-          onClick={() => navigate('jobs')}
-          className="w-full sm:w-auto px-4 py-3 sm:py-2.5 bg-govTeal-600 hover:bg-govTeal-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm min-h-[44px]"
-        >
-          <Briefcase className="w-4 h-4 text-saffron-300" />
-          <span>Explore More Openings</span>
-        </button>
-      </div>
-
-      {/* 2. Applications List */}
-      {isLoading ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-govText-border">
-          <div className="w-8 h-8 border-3 border-govTeal-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-xs font-semibold text-govText-secondary">Loading your submitted applications...</p>
-        </div>
-      ) : applications.length === 0 ? (
-        <div className="bg-white rounded-2xl p-8 sm:p-12 text-center border border-govText-border space-y-4">
-          <Briefcase className="w-12 h-12 text-govTeal-400 mx-auto" />
-          <h3 className="text-base font-bold text-govText-primary">
-            {t.myApplications?.emptyTitle || 'No job applications submitted yet'}
-          </h3>
-          <p className="text-xs text-govText-secondary max-w-sm mx-auto">
-            Browse verified openings from AMUL, IFFCO, and State Cooperative Apex Banks seeking NCCT certified talent.
-          </p>
+        {/* ─── Navigation Tabs ──────────────────────────────────────────────── */}
+        <div className="flex items-center gap-3 border-b border-slate-200/80">
           <button
-            onClick={() => navigate('jobs')}
-            className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-saffron-500 hover:bg-saffron-600 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer inline-flex items-center justify-center gap-2 min-h-[44px]"
+            onClick={() => setActiveTab('programmes')}
+            className={`pb-3 px-2 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'programmes'
+                ? 'border-[#005B46] text-[#005B46]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
           >
-            <span>Browse Job Opportunities</span>
-            <ArrowRight className="w-4 h-4" />
+            <GraduationCap className="w-4 h-4" />
+            <span>Programme Admissions</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800">
+              {programmeApps.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('jobs')}
+            className={`pb-3 px-2 text-sm font-bold flex items-center gap-2 border-b-2 transition-all cursor-pointer ${
+              activeTab === 'jobs'
+                ? 'border-[#005B46] text-[#005B46]'
+                : 'border-transparent text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Job Opportunities</span>
+            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-800">
+              {jobApplications.length}
+            </span>
           </button>
         </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="text-xs font-bold text-govText-muted uppercase tracking-wider px-1">
-            Active Submissions ({applications.length})
-          </div>
 
-          <div className="space-y-3">
-            {applications.map(app => {
-              const job = app.job;
-              if (!job) return null;
-
-              const matchScore = app.matchScore ?? 80;
-              const missing = Array.isArray(app.missingSkills) ? app.missingSkills : [];
-
-              return (
-                <div
-                  key={app.id}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border border-govText-border shadow-xs hover:border-govTeal-300 transition-all flex flex-col gap-4"
+        {/* ─── TAB 1: NCCT PROGRAMME ADMISSION APPLICATIONS ─────────────────── */}
+        {activeTab === 'programmes' && (
+          <div className="space-y-4">
+            {progLoading ? (
+              <div className="p-16 text-center space-y-3">
+                <div className="w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-semibold text-slate-500">Loading Programme Applications...</p>
+              </div>
+            ) : programmeApps.length === 0 ? (
+              <div className="p-12 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 space-y-3">
+                <GraduationCap className="w-12 h-12 text-slate-400 mx-auto" />
+                <h3 className="text-base font-bold text-slate-700">No programme applications yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Explore our premier diplomas and executive programmes in the Programme Catalogue and apply instantly via your Document Vault.
+                </p>
+                <button
+                  onClick={() => navigate('/trainee/programmes')}
+                  className="px-5 py-2.5 rounded-xl bg-[#005B46] text-white text-xs font-bold hover:bg-[#004736] cursor-pointer"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-bold text-govTeal-800 bg-govTeal-50 px-2.5 py-0.5 rounded-md border border-govTeal-200">
-                          {job.employerName}
-                        </span>
-                        <span className="text-[11px] text-govText-muted flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          <span>Submitted: {app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : app.timestamp}</span>
-                        </span>
+                  Browse Programme Catalogue
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {programmeApps.map(app => (
+                  <div
+                    key={app.id}
+                    className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-md transition-all space-y-4"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                            {app.programme?.programmeType?.name || 'NCCT Programme'}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            Applied {new Date(app.appliedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <h3 className="text-lg font-black text-slate-900 leading-snug">
+                          {app.programme?.title}
+                        </h3>
                       </div>
 
-                      <h3 className="text-base font-bold text-govText-primary">
-                        {job.title}
-                      </h3>
+                      <div>{getStatusBadge(app.status)}</div>
+                    </div>
 
-                      <div className="flex flex-wrap items-center gap-4 text-xs text-govText-secondary">
-                        <span className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5 text-govTeal-600" />
-                          <span>{job.location}</span>
+                    {/* Metadata Ribbon */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-xs">
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Assigned Batch</span>
+                        <strong className="text-slate-800">{app.batch?.name || 'Batch 2026-A'}</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Eligibility Verification</span>
+                        <span className="inline-flex items-center gap-1 font-bold text-emerald-700">
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {app.eligibilityResult || 'ELIGIBLE'}
                         </span>
-                        <span className="flex items-center gap-1 font-bold text-govTeal-800">
-                          <IndianRupee className="w-3.5 h-3.5 text-govTeal-600" />
-                          <span>{job.salaryRange}</span>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 block mb-0.5">Hostel Accommodation</span>
+                        <span className="font-semibold text-slate-800 flex items-center gap-1">
+                          <BedDouble className="w-3.5 h-3.5 text-amber-600" />
+                          {app.hostelRequired ? `Requested (${app.hostelStatus})` : 'Not Requested'}
                         </span>
                       </div>
                     </div>
 
-                    {/* Match Score & Status Chips */}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="px-3 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-extrabold flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>{matchScore}% Match</span>
-                      </div>
-
-                      {getStatusBadge(app.status)}
-                    </div>
-                  </div>
-
-                  {/* Missing Skills & Recommended Course if any */}
-                  {missing.length > 0 && (
-                    <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="font-semibold text-amber-800 flex items-center gap-1">
-                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Identified Skill Gap:</span>
+                    {/* Consented Documents */}
+                    {app.consentedDocs?.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                          <FolderKanban className="w-3.5 h-3.5" /> Consented Vault Docs:
                         </span>
-                        {missing.map((sk: string, idx: number) => (
+                        {app.consentedDocs.map((cd: any) => (
                           <span
-                            key={idx}
-                            className="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded text-[11px] font-medium"
+                            key={cd.id}
+                            className="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-bold"
                           >
-                            {sk}
+                            {cd.document?.documentType?.replace(/_/g, ' ') || 'Document'}
                           </span>
                         ))}
                       </div>
+                    )}
 
+                    {/* Footer Actions */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                       <button
-                        onClick={() => navigate('courses')}
-                        className="text-govTeal-700 hover:text-govTeal-800 font-bold text-xs flex items-center gap-1 cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                        onClick={() => navigate(`/trainee/programmes/${app.programmeId}`)}
+                        className="text-xs font-bold text-[#005B46] hover:underline cursor-pointer flex items-center gap-1"
                       >
-                        <BookOpen className="w-3.5 h-3.5" />
-                        <span>View Recommended Courses</span>
-                        <ArrowRight className="w-3 h-3" />
+                        View Programme Details <ArrowRight className="w-3.5 h-3.5" />
                       </button>
+
+                      {app.status === 'ENROLLED' && (
+                        <button
+                          onClick={() => navigate('/trainee/timetable')}
+                          className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-[#005B46] text-white text-xs font-bold transition-all shadow cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Calendar className="w-3.5 h-3.5" /> View Timetable Schedule
+                        </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        )}
+
+        {/* ─── TAB 2: EMPLOYMENT & JOB APPLICATIONS ─────────────────────────── */}
+        {activeTab === 'jobs' && (
+          <div className="space-y-4">
+            {jobLoading ? (
+              <div className="p-16 text-center space-y-3">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                <p className="text-xs font-semibold text-slate-500">Loading Job Applications...</p>
+              </div>
+            ) : jobApplications.length === 0 ? (
+              <div className="p-12 text-center rounded-3xl bg-slate-50 border border-dashed border-slate-300 space-y-3">
+                <Briefcase className="w-12 h-12 text-slate-400 mx-auto" />
+                <h3 className="text-base font-bold text-slate-700">No job applications submitted yet</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Browse verified openings posted by Amul, KMF, IFFCO, and State Cooperative Central Banks.
+                </p>
+                <button
+                  onClick={() => navigate('/trainee/jobs')}
+                  className="px-5 py-2.5 rounded-xl bg-[#005B46] text-white text-xs font-bold hover:bg-[#004736] cursor-pointer"
+                >
+                  Browse Job Openings
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {jobApplications.map(app => (
+                  <div
+                    key={app.id}
+                    className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm space-y-3"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <span className="text-xs font-bold text-slate-400 block mb-1">
+                          {app.job?.employerName || 'Cooperative Federation'}
+                        </span>
+                        <h3 className="text-base font-black text-slate-900 leading-snug">
+                          {app.job?.title || 'Position'}
+                        </h3>
+                      </div>
+                      <div>{getStatusBadge(app.status)}</div>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-slate-600">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400" /> {app.job?.location}
+                      </span>
+                      <span className="flex items-center gap-1 font-semibold text-slate-800">
+                        <IndianRupee className="w-3.5 h-3.5 text-slate-400" /> {app.job?.salaryRange}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </PageContainer>
   );
 };
+
+export default MyApplications;

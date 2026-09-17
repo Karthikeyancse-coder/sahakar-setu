@@ -281,8 +281,29 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
     if (path !== '/trainee/jobs') window.history.replaceState({}, '', '/trainee/jobs');
     return { view: 'jobs', params: null };
   }
-  if (path === '/trainee/my-applications' || path === '/my-applications') {
-    if (path !== '/trainee/my-applications') window.history.replaceState({}, '', '/trainee/my-applications');
+  // NCCT Programme Catalogue & Detail
+  const progDetailMatch = path.match(/^\/(?:trainee\/)?programmes\/([^/]+)$/);
+  if (progDetailMatch && progDetailMatch[1] !== 'my') {
+    return { view: 'programme_detail', params: { programmeId: progDetailMatch[1] } };
+  }
+  if (path === '/trainee/programmes' || path === '/programmes') {
+    if (path !== '/trainee/programmes') window.history.replaceState({}, '', '/trainee/programmes');
+    return { view: 'programme_catalogue', params: null };
+  }
+  if (path === '/trainee/timetable' || path === '/timetable') {
+    if (path !== '/trainee/timetable') window.history.replaceState({}, '', '/trainee/timetable');
+    return { view: 'trainee_timetable', params: null };
+  }
+  if (path === '/trainee/documents' || path === '/documents') {
+    if (path !== '/trainee/documents') window.history.replaceState({}, '', '/trainee/documents');
+    return { view: 'document_vault', params: null };
+  }
+  if (path === '/trainee/profile-readiness' || path === '/profile-readiness') {
+    if (path !== '/trainee/profile-readiness') window.history.replaceState({}, '', '/trainee/profile-readiness');
+    return { view: 'profile_readiness', params: null };
+  }
+  if (path === '/trainee/applications' || path === '/trainee/my-applications' || path === '/my-applications') {
+    if (path !== '/trainee/applications') window.history.replaceState({}, '', '/trainee/applications');
     return { view: 'my_applications', params: null };
   }
   if (path === '/trainee/career-chat' || path === '/career-chat') {
@@ -394,6 +415,10 @@ const resolveRoute = (isAuth: boolean, userRole?: UserRole): { view: string; par
   if (path === '/faculty/attendance' || path === '/faculty/sessions') {
     if (path !== '/faculty/attendance') window.history.replaceState({}, '', '/faculty/attendance');
     return { view: 'attendance', params: null };
+  }
+  if (path === '/faculty/timetable' || path === '/faculty/schedule') {
+    if (path !== '/faculty/timetable') window.history.replaceState({}, '', '/faculty/timetable');
+    return { view: 'faculty_timetable', params: null };
   }
   const facultyEditCourseMatch = path.match(/^\/faculty\/courses\/([^/]+)\/edit-course/);
   if (facultyEditCourseMatch) {

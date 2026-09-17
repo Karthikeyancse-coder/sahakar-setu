@@ -1,14 +1,23 @@
 import prisma from '../config/prisma';
 import { createError } from '../middleware/errorHandler';
 
+let isHostelSeeded = false;
+let isHostelSeedingInProgress = false;
+
 export const hostelService = {
   /**
    * Seed initial realistic hostel data for NCCT VAMNICOM if empty
    */
   seedInitialDataIfEmpty: async () => {
+    if (isHostelSeeded || isHostelSeedingInProgress) return;
+    isHostelSeedingInProgress = true;
     try {
-      const existingHostel = await prisma.hostel.findFirst();
-      if (existingHostel) return;
+      const existingHostel = await prisma.hostel.findFirst({ select: { id: true } });
+      if (existingHostel) {
+        isHostelSeeded = true;
+        isHostelSeedingInProgress = false;
+        return;
+      }
 
       console.log('🌿 Seeding initial NCCT Hostel facility data...');
       const hostel = await prisma.hostel.create({
@@ -310,8 +319,12 @@ export const hostelService = {
       });
 
       console.log('✔ Initial NCCT Hostel facility data seeded successfully.');
+      isHostelSeeded = true;
     } catch (err: any) {
-      console.warn('Hostel seeding warning:', err.message);
+      console.warn('Hostel seeding warning (non-fatal, proceeding):', err.message);
+      isHostelSeeded = true;
+    } finally {
+      isHostelSeedingInProgress = false;
     }
   },
 

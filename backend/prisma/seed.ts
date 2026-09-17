@@ -8,6 +8,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import { seedProgrammesAndVault } from './seed_programmes_vault';
 
 const prisma = new PrismaClient();
 const SALT = 10;
@@ -398,6 +399,9 @@ async function main() {
     },
   });
   console.log('  ✓ 1 NCCT Digital Skill Card profile (Rameshwar Patil)');
+
+  // ─── NCCT Programmes, Batches, Eligibility, TimeSlots & Vault ────────────
+  await seedProgrammesAndVault();
 
   console.log('\n✅  Seed complete — all demo data loaded into Supabase.');
 }

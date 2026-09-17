@@ -360,7 +360,7 @@ router.get(
   }
 );
 
-// ─── Timetable ────────────────────────────────────────────────────────────────
+// ─── Timetable & Batches ──────────────────────────────────────────────────────
 router.get(
   '/timetable',
   requireAuth,
@@ -368,6 +368,49 @@ router.get(
     try {
       const timetable = await instituteService.getTimetable(req.user!);
       res.json(timetable);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.get(
+  '/batches',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const batches = await instituteService.getBatches(req.query.programmeId as string, req.user!);
+      res.json(batches);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  '/batches',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const batch = await instituteService.createBatch(req.body, req.user!);
+      res.status(201).json(batch);
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+router.post(
+  '/sessions/check-conflict',
+  requireAuth,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const instituteId = instituteService.resolveInstituteId(req.user!);
+      const result = await instituteService.checkSessionConflict({
+        ...req.body,
+        instituteId,
+      });
+      res.json(result);
     } catch (err) {
       next(err);
     }

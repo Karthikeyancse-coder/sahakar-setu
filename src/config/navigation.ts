@@ -51,14 +51,29 @@ export interface NavSection {
 export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
   trainee: [
     {
-      title: 'MAIN',
+      title: 'ACADEMIC & PROGRAMMES',
       items: [
         { id: 'home', label: 'Dashboard', route: '/trainee/dashboard', icon: LayoutDashboard },
-        { id: 'my_courses', label: 'My Courses', route: '/trainee/my-courses', icon: BookOpen },
+        { id: 'my_programmes', label: 'My Enrolled Programmes', route: '/trainee/my-courses', icon: BookOpen },
+        { id: 'programme_catalogue', label: 'Programme Catalogue', route: '/trainee/programmes', icon: Compass, badge: 'NCCT' },
+        { id: 'trainee_timetable', label: 'Timetable', route: '/trainee/timetable', icon: CalendarDays },
+        { id: 'my_applications', label: 'My Applications', route: '/trainee/applications', icon: Send },
+      ],
+    },
+    {
+      title: 'CREDENTIALS & VAULT',
+      items: [
+        { id: 'document_vault', label: 'Document Vault', route: '/trainee/documents', icon: FolderKanban, badge: 'Reusable' },
+        { id: 'profile_readiness', label: 'Profile Readiness', route: '/trainee/profile-readiness', icon: UserCheck },
         { id: 'certificates', label: 'Certificates', route: '/trainee/certificates', icon: Award },
-        { id: 'trainee_hostel', label: 'Hostel Accommodation', route: '/trainee/hostel', icon: BedDouble, badge: 'Pass' },
-        { id: 'jobs', label: 'Job Opportunities', route: '/trainee/jobs', icon: Briefcase },
-        { id: 'attendance_history', label: 'Attendance History', route: '/trainee/attendance', icon: ShieldCheck, badge: 'Biometric' },
+        { id: 'attendance_history', label: 'Attendance', route: '/trainee/attendance', icon: ShieldCheck, badge: 'Biometric' },
+      ],
+    },
+    {
+      title: 'CAMPUS & EMPLOYMENT',
+      items: [
+        { id: 'trainee_hostel', label: 'Hostel', route: '/trainee/hostel', icon: BedDouble, badge: 'Pass' },
+        { id: 'jobs', label: 'Jobs and Employment', route: '/trainee/jobs', icon: Briefcase },
       ],
     },
     {
@@ -149,6 +164,7 @@ export const NAVIGATION_BY_ROLE: Record<UserRole, NavSection[]> = {
       items: [
         { id: 'courses', label: 'Courses', route: '/faculty/courses', icon: BookOpen },
         { id: 'course_builder', label: 'Course Studio', route: '/faculty/courses/crs-pacs-erp-101/edit', icon: Edit3, badge: 'Studio' },
+        { id: 'timetable', label: 'Academic Timetable', route: '/faculty/timetable', icon: CalendarDays },
         { id: 'attendance', label: 'Classroom Attendance', route: '/faculty/attendance', icon: Users },
       ],
     },

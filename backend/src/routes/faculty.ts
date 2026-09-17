@@ -71,4 +71,18 @@ router.get('/courses/:courseId/roster', requireAuth, async (req: Request, res: R
   }
 });
 
+/**
+ * GET /api/faculty/timetable
+ * Returns scheduled physical & hybrid sessions assigned to the faculty with zero conflicts
+ */
+router.get('/timetable', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { instituteService } = await import('../services/instituteService');
+    const timetable = await instituteService.getFacultyTimetable(req.user!.userId, req.user!);
+    res.json(timetable);
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
